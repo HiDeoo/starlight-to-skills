@@ -11,6 +11,6 @@ export type StarlightSkillsSyncUserConfig = z.input<typeof configSchema>
 export type StarlightSkillsSyncConfig = Omit<z.output<typeof configSchema>, 'outputDir'> & {
   url: URL
   rootDir: URL
+  dataDir: URL
   outputDir: URL
-  syncDir: URL
 }

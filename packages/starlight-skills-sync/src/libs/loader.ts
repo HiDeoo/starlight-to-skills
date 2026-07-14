@@ -41,8 +41,8 @@ export async function loadConfig(rootDir: URL): Promise<StarlightSkillsSyncConfi
     ...config,
     url,
     rootDir,
+    dataDir: new URL('.starlight-skills-sync/', rootDir),
     outputDir: new URL(ensureTrailingSlash(config.outputDir), rootDir),
-    syncDir: new URL('.starlight-skills-sync/', rootDir),
   }
 }
 

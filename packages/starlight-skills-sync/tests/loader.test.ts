@@ -9,12 +9,12 @@ describe('loadConfig', () => {
     const config = await loadConfig(rootDir)
 
     expect(config).toStrictEqual({
-      url: new URL('starlight-skills-sync.config.ts', rootDir),
-      rootDir,
       model: 'openai/gpt-5.6-luna',
       definitions: './src/skills-definitions/*.skill.ts',
+      url: new URL('starlight-skills-sync.config.ts', rootDir),
+      rootDir,
+      dataDir: new URL('.starlight-skills-sync/', rootDir),
       outputDir: new URL('../skills/', rootDir),
-      syncDir: new URL('.starlight-skills-sync/', rootDir),
     })
   })
 
