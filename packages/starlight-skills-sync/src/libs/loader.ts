@@ -1,6 +1,5 @@
-import { glob } from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 
 import { createJiti } from 'jiti'
 
@@ -8,9 +7,9 @@ import { configSchema, type StarlightSkillsSyncConfig } from '../schemas/config'
 import { skillDefinitionSchema, type SkillDefinition } from '../schemas/skill'
 
 import { ensureTrailingSlash } from './path'
+import { SkillDefinitionSuffix } from './skill'
 
 const configFilename = 'starlight-skills-sync.config.ts'
-const skillDefinitionSuffix = '.skill.ts'
 
 const jiti = createJiti(import.meta.url)
 
@@ -47,23 +46,11 @@ export async function loadConfig(rootDir: URL): Promise<StarlightSkillsSyncConfi
   }
 }
 
-export async function discoverSkills(config: StarlightSkillsSyncConfig): Promise<URL[]> {
-  const definitionUrls: URL[] = []
-
-  for await (const entry of glob(config.definitions, { cwd: fileURLToPath(config.rootDir), withFileTypes: true })) {
-    if (!entry.isFile()) continue
-
-    definitionUrls.push(pathToFileURL(path.join(entry.parentPath, entry.name)))
-  }
-
-  return definitionUrls.toSorted()
-}
-
 // TODO(HiDeoo) make sure to surface proper error in CLI
 export async function loadSkill(url: URL): Promise<SkillConfiguration> {
   const definitionPath = fileURLToPath(url)
   const filename = path.basename(definitionPath)
-  const name = filename.slice(0, -skillDefinitionSuffix.length)
+  const name = filename.slice(0, -SkillDefinitionSuffix.length)
 
   // TODO(HiDeoo) validate name
   // TODO(HiDeoo) slugify?

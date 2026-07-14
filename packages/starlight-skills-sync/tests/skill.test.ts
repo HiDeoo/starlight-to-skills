@@ -1,15 +1,52 @@
-import { expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 
-import { defineSkill, type SkillUserDefinition } from '../src/skill'
+import type { StarlightSkillsSyncConfig } from '../src/config'
+import { discoverSkills, getSkillUrlByName } from '../src/libs/skill'
 
-test('returns the skill definition unchanged', () => {
-  const definition = {
-    description: 'Do the thing.',
-    docs: ['getting-started', 'guides/custom-thing'],
-    guidance: 'Add a usage example to the generated skill.',
-  } satisfies SkillUserDefinition
+const rootDir = new URL('fixtures/', import.meta.url)
 
-  const result = defineSkill(definition)
+describe('discoverSkill', () => {
+  test('discovers skill definitions', async () => {
+    const skills = await discoverSkills({ rootDir, definitions: '*.skill.ts' } as StarlightSkillsSyncConfig)
 
-  expect(result).toStrictEqual(definition)
+    expect(skills).toStrictEqual([
+      new URL('definition-invalid.skill.ts', rootDir),
+      new URL('definition-no-default.skill.ts', rootDir),
+      new URL('definition-valid.skill.ts', rootDir),
+    ])
+  })
+
+  test('returns an empty list of definitions when no matches are found', async () => {
+    const skills = await discoverSkills({ rootDir, definitions: './unknown/*.skill.ts' } as StarlightSkillsSyncConfig)
+
+    expect(skills).toStrictEqual([])
+  })
+})
+
+describe('getSkillUrlByName', () => {
+  test('returns a skill definition URL', () => {
+    const definitionUrl = new URL('definition-valid.skill.ts', rootDir)
+
+    const result = getSkillUrlByName(
+      [definitionUrl, new URL('definition-invalid.skill.ts', rootDir)],
+      'definition-valid',
+    )
+
+    expect(result).toBe(definitionUrl)
+  })
+
+  test('rejects an unknown skill name', () => {
+    expect(() => getSkillUrlByName([], 'unknown')).toThrowErrorMatchingInlineSnapshot(
+      `[Error: Failed to find skill definition 'unknown.skill.ts'.]`,
+    )
+  })
+
+  test('rejects duplicate skill names', () => {
+    expect(() =>
+      getSkillUrlByName(
+        [new URL('a/duplicate.skill.ts', rootDir), new URL('b/duplicate.skill.ts', rootDir)],
+        'duplicate',
+      ),
+    ).toThrowErrorMatchingInlineSnapshot(`[Error: Found multiple skill definitions named 'duplicate.skill.ts'.]`)
+  })
 })
