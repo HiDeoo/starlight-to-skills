@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
-import { loadConfig, loadSkill } from '../src/libs/loader'
+import type { StarlightSkillsSyncConfig } from '../src/config'
+import { discoverSkills, loadConfig, loadSkill } from '../src/libs/loader'
 
 describe('loadConfig', () => {
   test('loads and resolves valid configuration', async () => {
@@ -72,5 +73,25 @@ describe('loadSkill', () => {
     await expect(loadSkill(definitionUrl)).rejects.toThrowErrorMatchingInlineSnapshot(
       `[Error: Invalid skill definition 'definition-invalid.skill.ts'.]`,
     )
+  })
+})
+
+describe('discoverSkill', () => {
+  const rootDir = new URL('fixtures/', import.meta.url)
+
+  test('discovers skill definitions', async () => {
+    const skills = await discoverSkills({ rootDir, definitions: '*.skill.ts' } as StarlightSkillsSyncConfig)
+
+    expect(skills).toStrictEqual([
+      new URL('definition-invalid.skill.ts', rootDir),
+      new URL('definition-no-default.skill.ts', rootDir),
+      new URL('definition-valid.skill.ts', rootDir),
+    ])
+  })
+
+  test('returns an empty list of definitions when no matches are found', async () => {
+    const skills = await discoverSkills({ rootDir, definitions: './unknown/*.skill.ts' } as StarlightSkillsSyncConfig)
+
+    expect(skills).toStrictEqual([])
   })
 })

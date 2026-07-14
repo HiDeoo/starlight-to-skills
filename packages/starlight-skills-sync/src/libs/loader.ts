@@ -1,5 +1,6 @@
+import { glob } from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { createJiti } from 'jiti'
 
@@ -44,6 +45,18 @@ export async function loadConfig(rootDir: URL): Promise<StarlightSkillsSyncConfi
     outputDir: new URL(ensureTrailingSlash(config.outputDir), rootDir),
     syncDir: new URL('.starlight-skills-sync/', rootDir),
   }
+}
+
+export async function discoverSkills(config: StarlightSkillsSyncConfig): Promise<URL[]> {
+  const definitionUrls: URL[] = []
+
+  for await (const entry of glob(config.definitions, { cwd: fileURLToPath(config.rootDir), withFileTypes: true })) {
+    if (!entry.isFile()) continue
+
+    definitionUrls.push(pathToFileURL(path.join(entry.parentPath, entry.name)))
+  }
+
+  return definitionUrls.toSorted()
 }
 
 // TODO(HiDeoo) make sure to surface proper error in CLI
