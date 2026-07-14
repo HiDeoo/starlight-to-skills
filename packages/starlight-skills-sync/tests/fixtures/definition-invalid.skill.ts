@@ -1,4 +1,4 @@
-import { defineSkill } from '../../src/config'
+import { defineSkill } from '../../src/skill'
 
 export default defineSkill({
   description: 'Do the thing.',

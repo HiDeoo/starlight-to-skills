@@ -1,19 +1,15 @@
-import { describe, expect, test } from 'vitest'
+import { expect, test } from 'vitest'
 
-import { defineSkill, type SkillUserDefinition } from '../src/config'
+import { defineConfig, type StarlightSkillsSyncUserConfig } from '../src/config'
 
-describe('defineSkill', () => {
-  test('returns the original definition unchanged', () => {
-    const definition = {
-      description: 'Do the thing.',
-      docs: ['getting-started', 'guides/custom-thing'],
-      guidance: 'Add a usage example to the generated skill.',
-    } satisfies SkillUserDefinition
+test('returns the configuration unchanged', () => {
+  const config = {
+    model: 'openai/gpt-5',
+    definitions: './definitions/*.skill.ts',
+    outputDir: './output',
+  } satisfies StarlightSkillsSyncUserConfig
 
-    const result = defineSkill(definition)
+  const result = defineConfig(config)
 
-    expect(result.description).toBe(definition.description)
-    expect(result.docs).toEqual(definition.docs)
-    expect(result.guidance).toBe(definition.guidance)
-  })
+  expect(result).toStrictEqual(config)
 })

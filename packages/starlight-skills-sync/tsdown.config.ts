@@ -5,5 +5,5 @@ export default defineConfig({
     neverBundle: ['astro/zod'],
   },
   dts: true,
-  entry: 'src/config.ts',
+  entry: ['src/config.ts', 'src/skill.ts'],
 })

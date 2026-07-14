@@ -1,7 +1,7 @@
-import type { SkillDefinition, SkillUserDefinition } from './schemas/skill'
+import type { StarlightSkillsSyncConfig, StarlightSkillsSyncUserConfig } from './schemas/config'
 
-export type { SkillDefinition, SkillUserDefinition }
+export type { StarlightSkillsSyncConfig, StarlightSkillsSyncUserConfig }
 
-export function defineSkill(definition: SkillUserDefinition): SkillDefinition {
-  return definition
+export function defineConfig(config: StarlightSkillsSyncUserConfig): StarlightSkillsSyncUserConfig {
+  return config
 }

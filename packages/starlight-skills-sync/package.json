@@ -10,6 +10,10 @@
       "types": "./dist/config.d.mts",
       "import": "./dist/config.mjs"
     },
+    "./skill": {
+      "types": "./dist/skill.d.mts",
+      "import": "./dist/skill.mjs"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
