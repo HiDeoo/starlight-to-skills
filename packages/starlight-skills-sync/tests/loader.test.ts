@@ -53,7 +53,7 @@ describe('loadSkill', () => {
       name: 'definition-valid',
       url: definitionUrl,
       description: 'Do the thing.',
-      docs: ['getting-started', 'guides/custom-thing'],
+      docs: ['./getting-started.mdx', './guides/custom-thing.md'],
       guidance: 'Add a usage example to the generated skill.',
     })
   })

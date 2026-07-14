@@ -1,11 +1,17 @@
 import { z } from 'astro/zod'
 
+import { StarlightDocsExtensionsRegex } from '../libs/starlight'
+
 export const skillDefinitionSchema = z.strictObject({
   // TODO(HiDeoo) max
   // TODO(HiDeoo) trim
   description: z.string().min(1),
   docs: z
-    .array(z.string())
+    .array(
+      z
+        .string()
+        .regex(StarlightDocsExtensionsRegex, 'Documentation source must use a supported Markdown or MDX extension.'),
+    )
     .min(1)
     .superRefine((sources, context) => {
       const seen = new Set<string>()
@@ -14,7 +20,7 @@ export const skillDefinitionSchema = z.strictObject({
         if (seen.has(source)) {
           context.addIssue({
             code: 'custom',
-            message: `Duplicate documentation source ID '${source}'.`,
+            message: `Duplicate documentation source path '${source}'.`,
             path: [index],
           })
         }

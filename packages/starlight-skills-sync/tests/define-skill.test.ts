@@ -5,7 +5,7 @@ import { defineSkill, type SkillUserDefinition } from '../src/skill'
 test('returns the skill definition unchanged', () => {
   const definition = {
     description: 'Do the thing.',
-    docs: ['getting-started', 'guides/custom-thing'],
+    docs: ['./getting-started.mdx', './guides/custom-thing.md'],
     guidance: 'Add a usage example to the generated skill.',
   } satisfies SkillUserDefinition
 

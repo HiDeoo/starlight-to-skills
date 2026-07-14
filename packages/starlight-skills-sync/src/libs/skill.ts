@@ -1,4 +1,4 @@
-import { glob } from 'node:fs/promises'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -9,7 +9,7 @@ export const SkillDefinitionSuffix = '.skill.ts'
 export async function discoverSkills(config: StarlightSkillsSyncConfig): Promise<URL[]> {
   const definitionUrls: URL[] = []
 
-  for await (const entry of glob(config.definitions, { cwd: fileURLToPath(config.rootDir), withFileTypes: true })) {
+  for await (const entry of fs.glob(config.definitions, { cwd: fileURLToPath(config.rootDir), withFileTypes: true })) {
     if (!entry.isFile()) continue
 
     definitionUrls.push(pathToFileURL(path.join(entry.parentPath, entry.name)))

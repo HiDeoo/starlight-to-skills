@@ -23,7 +23,9 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "jiti": "^2.7.0"
+    "gray-matter": "^4.0.3",
+    "jiti": "^2.7.0",
+    "smol-toml": "^1.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
