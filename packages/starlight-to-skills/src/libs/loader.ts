@@ -77,7 +77,7 @@ export async function loadSkill(url: URL): Promise<SkillConfiguration> {
   return { name, url, ...definition }
 }
 
-interface SkillConfiguration extends SkillDefinition {
+export interface SkillConfiguration extends SkillDefinition {
   name: string
   url: URL
 }
