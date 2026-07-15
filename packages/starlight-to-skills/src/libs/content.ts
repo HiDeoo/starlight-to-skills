@@ -54,3 +54,21 @@ export async function generateSkillContent(
 
   return data
 }
+
+export function compileSkill(
+  skill: SkillConfiguration,
+  content: Extract<SkillContentResult, { status: 'success' }>,
+): SkillFile[] {
+  return [
+    {
+      path: 'SKILL.md',
+      content: `---\nname: ${JSON.stringify(skill.name)}\ndescription: ${JSON.stringify(skill.description)}\n---\n\n${content.body}`,
+    },
+    ...content.references.map((reference) => ({ path: reference.path, content: reference.body })),
+  ]
+}
+
+interface SkillFile {
+  path: string
+  content: string
+}
