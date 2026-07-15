@@ -1,5 +1,5 @@
 {
-  "name": "starlight-skills-sync-docs",
+  "name": "starlight-to-skills-docs",
   "version": "0.0.1",
   "license": "MIT",
   "description": "// TODO(HiDeoo)",
@@ -27,11 +27,11 @@
   "keywords": [
     "// TODO(HiDeoo)"
   ],
-  "homepage": "https://github.com/HiDeoo/starlight-skills-sync",
+  "homepage": "https://github.com/HiDeoo/starlight-to-skills",
   "repository": {
     "type": "git",
-    "url": "https://github.com/HiDeoo/starlight-skills-sync.git",
+    "url": "https://github.com/HiDeoo/starlight-to-skills.git",
     "directory": "docs"
   },
-  "bugs": "https://github.com/HiDeoo/starlight-skills-sync/issues"
+  "bugs": "https://github.com/HiDeoo/starlight-to-skills/issues"
 }

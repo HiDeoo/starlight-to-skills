@@ -1,23 +1,23 @@
 import { describe, expect, test } from 'vitest'
 
-import type { StarlightSkillsSyncConfig } from '../src/config'
+import type { StarlightToSkillsConfig } from '../src/config'
 import { discoverSkills, getSkillUrlByName } from '../src/libs/skill'
 
 const rootDir = new URL('fixtures/', import.meta.url)
 
 describe('discoverSkill', () => {
   test('discovers skill definitions', async () => {
-    const skills = await discoverSkills({ rootDir, definitions: '*.skill.ts' } as StarlightSkillsSyncConfig)
+    const skills = await discoverSkills({ rootDir, definitions: '*.skill.ts' } as StarlightToSkillsConfig)
 
     expect(skills).toStrictEqual([
-      new URL('definition-invalid.skill.ts', rootDir),
-      new URL('definition-no-default.skill.ts', rootDir),
-      new URL('definition-valid.skill.ts', rootDir),
+      new URL('skill-invalid.skill.ts', rootDir),
+      new URL('skill-no-default.skill.ts', rootDir),
+      new URL('skill-valid.skill.ts', rootDir),
     ])
   })
 
   test('returns an empty list of definitions when no matches are found', async () => {
-    const skills = await discoverSkills({ rootDir, definitions: './unknown/*.skill.ts' } as StarlightSkillsSyncConfig)
+    const skills = await discoverSkills({ rootDir, definitions: './unknown/*.skill.ts' } as StarlightToSkillsConfig)
 
     expect(skills).toStrictEqual([])
   })
@@ -25,12 +25,9 @@ describe('discoverSkill', () => {
 
 describe('getSkillUrlByName', () => {
   test('returns a skill definition URL', () => {
-    const definitionUrl = new URL('definition-valid.skill.ts', rootDir)
+    const definitionUrl = new URL('skill-valid.skill.ts', rootDir)
 
-    const result = getSkillUrlByName(
-      [definitionUrl, new URL('definition-invalid.skill.ts', rootDir)],
-      'definition-valid',
-    )
+    const result = getSkillUrlByName([definitionUrl, new URL('skill-invalid.skill.ts', rootDir)], 'skill-valid')
 
     expect(result).toBe(definitionUrl)
   })

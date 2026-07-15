@@ -3,14 +3,14 @@ import { defineConfig } from 'astro/config'
 
 const site =
   (process.env['CONTEXT'] === 'production' ? process.env['URL'] : process.env['DEPLOY_PRIME_URL']) ??
-  'https://starlight-skills-sync.netlify.app/'
+  'https://starlight-to-skills.netlify.app/'
 
 export default defineConfig({
   integrations: [
     starlight({
       description: '// TODO(HiDeoo) ',
       editLink: {
-        baseUrl: 'https://github.com/HiDeoo/starlight-skills-sync/edit/main/docs/',
+        baseUrl: 'https://github.com/HiDeoo/starlight-to-skills/edit/main/docs/',
       },
       head: [
         {
@@ -55,12 +55,12 @@ export default defineConfig({
           label: 'Bluesky',
         },
         {
-          href: 'https://github.com/HiDeoo/starlight-skills-sync',
+          href: 'https://github.com/HiDeoo/starlight-to-skills',
           icon: 'github',
           label: 'GitHub',
         },
       ],
-      title: 'Starlight Skills Sync',
+      title: 'Starlight to Skills',
     }),
   ],
   site,

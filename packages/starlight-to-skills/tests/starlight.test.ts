@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'vitest'
 
-import type { StarlightSkillsSyncConfig } from '../src/config'
+import type { StarlightToSkillsConfig } from '../src/config'
 import { loadSkillDocs } from '../src/libs/starlight'
 import type { SkillDefinition } from '../src/skill'
 
 const rootDir = new URL('fixtures/project/', import.meta.url)
-const config = { rootDir } as StarlightSkillsSyncConfig
+const config = { rootDir } as StarlightToSkillsConfig
 
 describe('loadSkillDocs', () => {
   test('loads selected documentation in authored order', async () => {

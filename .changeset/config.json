@@ -2,11 +2,11 @@
   "$schema": "https://unpkg.com/@changesets/config@3.0.4/schema.json",
   "changelog": [
     "@changesets/changelog-github",
-    { "repo": "HiDeoo/starlight-skills-sync" }
+    { "repo": "HiDeoo/starlight-to-skills" }
   ],
   "commit": false,
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["starlight-skills-sync-docs"]
+  "ignore": ["starlight-to-skills-docs"]
 }

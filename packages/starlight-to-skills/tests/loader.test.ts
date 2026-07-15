@@ -11,9 +11,9 @@ describe('loadConfig', () => {
     expect(config).toStrictEqual({
       model: 'openai/gpt-5.6-luna',
       definitions: './src/skills-definitions/*.skill.ts',
-      url: new URL('starlight-skills-sync.config.ts', rootDir),
+      url: new URL('starlight-to-skills.config.ts', rootDir),
       rootDir,
-      dataDir: new URL('.starlight-skills-sync/', rootDir),
+      dataDir: new URL('.starlight-to-skills/', rootDir),
       outputDir: new URL('../skills/', rootDir),
     })
   })
@@ -22,7 +22,7 @@ describe('loadConfig', () => {
     const rootDir = new URL('fixtures/config-parent/nested/', import.meta.url)
 
     await expect(loadConfig(rootDir)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Failed to load Starlight Skills Sync configuration 'starlight-skills-sync.config.ts'.]`,
+      `[Error: Failed to load Starlight to Skills configuration 'starlight-to-skills.config.ts'.]`,
     )
   })
 
@@ -30,7 +30,7 @@ describe('loadConfig', () => {
     const rootDir = new URL('fixtures/config-no-default/', import.meta.url)
 
     await expect(loadConfig(rootDir)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Invalid Starlight Skills Sync config 'starlight-skills-sync.config.ts'.]`,
+      `[Error: Invalid Starlight to Skills configuration 'starlight-to-skills.config.ts'.]`,
     )
   })
 
@@ -38,19 +38,19 @@ describe('loadConfig', () => {
     const rootDir = new URL('fixtures/config-invalid/', import.meta.url)
 
     await expect(loadConfig(rootDir)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Invalid Starlight Skills Sync config 'starlight-skills-sync.config.ts'.]`,
+      `[Error: Invalid Starlight to Skills configuration 'starlight-to-skills.config.ts'.]`,
     )
   })
 })
 
 describe('loadSkill', () => {
   test('loads a skill definition and resolves its configuration', async () => {
-    const definitionUrl = new URL('fixtures/definition-valid.skill.ts', import.meta.url)
+    const definitionUrl = new URL('fixtures/skill-valid.skill.ts', import.meta.url)
 
     const configuration = await loadSkill(definitionUrl)
 
     expect(configuration).toStrictEqual({
-      name: 'definition-valid',
+      name: 'skill-valid',
       url: definitionUrl,
       description: 'Do the thing.',
       docs: ['./getting-started.mdx', './guides/custom-thing.md'],
@@ -59,18 +59,18 @@ describe('loadSkill', () => {
   })
 
   test('rejects definition without a default export', async () => {
-    const definitionUrl = new URL('fixtures/definition-no-default.skill.ts', import.meta.url)
+    const definitionUrl = new URL('fixtures/skill-no-default.skill.ts', import.meta.url)
 
     await expect(loadSkill(definitionUrl)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Invalid skill definition 'definition-no-default.skill.ts'.]`,
+      `[Error: Invalid skill definition 'skill-no-default.skill.ts'.]`,
     )
   })
 
   test('rejects invalid definition', async () => {
-    const definitionUrl = new URL('fixtures/definition-invalid.skill.ts', import.meta.url)
+    const definitionUrl = new URL('fixtures/skill-invalid.skill.ts', import.meta.url)
 
     await expect(loadSkill(definitionUrl)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Invalid skill definition 'definition-invalid.skill.ts'.]`,
+      `[Error: Invalid skill definition 'skill-invalid.skill.ts'.]`,
     )
   })
 })

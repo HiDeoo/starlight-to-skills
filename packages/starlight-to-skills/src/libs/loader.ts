@@ -3,18 +3,18 @@ import { fileURLToPath } from 'node:url'
 
 import { createJiti } from 'jiti'
 
-import { configSchema, type StarlightSkillsSyncConfig } from '../schemas/config'
+import { configSchema, type StarlightToSkillsConfig } from '../schemas/config'
 import { skillDefinitionSchema, type SkillDefinition } from '../schemas/skill'
 
 import { ensureTrailingSlash } from './path'
 import { SkillDefinitionSuffix } from './skill'
 
-const configFilename = 'starlight-skills-sync.config.ts'
+const configFilename = 'starlight-to-skills.config.ts'
 
 const jiti = createJiti(import.meta.url)
 
 // TODO(HiDeoo) make sure to surface proper error in CLI
-export async function loadConfig(rootDir: URL): Promise<StarlightSkillsSyncConfig> {
+export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig> {
   const url = new URL(configFilename, rootDir)
 
   let configModule: unknown
@@ -23,7 +23,7 @@ export async function loadConfig(rootDir: URL): Promise<StarlightSkillsSyncConfi
     configModule = await jiti.import(fileURLToPath(url), { default: true })
   } catch (error) {
     // TODO(HiDeoo)
-    throw new Error(`Failed to load Starlight Skills Sync configuration '${configFilename}'.`, {
+    throw new Error(`Failed to load Starlight to Skills configuration '${configFilename}'.`, {
       cause: error,
     })
   }
@@ -34,14 +34,15 @@ export async function loadConfig(rootDir: URL): Promise<StarlightSkillsSyncConfi
     config = configSchema.parse(configModule)
   } catch (error) {
     // TODO(HiDeoo)
-    throw new Error(`Invalid Starlight Skills Sync config '${configFilename}'.`, { cause: error })
+    throw new Error(`Invalid Starlight to Skills configuration '${configFilename}'.`, { cause: error })
   }
 
   return {
     ...config,
     url,
     rootDir,
-    dataDir: new URL('.starlight-skills-sync/', rootDir),
+    // TODO(HiDeoo) Move to variable or something
+    dataDir: new URL('.starlight-to-skills/', rootDir),
     outputDir: new URL(ensureTrailingSlash(config.outputDir), rootDir),
   }
 }

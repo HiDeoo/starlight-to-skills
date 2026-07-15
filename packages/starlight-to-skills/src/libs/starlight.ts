@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import matter from 'gray-matter'
 import { parse as parseToml } from 'smol-toml'
 
-import type { StarlightSkillsSyncConfig } from '../schemas/config'
+import type { StarlightToSkillsConfig } from '../schemas/config'
 import type { SkillDefinition } from '../schemas/skill'
 
 // https://github.com/withastro/starlight/blob/bbab7b19e74de7f1758dafea52b16f8011149cd1/packages/starlight/loaders.ts#L6
@@ -15,7 +15,7 @@ export const StarlightDocsExtensionsRegex = /\.(?:markdown|mdown|mkdn|mkd|mdwn|m
 const docsCollectionDir = 'src/content/docs/'
 
 export async function loadSkillDocs(
-  config: StarlightSkillsSyncConfig,
+  config: StarlightToSkillsConfig,
   skill: SkillDefinition,
 ): Promise<SkillDocumentation[]> {
   const docsCollectionPath = fileURLToPath(new URL(docsCollectionDir, config.rootDir))

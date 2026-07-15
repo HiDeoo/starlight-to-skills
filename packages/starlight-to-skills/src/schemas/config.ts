@@ -6,9 +6,9 @@ export const configSchema = z.strictObject({
   outputDir: z.string().default('./skills'),
 })
 
-export type StarlightSkillsSyncUserConfig = z.input<typeof configSchema>
+export type StarlightToSkillsUserConfig = z.input<typeof configSchema>
 
-export type StarlightSkillsSyncConfig = Omit<z.output<typeof configSchema>, 'outputDir'> & {
+export type StarlightToSkillsConfig = Omit<z.output<typeof configSchema>, 'outputDir'> & {
   url: URL
   rootDir: URL
   dataDir: URL

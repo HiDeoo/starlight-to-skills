@@ -2,11 +2,11 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import type { StarlightSkillsSyncConfig } from '../schemas/config'
+import type { StarlightToSkillsConfig } from '../schemas/config'
 
 export const SkillDefinitionSuffix = '.skill.ts'
 
-export async function discoverSkills(config: StarlightSkillsSyncConfig): Promise<URL[]> {
+export async function discoverSkills(config: StarlightToSkillsConfig): Promise<URL[]> {
   const definitionUrls: URL[] = []
 
   for await (const entry of fs.glob(config.definitions, { cwd: fileURLToPath(config.rootDir), withFileTypes: true })) {
