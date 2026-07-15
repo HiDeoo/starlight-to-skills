@@ -25,21 +25,19 @@ const docs = [
   },
 ] satisfies SkillDocumentation[]
 
-const sha256Regex = /^[a-f\d]{64}$/
-
 describe('computeSkillDigest', () => {
   test('computes a skill digest', () => {
     const digest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs)
 
-    expect(digest.hash).toMatch(sha256Regex)
+    expect(digest.inputHash).toBeSha256()
 
     expect(digest.sources).toHaveLength(2)
     expect(digest.sources[0]?.docsPath).toBe(skill.docs[0])
-    expect(digest.sources[0]?.contentHash).toMatch(sha256Regex)
+    expect(digest.sources[0]?.contentHash).toBeSha256()
     expect(digest.sources[1]?.docsPath).toBe(skill.docs[1])
-    expect(digest.sources[1]?.contentHash).toMatch(sha256Regex)
+    expect(digest.sources[1]?.contentHash).toBeSha256()
 
-    expect(digest.definitionHash).toMatch(sha256Regex)
+    expect(digest.definitionHash).toBeSha256()
   })
 
   test('normalizes line endings', () => {
@@ -60,7 +58,7 @@ describe('computeSkillDigest', () => {
 
     const differentModelDigest = computeSkillDigest('openai/gpt-5.6-terra', skill, docs)
 
-    expect(digest.hash).not.toBe(differentModelDigest.hash)
+    expect(digest.inputHash).not.toBe(differentModelDigest.inputHash)
 
     const differentSkillDigest = computeSkillDigest(
       'openai/gpt-5.6-luna',
@@ -68,11 +66,11 @@ describe('computeSkillDigest', () => {
       docs,
     )
 
-    expect(digest.hash).not.toBe(differentSkillDigest.hash)
+    expect(digest.inputHash).not.toBe(differentSkillDigest.inputHash)
 
     const differentDocsOrderDigest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs.toReversed())
 
-    expect(digest.hash).not.toBe(differentDocsOrderDigest.hash)
+    expect(digest.inputHash).not.toBe(differentDocsOrderDigest.inputHash)
 
     const differentDocsPathDigest = computeSkillDigest(
       'openai/gpt-5.6-luna',
@@ -80,7 +78,7 @@ describe('computeSkillDigest', () => {
       docs,
     )
 
-    expect(digest.hash).not.toBe(differentDocsPathDigest.hash)
+    expect(digest.inputHash).not.toBe(differentDocsPathDigest.inputHash)
   })
 })
 
@@ -93,8 +91,8 @@ describe('computeSkillFileDigests', () => {
 
     expect(digests.map(({ path }) => path)).toStrictEqual(['SKILL.md', 'references/details.md'])
 
-    expect(digests[0]?.contentHash).toMatch(sha256Regex)
-    expect(digests[1]?.contentHash).toMatch(sha256Regex)
+    expect(digests[0]?.contentHash).toBeSha256()
+    expect(digests[1]?.contentHash).toBeSha256()
   })
 
   test('normalizes content line endings', () => {

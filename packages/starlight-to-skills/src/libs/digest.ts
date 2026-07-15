@@ -22,7 +22,7 @@ export function computeSkillDigest(model: string, skill: SkillConfiguration, doc
   }))
 
   return {
-    hash: hash({
+    inputHash: hash({
       name: normalizeLineEndings(skill.name),
       definition,
       sources,
@@ -51,12 +51,12 @@ function normalizeLineEndings(value: string): string {
 }
 
 export interface SkillDigest {
-  hash: string
+  inputHash: string
   definitionHash: string
   sources: { docsPath: string; contentHash: string }[]
 }
 
-interface SkillFileDigest {
+export interface SkillFileDigest {
   path: string
   contentHash: string
 }
