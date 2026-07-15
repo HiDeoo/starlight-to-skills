@@ -13,15 +13,7 @@ export interface SkillDigest {
   sources: { docsPath: string; contentHash: string }[]
 }
 
-export function computeSkillDigest({
-  model,
-  skill,
-  docs,
-}: {
-  model: string
-  skill: SkillConfiguration
-  docs: SkillDocumentation[]
-}): SkillDigest {
+export function computeSkillDigest(model: string, skill: SkillConfiguration, docs: SkillDocumentation[]): SkillDigest {
   const definition = {
     description: normalizeLineEndings(skill.description),
     docs: skill.docs.map(normalizeLineEndings),

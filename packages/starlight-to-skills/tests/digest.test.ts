@@ -23,10 +23,10 @@ const docs = [
     title: 'Changelog',
     body: '# Changelog\n\n## v2.0.0\n\n- Added new features.',
   },
-] satisfies [SkillDocumentation, SkillDocumentation]
+] satisfies SkillDocumentation[]
 
 test('computes a skill digest', () => {
-  const digest = computeSkillDigest({ model: 'openai/gpt-5.6-luna', skill, docs })
+  const digest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs)
 
   const sha256Regex = /^[a-f\d]{64}$/
 
@@ -42,42 +42,42 @@ test('computes a skill digest', () => {
 })
 
 test('normalizes line endings', () => {
-  const lfDigest = computeSkillDigest({ model: 'openai/gpt-5.6-luna', skill, docs })
+  const lfDigest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs)
 
   const crlfDocs = docs.map((doc) => ({
     ...doc,
     body: doc.body.replaceAll('\n', '\r\n'),
   }))
 
-  const crlfDigest = computeSkillDigest({ model: 'openai/gpt-5.6-luna', skill, docs: crlfDocs })
+  const crlfDigest = computeSkillDigest('openai/gpt-5.6-luna', skill, crlfDocs)
 
   expect(lfDigest).toStrictEqual(crlfDigest)
 })
 
 test('hashes relevant values', () => {
-  const digest = computeSkillDigest({ model: 'openai/gpt-5.6-luna', skill, docs })
+  const digest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs)
 
-  const differentModelDigest = computeSkillDigest({ model: 'openai/gpt-5.6-terra', skill, docs })
+  const differentModelDigest = computeSkillDigest('openai/gpt-5.6-terra', skill, docs)
 
   expect(digest.hash).not.toBe(differentModelDigest.hash)
 
-  const differentSkillDigest = computeSkillDigest({
-    model: 'openai/gpt-5.6-luna',
-    skill: { ...skill, description: 'Migrate to v3 with this skill.' },
+  const differentSkillDigest = computeSkillDigest(
+    'openai/gpt-5.6-luna',
+    { ...skill, description: 'Migrate to v3 with this skill.' },
     docs,
-  })
+  )
 
   expect(digest.hash).not.toBe(differentSkillDigest.hash)
 
-  const differentDocsOrderDigest = computeSkillDigest({ model: 'openai/gpt-5.6-luna', skill, docs: docs.toReversed() })
+  const differentDocsOrderDigest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs.toReversed())
 
   expect(digest.hash).not.toBe(differentDocsOrderDigest.hash)
 
-  const differentDocsPathDigest = computeSkillDigest({
-    model: 'openai/gpt-5.6-luna',
-    skill: { ...skill, docs: ['./migrations/migrate-v2.md', './changelog.md'] },
+  const differentDocsPathDigest = computeSkillDigest(
+    'openai/gpt-5.6-luna',
+    { ...skill, docs: ['./migrations/migrate-v2.md', './changelog.md'] },
     docs,
-  })
+  )
 
   expect(digest.hash).not.toBe(differentDocsPathDigest.hash)
 })
