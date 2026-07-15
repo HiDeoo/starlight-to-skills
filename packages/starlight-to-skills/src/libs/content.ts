@@ -59,6 +59,7 @@ export function compileSkill(
   skill: SkillConfiguration,
   content: Extract<SkillContentResult, { status: 'success' }>,
 ): SkillFile[] {
+  // TODO(HiDeoo) validate content and references
   return [
     {
       path: 'SKILL.md',
@@ -68,7 +69,7 @@ export function compileSkill(
   ]
 }
 
-interface SkillFile {
+export interface SkillFile {
   path: string
   content: string
 }

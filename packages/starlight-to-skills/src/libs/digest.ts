@@ -1,17 +1,12 @@
 import { createHash } from 'node:crypto'
 
+import type { SkillFile } from './content'
 import type { SkillConfiguration } from './loader'
 import type { SkillDocumentation } from './starlight'
 
 export const digestVersion = 1
 
 const NonLfLineEndingRegex = /\r\n?/g
-
-export interface SkillDigest {
-  hash: string
-  definitionHash: string
-  sources: { docsPath: string; contentHash: string }[]
-}
 
 export function computeSkillDigest(model: string, skill: SkillConfiguration, docs: SkillDocumentation[]): SkillDigest {
   const definition = {
@@ -39,10 +34,29 @@ export function computeSkillDigest(model: string, skill: SkillConfiguration, doc
   }
 }
 
+export function computeSkillFileDigest(files: SkillFile[]): SkillFileDigest[] {
+  return files.map(({ path, content }) => ({ path, contentHash: hashString(normalizeLineEndings(content)) }))
+}
+
 function hash(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(value)).digest('hex')
+  return hashString(JSON.stringify(value))
+}
+
+function hashString(value: string): string {
+  return createHash('sha256').update(value).digest('hex')
 }
 
 function normalizeLineEndings(value: string): string {
   return value.replaceAll(NonLfLineEndingRegex, '\n')
+}
+
+export interface SkillDigest {
+  hash: string
+  definitionHash: string
+  sources: { docsPath: string; contentHash: string }[]
+}
+
+interface SkillFileDigest {
+  path: string
+  contentHash: string
 }
