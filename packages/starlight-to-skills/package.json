@@ -5,6 +5,7 @@
   "description": "// TODO(HiDeoo)",
   "author": "HiDeoo <github@hideoo.dev> (https://hideoo.dev)",
   "type": "module",
+  "bin": "./dist/cli.mjs",
   "exports": {
     "./config": {
       "types": "./dist/config.d.mts",

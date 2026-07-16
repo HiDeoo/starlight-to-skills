@@ -1,9 +1,10 @@
 import { defineConfig } from 'tsdown'
 
-export default defineConfig({
-  deps: {
-    neverBundle: ['astro/zod'],
-  },
-  dts: true,
-  entry: ['src/config.ts', 'src/skill.ts'],
-})
+const deps = {
+  neverBundle: ['astro/zod'],
+}
+
+export default defineConfig([
+  { deps, dts: false, entry: ['src/cli.ts'] },
+  { deps, dts: true, entry: ['src/config.ts', 'src/skill.ts'] },
+])

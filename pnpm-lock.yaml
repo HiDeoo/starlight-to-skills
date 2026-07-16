@@ -56,6 +56,9 @@ importers:
       sharp:
         specifier: ^0.35.3
         version: 0.35.3(@types/node@24.13.3)
+      starlight-to-skills:
+        specifier: workspace:*
+        version: link:../packages/starlight-to-skills
 
   packages/starlight-to-skills:
     dependencies:
