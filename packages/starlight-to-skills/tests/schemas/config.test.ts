@@ -1,13 +1,13 @@
 import { expect, test } from 'vitest'
 
-import { configSchema } from '../../src/schemas/config'
+import { ConfigSchema } from '../../src/schemas/config'
 
 const baseConfig = {
   model: 'openai/gpt-5.6-luna',
 }
 
 test('requires non-empty model', () => {
-  const result = configSchema.safeParse({ ...baseConfig, model: '' })
+  const result = ConfigSchema.safeParse({ ...baseConfig, model: '' })
 
   expect.assert(!result.success)
 

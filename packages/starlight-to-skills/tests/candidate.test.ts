@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url'
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
-import { createCandidate, writeCandidate } from '../src/libs/candidate'
+import { createCandidate, removeCandidateForInput, writeCandidate } from '../src/libs/candidate'
 import type { SkillFile } from '../src/libs/content'
 
 describe('createCandidate', () => {
@@ -28,37 +28,36 @@ describe('createCandidate', () => {
   })
 })
 
-describe('writeCandidate', () => {
+describe('persistence', () => {
   let dataDir: URL
-  let tmpDir: string
+  let testDir: string
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
-    dataDir = pathToFileURL(path.join(tmpDir, '.starlight-to-skills', path.sep))
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
+    dataDir = pathToFileURL(path.join(testDir, '.starlight-to-skills', path.sep))
   })
 
   afterEach(async () => {
-    await fs.rm(tmpDir, { force: true, recursive: true })
+    await fs.rm(testDir, { force: true, recursive: true })
   })
 
-  test('writes a candidate', async () => {
-    const candidate = createCandidate('input-hash', [
-      { path: 'SKILL.md', content: 'Skill content.' },
-      { path: 'references/details.md', content: 'Reference content.' },
-    ])
+  describe('writeCandidate', () => {
+    test('writes a candidate', async () => {
+      const candidate = createCandidate('input-hash', [
+        { path: 'SKILL.md', content: 'Skill content.' },
+        { path: 'references/details.md', content: 'Reference content.' },
+      ])
 
-    await writeCandidate(dataDir, 'test-skill', candidate)
+      const candidateUrl = await writeCandidate(dataDir, 'test-skill', candidate)
 
-    const candidateDir = new URL('test-skill/', dataDir)
+      await expect(fs.readFile(new URL('SKILL.md', candidateUrl), 'utf8')).resolves.toMatchInlineSnapshot(
+        `"Skill content."`,
+      )
+      await expect(fs.readFile(new URL('references/details.md', candidateUrl), 'utf8')).resolves.toMatchInlineSnapshot(
+        `"Reference content."`,
+      )
 
-    await expect(fs.readFile(new URL('SKILL.md', candidateDir), 'utf8')).resolves.toMatchInlineSnapshot(
-      `"Skill content."`,
-    )
-    await expect(fs.readFile(new URL('references/details.md', candidateDir), 'utf8')).resolves.toMatchInlineSnapshot(
-      `"Reference content."`,
-    )
-
-    await expect(fs.readFile(new URL('manifest.json', candidateDir), 'utf8')).resolves.toMatchInlineSnapshot(`
+      await expect(fs.readFile(new URL('manifest.json', candidateUrl), 'utf8')).resolves.toMatchInlineSnapshot(`
       "{
         "inputHash": "input-hash",
         "files": [
@@ -73,31 +72,33 @@ describe('writeCandidate', () => {
         ]
       }"
     `)
-  })
 
-  test('replaces a candidate', async () => {
-    await writeCandidate(
-      dataDir,
-      'test-skill',
-      createCandidate('old-input-hash', [
-        { path: 'SKILL.md', content: 'Old skill content.' },
-        { path: 'references/deprecated.md', content: 'Deprecated reference content.' },
-      ]),
-    )
+      expect(candidateUrl).toEqual(new URL('test-skill/', dataDir))
+    })
 
-    const candidate = createCandidate('new-input-hash', [{ path: 'SKILL.md', content: 'New skill content.' }])
+    test('replaces a candidate', async () => {
+      await writeCandidate(
+        dataDir,
+        'test-skill',
+        createCandidate('old-input-hash', [
+          { path: 'SKILL.md', content: 'Old skill content.' },
+          { path: 'references/deprecated.md', content: 'Deprecated reference content.' },
+        ]),
+      )
 
-    await writeCandidate(dataDir, 'test-skill', candidate)
+      const candidate = createCandidate('new-input-hash', [{ path: 'SKILL.md', content: 'New skill content.' }])
 
-    const candidateDir = new URL('test-skill/', dataDir)
+      await writeCandidate(dataDir, 'test-skill', candidate)
 
-    await expect(fs.readFile(new URL('SKILL.md', candidateDir), 'utf8')).resolves.toMatchInlineSnapshot(
-      `"New skill content."`,
-    )
+      const candidateDir = new URL('test-skill/', dataDir)
 
-    await expect(fs.stat(new URL('references/deprecated.md', candidateDir))).rejects.toThrow()
+      await expect(fs.readFile(new URL('SKILL.md', candidateDir), 'utf8')).resolves.toMatchInlineSnapshot(
+        `"New skill content."`,
+      )
 
-    await expect(fs.readFile(new URL('manifest.json', candidateDir), 'utf8')).resolves.toMatchInlineSnapshot(`
+      await expect(fs.stat(new URL('references/deprecated.md', candidateDir))).rejects.toMatchObject({ code: 'ENOENT' })
+
+      await expect(fs.readFile(new URL('manifest.json', candidateDir), 'utf8')).resolves.toMatchInlineSnapshot(`
       "{
         "inputHash": "new-input-hash",
         "files": [
@@ -108,5 +109,50 @@ describe('writeCandidate', () => {
         ]
       }"
     `)
+    })
+  })
+
+  describe('removeCandidateForInput', () => {
+    test('removes a candidate', async () => {
+      const candidateUrl = await writeCandidate(
+        dataDir,
+        'test-skill',
+        createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
+      )
+
+      await removeCandidateForInput(dataDir, 'test-skill', 'input-hash')
+
+      await expect(fs.stat(candidateUrl)).rejects.toMatchObject({ code: 'ENOENT' })
+    })
+
+    test('preserves a candidate with a different input hash', async () => {
+      const candidateUrl = await writeCandidate(
+        dataDir,
+        'test-skill',
+        createCandidate('old-input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
+      )
+
+      await removeCandidateForInput(dataDir, 'test-skill', 'new-input-hash')
+
+      await expect(fs.readFile(new URL('SKILL.md', candidateUrl), 'utf8')).resolves.toBe('Skill content.')
+    })
+
+    test('does not throw if a candidate does not exist', async () => {
+      await expect(removeCandidateForInput(dataDir, 'test-skill', 'input-hash')).resolves.toBeUndefined()
+    })
+
+    test('removes a candidate with an invalid manifest', async () => {
+      const candidateUrl = await writeCandidate(
+        dataDir,
+        'test-skill',
+        createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
+      )
+
+      await fs.writeFile(new URL('manifest.json', candidateUrl), '{}')
+
+      await removeCandidateForInput(dataDir, 'test-skill', 'input-hash')
+
+      await expect(fs.stat(candidateUrl)).rejects.toMatchObject({ code: 'ENOENT' })
+    })
   })
 })

@@ -16,7 +16,7 @@ const docs = [
   {
     url: new URL('file:///project/src/content/docs/guides/migrate-v2.md'),
     title: 'V2 Migration Guide',
-    body: 'Change foo to bar.\n\nThen change bar to baz.',
+    body: 'Change foo to bar.\n\nThen change baz to quux.',
   },
   {
     url: new URL('file:///project/src/content/docs/changelog.md'),

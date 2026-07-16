@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url'
 
 import { createJiti } from 'jiti'
 
-import { configSchema, type StarlightToSkillsConfig } from '../schemas/config'
-import { skillDefinitionSchema, type SkillDefinition } from '../schemas/skill'
+import { ConfigSchema, type StarlightToSkillsConfig } from '../schemas/config'
+import { SkillDefinitionSchema, type SkillDefinition } from '../schemas/skill'
 
 import { ensureTrailingSlash } from './path'
 import { SkillDefinitionSuffix } from './skill'
@@ -28,10 +28,10 @@ export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig>
     })
   }
 
-  let config: ReturnType<typeof configSchema.parse>
+  let config: ReturnType<typeof ConfigSchema.parse>
 
   try {
-    config = configSchema.parse(configModule)
+    config = ConfigSchema.parse(configModule)
   } catch (error) {
     // TODO(HiDeoo)
     throw new Error(`Invalid Starlight to Skills configuration '${configFilename}'.`, { cause: error })
@@ -68,7 +68,7 @@ export async function loadSkill(url: URL): Promise<SkillConfiguration> {
   let definition: SkillDefinition
 
   try {
-    definition = skillDefinitionSchema.parse(definitionModule)
+    definition = SkillDefinitionSchema.parse(definitionModule)
   } catch (error) {
     // TODO(HiDeoo)
     throw new Error(`Invalid skill definition '${filename}'.`, { cause: error })

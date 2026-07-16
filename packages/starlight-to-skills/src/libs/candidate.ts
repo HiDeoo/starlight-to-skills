@@ -1,5 +1,7 @@
 import fs from 'node:fs/promises'
 
+import { CandidateManifestSchema } from '../schemas/candidate'
+
 import type { SkillFile } from './content'
 import { computeSkillFileDigest, type SkillFileDigest } from './digest'
 import { ensureTrailingSlash } from './path'
@@ -11,7 +13,7 @@ export function createCandidate(inputHash: string, files: SkillFile[]): Candidat
 }
 
 export async function writeCandidate(dataDir: URL, name: string, candidate: Candidate) {
-  const candidateUrl = new URL(ensureTrailingSlash(name), dataDir)
+  const candidateUrl = getCandidateUrl(dataDir, name)
 
   await fs.rm(candidateUrl, { force: true, recursive: true })
 
@@ -25,6 +27,39 @@ export async function writeCandidate(dataDir: URL, name: string, candidate: Cand
   const manifest = { inputHash: candidate.inputHash, files: candidate.fileDigests }
 
   await fs.writeFile(new URL('manifest.json', candidateUrl), JSON.stringify(manifest, undefined, 2))
+
+  return candidateUrl
+}
+
+export async function removeCandidateForInput(dataDir: URL, name: string, inputHash: string) {
+  const candidateUrl = getCandidateUrl(dataDir, name)
+
+  let content: string
+
+  try {
+    content = await fs.readFile(new URL('manifest.json', candidateUrl), 'utf8')
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return
+    throw error
+  }
+
+  let data: unknown
+
+  try {
+    data = JSON.parse(content)
+  } catch {
+    data = undefined
+  }
+
+  const result = CandidateManifestSchema.safeParse(data)
+
+  if (!result.success || result.data.inputHash === inputHash) {
+    await fs.rm(candidateUrl, { force: true, recursive: true })
+  }
+}
+
+function getCandidateUrl(dataDir: URL, name: string): URL {
+  return new URL(ensureTrailingSlash(name), dataDir)
 }
 
 export interface Candidate {

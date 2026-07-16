@@ -1,13 +1,15 @@
 import { z } from 'astro/zod'
 
-export const contentResultSchema = z.strictObject({
+const contentResultIssueTypeSchema = z.enum(['source-conflict', 'source-incomplete'])
+
+export const ContentResultSchema = z.strictObject({
   data: z.union([
     z.strictObject({
       status: z.literal('error'),
       issues: z
         .array(
           z.strictObject({
-            type: z.enum(['source-conflict', 'source-incomplete']),
+            type: contentResultIssueTypeSchema,
             docsPaths: z.array(z.string().min(1)),
             details: z.string(),
           }),
@@ -27,6 +29,11 @@ export const contentResultSchema = z.strictObject({
   ]),
 })
 
-export const contentResultJSONSchema = z.toJSONSchema(contentResultSchema)
+export const ContentResultJSONSchema = z.toJSONSchema(ContentResultSchema)
 
-export type SkillContentResult = z.output<typeof contentResultSchema>['data']
+export const ContentResultIssueLabels = {
+  'source-conflict': 'Source conflict',
+  'source-incomplete': 'Source incomplete',
+} satisfies Record<z.output<typeof contentResultIssueTypeSchema>, string>
+
+export type SkillContentResult = z.output<typeof ContentResultSchema>['data']

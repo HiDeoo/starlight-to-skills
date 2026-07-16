@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core/agent'
 
-import { contentResultJSONSchema, contentResultSchema, type SkillContentResult } from '../schemas/content'
+import { ContentResultJSONSchema, ContentResultSchema, type SkillContentResult } from '../schemas/content'
 
 import type { SkillConfiguration } from './loader'
 import type { SkillDocumentation } from './starlight'
@@ -47,10 +47,10 @@ export async function generateSkillContent(
   const result = await agent.generate(JSON.stringify(input), {
     maxSteps: 1,
     modelSettings: { maxRetries: 0 },
-    structuredOutput: { schema: contentResultJSONSchema, errorStrategy: 'strict' },
+    structuredOutput: { schema: ContentResultJSONSchema, errorStrategy: 'strict' },
   })
 
-  const { data } = contentResultSchema.parse(result.object)
+  const { data } = ContentResultSchema.parse(result.object)
 
   return data
 }

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 
-import { skillDefinitionSchema } from '../../src/schemas/skill'
+import { SkillDefinitionSchema } from '../../src/schemas/skill'
 
 const baseDefinition = {
   description: 'Do the thing.',
@@ -9,7 +9,7 @@ const baseDefinition = {
 }
 
 test('requires non-empty description', () => {
-  const result = skillDefinitionSchema.safeParse({ ...baseDefinition, description: '' })
+  const result = SkillDefinitionSchema.safeParse({ ...baseDefinition, description: '' })
 
   expect.assert(!result.success)
 
@@ -18,7 +18,7 @@ test('requires non-empty description', () => {
 })
 
 test('requires at least one documentation source', () => {
-  const result = skillDefinitionSchema.safeParse({ ...baseDefinition, docs: [] })
+  const result = SkillDefinitionSchema.safeParse({ ...baseDefinition, docs: [] })
 
   expect.assert(!result.success)
 
@@ -27,7 +27,7 @@ test('requires at least one documentation source', () => {
 })
 
 test('rejects duplicate documentation sources', () => {
-  const result = skillDefinitionSchema.safeParse({
+  const result = SkillDefinitionSchema.safeParse({
     ...baseDefinition,
     docs: ['./getting-started.mdx', './guides/custom-thing.md', './getting-started.mdx'],
   })
@@ -41,7 +41,7 @@ test('rejects duplicate documentation sources', () => {
 })
 
 test('rejects unsupported documentation source extensions', () => {
-  const result = skillDefinitionSchema.safeParse({ ...baseDefinition, docs: ['./getting-started.mdoc'] })
+  const result = SkillDefinitionSchema.safeParse({ ...baseDefinition, docs: ['./getting-started.mdoc'] })
 
   expect.assert(!result.success)
 

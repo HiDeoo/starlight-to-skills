@@ -24,6 +24,7 @@ export async function loadSkillDocs(
 }
 
 async function loadSkillDoc(docsCollectionPath: string, docsPath: string): Promise<SkillDocumentation> {
+  // TODO(HiDeoo) validate we don't escape src/content/docs/ ?
   const sourcePath = path.resolve(docsCollectionPath, docsPath)
 
   let sourceStats: Stats

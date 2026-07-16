@@ -4,7 +4,7 @@ import type { SkillFile } from './content'
 import type { SkillConfiguration } from './loader'
 import type { SkillDocumentation } from './starlight'
 
-export const digestVersion = 1
+const digestVersion = 1
 
 const NonLfLineEndingRegex = /\r\n?/g
 

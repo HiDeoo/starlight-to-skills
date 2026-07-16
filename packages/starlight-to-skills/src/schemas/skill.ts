@@ -2,7 +2,7 @@ import { z } from 'astro/zod'
 
 import { StarlightDocsExtensionsRegex } from '../libs/starlight'
 
-export const skillDefinitionSchema = z.strictObject({
+export const SkillDefinitionSchema = z.strictObject({
   // TODO(HiDeoo) max
   // TODO(HiDeoo) trim
   description: z.string().min(1),
@@ -31,5 +31,5 @@ export const skillDefinitionSchema = z.strictObject({
   guidance: z.string().optional(),
 })
 
-export type SkillUserDefinition = z.input<typeof skillDefinitionSchema>
-export type SkillDefinition = z.output<typeof skillDefinitionSchema>
+export type SkillUserDefinition = z.input<typeof SkillDefinitionSchema>
+export type SkillDefinition = z.output<typeof SkillDefinitionSchema>

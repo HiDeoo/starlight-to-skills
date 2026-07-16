@@ -4,4 +4,4 @@ import process from 'node:process'
 
 import { runCli } from './libs/cli'
 
-process.exitCode = runCli(process.argv.slice(2))
+process.exitCode = await runCli(process.argv.slice(2))
