@@ -6,7 +6,7 @@ import { parseArgs } from 'node:util'
 import packageJson from '../../package.json' with { type: 'json' }
 import { ContentResultIssueLabels } from '../schemas/content'
 
-import { createCandidate, removeCandidateForInput, writeCandidate } from './candidate'
+import { approveCandidate, createCandidate, loadCandidate, removeCandidateForInput, writeCandidate } from './candidate'
 import { compileSkill, generateSkillContent } from './content'
 import { computeSkillDigest } from './digest'
 import { loadConfig, loadSkill } from './loader'
@@ -19,7 +19,8 @@ import { loadSkillDocs } from './starlight'
 const help = `Usage: starlight-to-skills <command> [options]
 
 Commands:
-  generate <name>  Generate a Candidate for a skill
+  approve <name>   Approve the current candidate for a skill
+  generate <name>  Generate a candidate for a skill
 
 Options:
   -h, --help     Show help
@@ -58,14 +59,14 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 
   const rootDir = pathToFileURL(path.join(cwd, path.sep))
 
-  if (command === 'generate') {
+  if (command === 'generate' || command === 'approve') {
     const [name, ...extraNames] = commandArgs
 
-    if (!name) return logUsageError("Missing skill name for command 'generate'.")
-    if (extraNames.length > 0) return logUsageError("Command 'generate' accepts only one skill name.")
+    if (!name) return logUsageError(`Missing skill name for command '${command}'.`)
+    if (extraNames.length > 0) return logUsageError(`Command '${command}' accepts only one skill name.`)
 
     try {
-      return await generateCandidate(name, rootDir)
+      return await (command === 'generate' ? generateCandidate(name, rootDir) : approveCurrentCandidate(name, rootDir))
     } catch (error) {
       return logError(error instanceof Error ? error.message : String(error))
     }
@@ -75,11 +76,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 }
 
 async function generateCandidate(name: string, rootDir: URL): Promise<number> {
-  const config = await loadConfig(rootDir)
-  const skills = await discoverSkills(config)
-  const skill = await loadSkill(getSkillUrlByName(skills, name))
-  const docs = await loadSkillDocs(config, skill)
-  const digest = computeSkillDigest(config.model, skill, docs)
+  const { config, skill, docs, digest } = await loadSkillInputs(name, rootDir)
   const content = await generateSkillContent(config.model, skill, docs)
 
   if (content.status === 'error') {
@@ -97,8 +94,30 @@ async function generateCandidate(name: string, rootDir: URL): Promise<number> {
 
   const candidateUrl = await writeCandidate(config.dataDir, skill.name, candidate)
 
+  // TODO(HiDeoo)
   logMessage(`Candidate written to '${fileURLToPath(candidateUrl)}'.`)
   return 0
+}
+
+async function approveCurrentCandidate(name: string, rootDir: URL): Promise<number> {
+  const { config, skill, digest } = await loadSkillInputs(name, rootDir)
+
+  const candidate = await loadCandidate(config.dataDir, skill.name, digest.inputHash)
+  const approvedSkillUrl = await approveCandidate(config, skill, digest, candidate)
+
+  // TODO(HiDeoo)
+  logMessage(`Approved skill written to '${fileURLToPath(approvedSkillUrl)}'.`)
+  return 0
+}
+
+async function loadSkillInputs(name: string, rootDir: URL) {
+  const config = await loadConfig(rootDir)
+  const skills = await discoverSkills(config)
+  const skill = await loadSkill(getSkillUrlByName(skills, name))
+  const docs = await loadSkillDocs(config, skill)
+  const digest = computeSkillDigest(config.model, skill, docs)
+
+  return { config, skill, docs, digest }
 }
 
 function logMessage(message: string) {

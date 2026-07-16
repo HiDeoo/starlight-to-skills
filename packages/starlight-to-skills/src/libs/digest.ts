@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto'
 
+import type { SkillDigest } from '../schemas/digest'
+
 import type { SkillFile } from './content'
 import type { SkillConfiguration } from './loader'
 import type { SkillDocumentation } from './starlight'
 
-const digestVersion = 1
+export const DigestVersion = 1
 
 const NonLfLineEndingRegex = /\r\n?/g
 
@@ -27,7 +29,7 @@ export function computeSkillDigest(model: string, skill: SkillConfiguration, doc
       definition,
       sources,
       model: normalizeLineEndings(model),
-      digestVersion,
+      digestVersion: DigestVersion,
     }),
     definitionHash: hash(definition),
     sources: sources.map(({ docsPath, title, body }) => ({ docsPath, contentHash: hash({ title, body }) })),
@@ -48,12 +50,6 @@ function hashString(value: string): string {
 
 function normalizeLineEndings(value: string): string {
   return value.replaceAll(NonLfLineEndingRegex, '\n')
-}
-
-export interface SkillDigest {
-  inputHash: string
-  definitionHash: string
-  sources: { docsPath: string; contentHash: string }[]
 }
 
 export interface SkillFileDigest {

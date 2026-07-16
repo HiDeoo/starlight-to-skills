@@ -23,7 +23,6 @@ let logSpy: MockInstance
 let errorSpy: MockInstance
 
 beforeEach(() => {
-  mastra.generate.mockReset()
   logSpy = vi.spyOn(console, 'log').mockReturnValue()
   errorSpy = vi.spyOn(console, 'error').mockReturnValue()
 })
@@ -32,7 +31,17 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('generic behavior', () => {
+const mastraGenerateSuccessResponse = {
+  object: {
+    data: {
+      status: 'success',
+      body: 'Change foo to bar and then change baz to quux.',
+      references: [],
+    },
+  },
+}
+
+describe('usage', () => {
   test('prints help', async () => {
     expect(await runCli(['--help'])).toBe(0)
 
@@ -41,7 +50,8 @@ describe('generic behavior', () => {
       "Usage: starlight-to-skills <command> [options]
 
       Commands:
-        generate <name>  Generate a Candidate for a skill
+        approve <name>   Approve the current candidate for a skill
+        generate <name>  Generate a candidate for a skill
 
       Options:
         -h, --help     Show help
@@ -87,7 +97,7 @@ describe('generic behavior', () => {
   })
 })
 
-describe('generate command', () => {
+describe('commands', () => {
   let testDir: string
 
   beforeEach(async () => {
@@ -119,83 +129,47 @@ Change foo to bar.
 Then change baz to quux.`,
       ),
     ])
+
+    mastra.generate.mockReset()
+    mastra.generate.mockResolvedValue(mastraGenerateSuccessResponse)
   })
 
   afterEach(async () => {
     await fs.rm(testDir, { force: true, recursive: true })
   })
 
-  test('rejects missing skill name', async () => {
-    expect(await runCli(['generate'])).toBe(1)
+  describe('generate', () => {
+    test('rejects missing skill name', async () => {
+      expect(await runCli(['generate'])).toBe(1)
 
-    expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
-      "Missing skill name for command 'generate'.
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Missing skill name for command 'generate'.
 
-      Run 'starlight-to-skills --help' for more information."
-    `)
-  })
-
-  test('rejects multiple skill names', async () => {
-    expect(await runCli(['generate', 'foo', 'bar'])).toBe(1)
-
-    expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
-      "Command 'generate' accepts only one skill name.
-
-      Run 'starlight-to-skills --help' for more information."
-    `)
-  })
-
-  test('generates a candidate', async () => {
-    mastra.generate.mockResolvedValue({
-      object: {
-        data: {
-          status: 'success',
-          body: 'Change foo to bar and then change baz to quux.',
-          references: [],
-        },
-      },
+        Run 'starlight-to-skills --help' for more information."
+      `)
     })
 
-    expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+    test('rejects multiple skill names', async () => {
+      expect(await runCli(['generate', 'foo', 'bar'])).toBe(1)
 
-    const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Command 'generate' accepts only one skill name.
 
-    await expect(fs.readFile(path.join(candidateDir, 'SKILL.md'), 'utf8')).resolves.toMatchInlineSnapshot(`
-      "---
-      name: "test-skill"
-      description: "Migrate a project to v2."
-      ---
+        Run 'starlight-to-skills --help' for more information."
+      `)
+    })
 
-      Change foo to bar and then change baz to quux."
-    `)
+    test('generates a candidate', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
 
-    await expect(fs.readFile(path.join(candidateDir, 'manifest.json'), 'utf8')).resolves.toMatchInlineSnapshot(`
-      "{
-        "inputHash": "e2c5e3db27acf3167584b31ca91d06e47a8bce9ccca453ab56fa4a1dcdf6c0c4",
-        "files": [
-          {
-            "path": "SKILL.md",
-            "contentHash": "ffeff7a3288f160a02a253f3a8d456d6fa8491fef71396070137c390a518cce0"
-          }
-        ]
-      }"
-    `)
+      const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
 
-    expect(logSpy.mock.lastCall?.[0]).toContain(candidateDir)
-  })
+      await expect(fs.stat(candidateDir)).resolves.toBeDefined()
+      expect(logSpy.mock.lastCall?.[0]).toContain(candidateDir)
+    })
 
-  test('reports issues', async () => {
-    mastra.generate
-      .mockResolvedValueOnce({
-        object: {
-          data: {
-            status: 'success',
-            body: 'Change foo to bar and then change baz to quux.',
-            references: [],
-          },
-        },
-      })
-      .mockResolvedValueOnce({
+    test('reports issues', async () => {
+      mastra.generate.mockResolvedValueOnce(mastraGenerateSuccessResponse).mockResolvedValueOnce({
         object: {
           data: {
             status: 'error',
@@ -215,15 +189,15 @@ Then change baz to quux.`,
         },
       })
 
-    expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
 
-    const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
+      const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
 
-    await expect(fs.stat(candidateDir)).resolves.toBeDefined()
+      await expect(fs.stat(candidateDir)).resolves.toBeDefined()
 
-    expect(await runCli(['generate', 'test-skill'], testDir)).toBe(1)
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(1)
 
-    expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
       "Source incomplete: The migration steps are missing.
       Documentation sources: ./guide.md
 
@@ -231,6 +205,66 @@ Then change baz to quux.`,
       Documentation sources: ./guide.md"
     `)
 
-    await expect(fs.stat(candidateDir)).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(fs.stat(candidateDir)).rejects.toMatchObject({ code: 'ENOENT' })
+    })
+  })
+
+  describe('approve', () => {
+    test('rejects missing skill name', async () => {
+      expect(await runCli(['approve'])).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Missing skill name for command 'approve'.
+
+        Run 'starlight-to-skills --help' for more information."
+      `)
+    })
+
+    test('rejects multiple skill names', async () => {
+      expect(await runCli(['approve', 'foo', 'bar'])).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Command 'approve' accepts only one skill name.
+
+        Run 'starlight-to-skills --help' for more information."
+      `)
+    })
+
+    test('approves the current candidate', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+
+      mastra.generate.mockClear()
+
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
+      const skillDir = path.join(testDir, 'skills/test-skill')
+
+      await expect(fs.stat(candidateDir)).resolves.toBeDefined()
+      await expect(fs.stat(skillDir)).resolves.toBeDefined()
+
+      expect(logSpy.mock.lastCall?.[0]).toContain(skillDir)
+    })
+
+    test('rejects a missing candidate', async () => {
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"No candidate found for skill 'test-skill'. Run 'starlight-to-skills generate test-skill' first."`,
+      )
+    })
+
+    test('rejects an outdated candidate', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+
+      await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
+
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"Candidate for skill 'test-skill' is outdated. Run 'starlight-to-skills generate test-skill' again."`,
+      )
+    })
   })
 })

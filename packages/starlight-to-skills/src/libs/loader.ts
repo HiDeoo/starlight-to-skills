@@ -6,7 +6,7 @@ import { createJiti } from 'jiti'
 import { ConfigSchema, type StarlightToSkillsConfig } from '../schemas/config'
 import { SkillDefinitionSchema, type SkillDefinition } from '../schemas/skill'
 
-import { ensureTrailingSlash } from './path'
+import { resolveDirectoryUrl } from './fs'
 import { SkillDefinitionSuffix } from './skill'
 
 const configFilename = 'starlight-to-skills.config.ts'
@@ -43,7 +43,7 @@ export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig>
     rootDir,
     // TODO(HiDeoo) Move to variable or something
     dataDir: new URL('.starlight-to-skills/', rootDir),
-    outputDir: new URL(ensureTrailingSlash(config.outputDir), rootDir),
+    outputDir: resolveDirectoryUrl(config.outputDir, rootDir),
   }
 }
 

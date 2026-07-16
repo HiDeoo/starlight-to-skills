@@ -5,8 +5,19 @@ import { pathToFileURL } from 'node:url'
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
-import { createCandidate, removeCandidateForInput, writeCandidate } from '../src/libs/candidate'
+import {
+  approveCandidate,
+  createCandidate,
+  loadCandidate,
+  removeCandidateForInput,
+  writeCandidate,
+} from '../src/libs/candidate'
 import type { SkillFile } from '../src/libs/content'
+import { DigestVersion } from '../src/libs/digest'
+import type { SkillConfiguration } from '../src/libs/loader'
+import type { StarlightToSkillsConfig } from '../src/schemas/config'
+import type { SkillDigest } from '../src/schemas/digest'
+import type { SkillManifest } from '../src/schemas/manifest'
 
 describe('createCandidate', () => {
   test('creates a candidate', () => {
@@ -112,6 +123,51 @@ describe('persistence', () => {
     })
   })
 
+  describe('loadCandidate', () => {
+    test('loads a candidate', async () => {
+      const candidate = createCandidate('input-hash', [
+        { path: 'SKILL.md', content: 'Skill content.' },
+        { path: 'references/details.md', content: 'Reference content.' },
+      ])
+
+      await writeCandidate(dataDir, 'test-skill', candidate)
+
+      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).resolves.toStrictEqual(candidate)
+    })
+
+    test('rejects a missing candidate', async () => {
+      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: No candidate found for skill 'test-skill'. Run 'starlight-to-skills generate test-skill' first.]`,
+      )
+    })
+
+    test('rejects an outdated candidate', async () => {
+      await writeCandidate(
+        dataDir,
+        'test-skill',
+        createCandidate('old-input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
+      )
+
+      await expect(loadCandidate(dataDir, 'test-skill', 'new-input-hash')).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: Candidate for skill 'test-skill' is outdated. Run 'starlight-to-skills generate test-skill' again.]`,
+      )
+    })
+
+    test('rejects a manually modified candidate', async () => {
+      const candidateUrl = await writeCandidate(
+        dataDir,
+        'test-skill',
+        createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
+      )
+
+      await fs.writeFile(new URL('SKILL.md', candidateUrl), 'Edited skill content.')
+
+      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: Candidate for skill 'test-skill' is invalid. Run 'starlight-to-skills generate test-skill' again.]`,
+      )
+    })
+  })
+
   describe('removeCandidateForInput', () => {
     test('removes a candidate', async () => {
       const candidateUrl = await writeCandidate(
@@ -153,6 +209,115 @@ describe('persistence', () => {
       await removeCandidateForInput(dataDir, 'test-skill', 'input-hash')
 
       await expect(fs.stat(candidateUrl)).rejects.toMatchObject({ code: 'ENOENT' })
+    })
+  })
+
+  describe('approveCandidate', () => {
+    let rootDir: URL
+    let config: StarlightToSkillsConfig
+    let skill: SkillConfiguration
+
+    const digest = {
+      inputHash: 'input-hash',
+      definitionHash: 'definition-hash',
+      sources: [{ docsPath: './guide.md', contentHash: 'source-hash' }],
+    } satisfies SkillDigest
+
+    beforeEach(() => {
+      rootDir = pathToFileURL(`${testDir}${path.sep}`)
+
+      config = {
+        model: 'openai/gpt-5.6-luna',
+        definitions: './src/skills/*.skill.ts',
+        url: new URL('starlight-to-skills.config.ts', rootDir),
+        rootDir,
+        dataDir: new URL('.starlight-to-skills/', rootDir),
+        outputDir: new URL('skills/', rootDir),
+      }
+
+      skill = {
+        name: 'test-skill',
+        url: new URL('src/skills/test-skill.skill.ts', rootDir),
+        description: 'Migrate a project to v2.',
+        docs: ['./guide.md'],
+      }
+    })
+
+    test('approves a candidate', async () => {
+      const candidate = createCandidate('input-hash', [
+        { path: 'SKILL.md', content: 'Skill content.' },
+        { path: 'references/details.md', content: 'Reference content.' },
+      ])
+
+      const approvedSkillUrl = await approveCandidate(config, skill, digest, candidate)
+
+      await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toBe('Skill content.')
+      await expect(fs.readFile(new URL('references/details.md', approvedSkillUrl), 'utf8')).resolves.toBe(
+        'Reference content.',
+      )
+
+      const manifestData = await fs.readFile(path.join(testDir, 'skills/.starlight-to-skills/test-skill.json'), 'utf8')
+      const manifest = JSON.parse(manifestData) as SkillManifest
+
+      expect(manifest).toStrictEqual({
+        schemaVersion: 1,
+        digestVersion: DigestVersion,
+        model: 'openai/gpt-5.6-luna',
+        name: 'test-skill',
+        inputHash: 'input-hash',
+        definitionHash: 'definition-hash',
+        sources: [{ docsPath: './guide.md', contentHash: 'source-hash' }],
+        files: candidate.fileDigests,
+      })
+    })
+
+    test('replaces previous approved skill with a new candidate', async () => {
+      await approveCandidate(
+        config,
+        skill,
+        digest,
+        createCandidate('input-hash', [
+          { path: 'SKILL.md', content: 'Old skill content.' },
+          { path: 'references/deprecated.md', content: 'Deprecated content.' },
+        ]),
+      )
+
+      const approvedSkillUrl = await approveCandidate(
+        config,
+        skill,
+        digest,
+        createCandidate('input-hash', [{ path: 'SKILL.md', content: 'New skill content.' }]),
+      )
+
+      await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toMatchInlineSnapshot(
+        `"New skill content."`,
+      )
+
+      await expect(fs.stat(new URL('references/deprecated.md', approvedSkillUrl))).rejects.toMatchObject({
+        code: 'ENOENT',
+      })
+    })
+
+    test('rejects an unmanaged skill', async () => {
+      const approvedSkillUrl = new URL('test-skill/', config.outputDir)
+
+      await fs.mkdir(approvedSkillUrl, { recursive: true })
+      await fs.writeFile(new URL('SKILL.md', approvedSkillUrl), 'Unmanaged content.')
+
+      await expect(
+        approveCandidate(
+          config,
+          skill,
+          digest,
+          createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Candidate content.' }]),
+        ),
+      ).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: The existing 'test-skill' skill is not managed by Starlight to Skills.]`,
+      )
+
+      await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toMatchInlineSnapshot(
+        `"Unmanaged content."`,
+      )
     })
   })
 })
