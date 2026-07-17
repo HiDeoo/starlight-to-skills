@@ -6,7 +6,7 @@ import { createJiti } from 'jiti'
 import { ConfigSchema, type StarlightToSkillsConfig } from '../schemas/config'
 import { SkillDefinitionSchema, type SkillDefinition } from '../schemas/skill'
 
-import { resolveDirectoryUrl } from './fs'
+import { getDataDirUrl, resolveDirectoryUrl } from './fs'
 import { SkillDefinitionSuffix } from './skill'
 
 const configFilename = 'starlight-to-skills.config.ts'
@@ -41,14 +41,13 @@ export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig>
     ...config,
     url,
     rootDir,
-    // TODO(HiDeoo) Move to variable or something
-    dataDir: new URL('.starlight-to-skills/', rootDir),
+    dataDir: getDataDirUrl(rootDir),
     outputDir: resolveDirectoryUrl(config.outputDir, rootDir),
   }
 }
 
 // TODO(HiDeoo) make sure to surface proper error in CLI
-export async function loadSkill(url: URL): Promise<SkillConfiguration> {
+export async function loadSkillDefinition(url: URL): Promise<SkillConfiguration> {
   const definitionPath = fileURLToPath(url)
   const filename = path.basename(definitionPath)
   const name = filename.slice(0, -SkillDefinitionSuffix.length)

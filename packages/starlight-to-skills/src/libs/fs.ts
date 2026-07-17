@@ -1,5 +1,15 @@
 import fs from 'node:fs/promises'
 
+const pluginDirectoryName = '.starlight-to-skills'
+
+export function getDataDirUrl(rootDir: URL): URL {
+  return resolveDirectoryUrl(pluginDirectoryName, rootDir)
+}
+
+export function getSkillManifestUrl(outputDir: URL, name: string): URL {
+  return new URL(`${name}.json`, resolveDirectoryUrl(pluginDirectoryName, outputDir))
+}
+
 export function resolveDirectoryUrl(name: string, base: URL): URL {
   return new URL(name.endsWith('/') ? name : `${name}/`, base)
 }

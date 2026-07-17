@@ -9,8 +9,8 @@ import { ContentResultIssueLabels } from '../schemas/content'
 import { approveCandidate, createCandidate, loadCandidate, removeCandidateForInput, writeCandidate } from './candidate'
 import { compileSkill, generateSkillContent } from './content'
 import { computeSkillDigest } from './digest'
-import { loadConfig, loadSkill } from './loader'
-import { discoverSkills, getSkillUrlByName } from './skill'
+import { loadConfig, loadSkillDefinition } from './loader'
+import { discoverSkillDefinitions, getSkillDefinitionUrlByName } from './skill'
 import { loadSkillDocs } from './starlight'
 
 // TODO(HiDeoo) CLI UI
@@ -76,11 +76,11 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 }
 
 async function generateCandidate(name: string, rootDir: URL): Promise<number> {
-  const { config, skill, docs, digest } = await loadSkillInputs(name, rootDir)
-  const content = await generateSkillContent(config.model, skill, docs)
+  const { config, definition, docs, digest } = await loadSkillInputs(name, rootDir)
+  const content = await generateSkillContent(config.model, definition, docs)
 
   if (content.status === 'error') {
-    await removeCandidateForInput(config.dataDir, skill.name, digest.inputHash)
+    await removeCandidateForInput(config.dataDir, definition.name, digest.inputHash)
     return logError(
       content.issues
         .map((issue) => {
@@ -90,9 +90,9 @@ async function generateCandidate(name: string, rootDir: URL): Promise<number> {
     )
   }
 
-  const candidate = createCandidate(digest.inputHash, compileSkill(skill, content))
+  const candidate = createCandidate(digest.inputHash, compileSkill(definition, content))
 
-  const candidateUrl = await writeCandidate(config.dataDir, skill.name, candidate)
+  const candidateUrl = await writeCandidate(config.dataDir, definition.name, candidate)
 
   // TODO(HiDeoo)
   logMessage(`Candidate written to '${fileURLToPath(candidateUrl)}'.`)
@@ -100,10 +100,10 @@ async function generateCandidate(name: string, rootDir: URL): Promise<number> {
 }
 
 async function approveCurrentCandidate(name: string, rootDir: URL): Promise<number> {
-  const { config, skill, digest } = await loadSkillInputs(name, rootDir)
+  const { config, definition, digest } = await loadSkillInputs(name, rootDir)
 
-  const candidate = await loadCandidate(config.dataDir, skill.name, digest.inputHash)
-  const approvedSkillUrl = await approveCandidate(config, skill, digest, candidate)
+  const candidate = await loadCandidate(config.dataDir, definition.name, digest.inputHash)
+  const approvedSkillUrl = await approveCandidate(config, definition, digest, candidate)
 
   // TODO(HiDeoo)
   logMessage(`Approved skill written to '${fileURLToPath(approvedSkillUrl)}'.`)
@@ -112,12 +112,12 @@ async function approveCurrentCandidate(name: string, rootDir: URL): Promise<numb
 
 async function loadSkillInputs(name: string, rootDir: URL) {
   const config = await loadConfig(rootDir)
-  const skills = await discoverSkills(config)
-  const skill = await loadSkill(getSkillUrlByName(skills, name))
-  const docs = await loadSkillDocs(config, skill)
-  const digest = computeSkillDigest(config.model, skill, docs)
+  const definitionUrls = await discoverSkillDefinitions(config)
+  const definition = await loadSkillDefinition(getSkillDefinitionUrlByName(definitionUrls, name))
+  const docs = await loadSkillDocs(config, definition)
+  const digest = computeSkillDigest(config.model, definition, docs)
 
-  return { config, skill, docs, digest }
+  return { config, definition, docs, digest }
 }
 
 function logMessage(message: string) {

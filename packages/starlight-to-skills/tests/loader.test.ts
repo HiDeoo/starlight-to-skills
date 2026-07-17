@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { loadConfig, loadSkill } from '../src/libs/loader'
+import { loadConfig, loadSkillDefinition } from '../src/libs/loader'
 
 describe('loadConfig', () => {
   test('loads and resolves valid configuration', async () => {
@@ -43,11 +43,11 @@ describe('loadConfig', () => {
   })
 })
 
-describe('loadSkill', () => {
+describe('loadSkillDefinition', () => {
   test('loads a skill definition and resolves its configuration', async () => {
     const definitionUrl = new URL('fixtures/skill-valid.skill.ts', import.meta.url)
 
-    const configuration = await loadSkill(definitionUrl)
+    const configuration = await loadSkillDefinition(definitionUrl)
 
     expect(configuration).toStrictEqual({
       name: 'skill-valid',
@@ -61,7 +61,7 @@ describe('loadSkill', () => {
   test('rejects definition without a default export', async () => {
     const definitionUrl = new URL('fixtures/skill-no-default.skill.ts', import.meta.url)
 
-    await expect(loadSkill(definitionUrl)).rejects.toThrowErrorMatchingInlineSnapshot(
+    await expect(loadSkillDefinition(definitionUrl)).rejects.toThrowErrorMatchingInlineSnapshot(
       `[Error: Invalid skill definition 'skill-no-default.skill.ts'.]`,
     )
   })
@@ -69,7 +69,7 @@ describe('loadSkill', () => {
   test('rejects invalid definition', async () => {
     const definitionUrl = new URL('fixtures/skill-invalid.skill.ts', import.meta.url)
 
-    await expect(loadSkill(definitionUrl)).rejects.toThrowErrorMatchingInlineSnapshot(
+    await expect(loadSkillDefinition(definitionUrl)).rejects.toThrowErrorMatchingInlineSnapshot(
       `[Error: Invalid skill definition 'skill-invalid.skill.ts'.]`,
     )
   })

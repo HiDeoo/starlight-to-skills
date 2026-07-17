@@ -6,7 +6,7 @@ import { CandidateManifestSchema, type SkillManifest } from '../schemas/manifest
 
 import type { SkillFile } from './content'
 import { computeSkillFileDigest, DigestVersion, type SkillFileDigest } from './digest'
-import { ensureDirectory, isFileNotFoundError, pathExists, resolveDirectoryUrl } from './fs'
+import { ensureDirectory, getSkillManifestUrl, isFileNotFoundError, pathExists, resolveDirectoryUrl } from './fs'
 import type { SkillConfiguration } from './loader'
 import { loadSkillManifest } from './skill'
 
@@ -115,14 +115,10 @@ export async function approveCandidate(
   digest: SkillDigest,
   candidate: Candidate,
 ) {
-  await ensureDirectory(config.outputDir)
-
   const skillDirUrl = resolveDirectoryUrl(skill.name, config.outputDir)
-  const manifestDirUrl = resolveDirectoryUrl('.starlight-to-skills', config.outputDir)
+  const manifestUrl = getSkillManifestUrl(config.outputDir, skill.name)
 
-  await ensureDirectory(manifestDirUrl)
-
-  const manifestUrl = new URL(`${skill.name}.json`, manifestDirUrl)
+  await ensureDirectory(new URL('.', manifestUrl))
 
   const isAlreadyApproved = await pathExists(skillDirUrl)
   const hasManifest = await pathExists(manifestUrl)
