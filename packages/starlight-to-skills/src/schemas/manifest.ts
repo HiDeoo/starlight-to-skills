@@ -16,7 +16,7 @@ export const CandidateManifestSchema = z.strictObject({
 
 export const SkillManifestSchema = z.strictObject({
   schemaVersion: z.literal(1),
-  digestVersion: z.number(),
+  generatorVersion: z.number(),
   model: z.string(),
   name: z.string(),
   ...SkillDigestSchema.shape,

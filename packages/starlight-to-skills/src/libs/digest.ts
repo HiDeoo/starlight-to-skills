@@ -6,7 +6,8 @@ import type { SkillFile } from './content'
 import type { SkillConfiguration } from './loader'
 import type { SkillDocumentation } from './starlight'
 
-export const DigestVersion = 1
+// Bump after any change that could affect the generated skill files or their validation, e.g. updating the prompt.
+export const GeneratorVersion = 1
 
 const NonLfLineEndingRegex = /\r\n?/g
 
@@ -29,7 +30,7 @@ export function computeSkillDigest(model: string, skill: SkillConfiguration, doc
       definition,
       sources,
       model: normalizeLineEndings(model),
-      digestVersion: DigestVersion,
+      generatorVersion: GeneratorVersion,
     }),
     definitionHash: hash(definition),
     sources: sources.map(({ docsPath, title, body }) => ({ docsPath, contentHash: hash({ title, body }) })),

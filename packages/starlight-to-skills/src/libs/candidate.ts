@@ -5,7 +5,7 @@ import type { SkillDigest } from '../schemas/digest'
 import { CandidateManifestSchema, type SkillManifest } from '../schemas/manifest'
 
 import type { SkillFile } from './content'
-import { computeSkillFileDigest, DigestVersion, type SkillFileDigest } from './digest'
+import { computeSkillFileDigest, GeneratorVersion, type SkillFileDigest } from './digest'
 import { ensureDirectory, getSkillManifestUrl, isFileNotFoundError, pathExists, resolveDirectoryUrl } from './fs'
 import type { SkillConfiguration } from './loader'
 import { loadSkillManifest } from './skill'
@@ -133,7 +133,7 @@ export async function approveCandidate(
 
   const manifest: SkillManifest = {
     schemaVersion: 1,
-    digestVersion: DigestVersion,
+    generatorVersion: GeneratorVersion,
     model: config.model,
     name: skill.name,
     inputHash: digest.inputHash,

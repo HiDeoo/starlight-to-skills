@@ -3,9 +3,10 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import type { StarlightToSkillsConfig } from '../schemas/config'
+import type { SkillDigest } from '../schemas/digest'
 import { SkillManifestSchema, type SkillManifest } from '../schemas/manifest'
 
-import { computeSkillFileDigest } from './digest'
+import { computeSkillFileDigest, GeneratorVersion } from './digest'
 import { getSkillManifestUrl, isFileNotFoundError, resolveDirectoryUrl } from './fs'
 
 export const SkillDefinitionSuffix = '.skill.ts'
@@ -78,3 +79,40 @@ export async function loadSkill(outputDir: URL, name: string) {
 
   return { manifest, fileMismatches }
 }
+
+export function checkSkill(
+  manifest: SkillManifest,
+  digest: SkillDigest,
+  model: string,
+  fileMismatches: string[],
+): SkillCheckResult {
+  const issues: SkillCheckIssue[] = []
+
+  if (manifest.definitionHash !== digest.definitionHash) issues.push({ type: 'definition-change' })
+
+  if (
+    manifest.sources.some((source) =>
+      digest.sources.some(
+        (currentSource) =>
+          currentSource.docsPath === source.docsPath && currentSource.contentHash !== source.contentHash,
+      ),
+    )
+  ) {
+    issues.push({ type: 'source-change' })
+  }
+
+  if (manifest.model !== model) issues.push({ type: 'model-change' })
+  if (manifest.generatorVersion !== GeneratorVersion) issues.push({ type: 'generator-change' })
+  if (fileMismatches.length > 0) issues.push({ type: 'approved-skill-change', paths: fileMismatches })
+
+  return issues.length === 0 ? { current: true } : { current: false, issues }
+}
+
+type SkillCheckIssue =
+  | { type: 'definition-change' }
+  | { type: 'source-change' }
+  | { type: 'model-change' }
+  | { type: 'generator-change' }
+  | { type: 'approved-skill-change'; paths: string[] }
+
+type SkillCheckResult = { current: true } | { current: false; issues: SkillCheckIssue[] }

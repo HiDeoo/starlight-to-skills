@@ -13,7 +13,7 @@ import {
   writeCandidate,
 } from '../src/libs/candidate'
 import type { SkillFile } from '../src/libs/content'
-import { DigestVersion } from '../src/libs/digest'
+import { GeneratorVersion } from '../src/libs/digest'
 import type { SkillConfiguration } from '../src/libs/loader'
 import type { StarlightToSkillsConfig } from '../src/schemas/config'
 import type { SkillDigest } from '../src/schemas/digest'
@@ -261,7 +261,7 @@ describe('persistence', () => {
 
       expect(manifest).toStrictEqual({
         schemaVersion: 1,
-        digestVersion: DigestVersion,
+        generatorVersion: GeneratorVersion,
         model: 'openai/gpt-5.6-luna',
         name: 'test-skill',
         inputHash: 'input-hash',

@@ -6,8 +6,9 @@ import { pathToFileURL } from 'node:url'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import type { StarlightToSkillsConfig } from '../src/config'
-import { computeSkillFileDigest, DigestVersion } from '../src/libs/digest'
-import { discoverSkillDefinitions, getSkillDefinitionUrlByName, loadSkill } from '../src/libs/skill'
+import { computeSkillFileDigest, GeneratorVersion } from '../src/libs/digest'
+import { checkSkill, discoverSkillDefinitions, getSkillDefinitionUrlByName, loadSkill } from '../src/libs/skill'
+import type { SkillDigest } from '../src/schemas/digest'
 import type { SkillManifest } from '../src/schemas/manifest'
 
 const rootDir = new URL('fixtures/', import.meta.url)
@@ -73,7 +74,7 @@ describe('loadSkill', () => {
 
   const manifest = {
     schemaVersion: 1,
-    digestVersion: DigestVersion,
+    generatorVersion: GeneratorVersion,
     model: 'openai/gpt-5.6-luna',
     name: 'test-skill',
     inputHash: 'input-hash',
@@ -139,6 +140,106 @@ describe('loadSkill', () => {
     await expect(loadSkill(outputDir, 'test-skill')).resolves.toStrictEqual({
       manifest,
       fileMismatches: ['references/details.md'],
+    })
+  })
+})
+
+describe('checkSkill', () => {
+  const digest = {
+    inputHash: 'input-hash',
+    definitionHash: 'definition-hash',
+    sources: [
+      { docsPath: './guide.md', contentHash: 'guide-hash' },
+      { docsPath: './reference.md', contentHash: 'reference-hash' },
+    ],
+  } satisfies SkillDigest
+
+  const manifest = {
+    schemaVersion: 1,
+    generatorVersion: GeneratorVersion,
+    model: 'openai/gpt-5.6-luna',
+    name: 'test-skill',
+    ...digest,
+    files: [{ path: 'SKILL.md', contentHash: 'skill-hash' }],
+  } satisfies SkillManifest
+
+  test('checks a current skill', () => {
+    const result = checkSkill(manifest, digest, manifest.model, [])
+
+    expect(result).toStrictEqual({ current: true })
+  })
+
+  test.for([
+    {
+      change: 'added source',
+      sources: [...digest.sources, { docsPath: './new.md', contentHash: 'new-hash' }],
+    },
+    {
+      change: 'removed source',
+      sources: digest.sources.slice(0, 1),
+    },
+    {
+      change: 'renamed source',
+      sources: digest.sources.map((source, index) => (index === 0 ? { ...source, docsPath: './renamed.md' } : source)),
+    },
+    {
+      change: 'reordered sources',
+      sources: digest.sources.toReversed(),
+    },
+  ])('reports a definition change - $change', ({ sources }) => {
+    const result = checkSkill(
+      manifest,
+      { ...digest, definitionHash: 'new-definition-hash', sources },
+      manifest.model,
+      [],
+    )
+
+    expect(result).toStrictEqual({ current: false, issues: [{ type: 'definition-change' }] })
+  })
+
+  test('reports a source content change', () => {
+    const result = checkSkill(
+      manifest,
+      {
+        ...digest,
+        sources: digest.sources.map((source, index) =>
+          index === 0 ? { ...source, contentHash: 'changed-content-hash' } : source,
+        ),
+      },
+      manifest.model,
+      [],
+    )
+
+    expect(result).toStrictEqual({ current: false, issues: [{ type: 'source-change' }] })
+  })
+
+  test('reports a model change', () => {
+    const result = checkSkill(manifest, digest, 'openai/gpt-5.6-terra', [])
+
+    expect(result).toStrictEqual({ current: false, issues: [{ type: 'model-change' }] })
+  })
+
+  test('reports a generator version change', () => {
+    const result = checkSkill({ ...manifest, generatorVersion: GeneratorVersion + 1 }, digest, manifest.model, [])
+
+    expect(result).toStrictEqual({ current: false, issues: [{ type: 'generator-change' }] })
+  })
+
+  test('reports approved skill changes', () => {
+    const result = checkSkill(manifest, digest, manifest.model, ['SKILL.md', 'references/details.md'])
+
+    expect(result).toStrictEqual({
+      current: false,
+      issues: [{ type: 'approved-skill-change', paths: ['SKILL.md', 'references/details.md'] }],
+    })
+  })
+
+  test('reports multiple issues', () => {
+    const result = checkSkill(manifest, digest, 'openai/gpt-5.6-terra', ['SKILL.md'])
+
+    expect(result).toStrictEqual({
+      current: false,
+      issues: [{ type: 'model-change' }, { type: 'approved-skill-change', paths: ['SKILL.md'] }],
     })
   })
 })
