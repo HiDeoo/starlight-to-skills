@@ -153,7 +153,7 @@ describe('persistence', () => {
       )
     })
 
-    test('rejects a manually modified candidate', async () => {
+    test('rejects a manually updated candidate', async () => {
       const candidateUrl = await writeCandidate(
         dataDir,
         'test-skill',

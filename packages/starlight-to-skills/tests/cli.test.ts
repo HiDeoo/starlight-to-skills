@@ -50,7 +50,8 @@ describe('usage', () => {
       "Usage: starlight-to-skills <command> [options]
 
       Commands:
-        approve <name>   Approve the current candidate for a skill
+        approve  <name>  Approve the current candidate for a skill
+        check    <name>  Check whether an approved skill is current
         generate <name>  Generate a candidate for a skill
 
       Options:
@@ -265,6 +266,68 @@ Then change baz to quux.`,
       expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(
         `"Candidate for skill 'test-skill' is outdated. Run 'starlight-to-skills generate test-skill' again."`,
       )
+    })
+  })
+
+  describe('check', () => {
+    test('rejects missing skill name', async () => {
+      expect(await runCli(['check'])).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Missing skill name for command 'check'.
+
+        Run 'starlight-to-skills --help' for more information."
+      `)
+    })
+
+    test('rejects multiple skill names', async () => {
+      expect(await runCli(['check', 'foo', 'bar'])).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Command 'check' accepts only one skill name.
+
+        Run 'starlight-to-skills --help' for more information."
+      `)
+    })
+
+    test('checks a current skill', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      mastra.generate.mockClear()
+
+      const writeFileSpy = vi.spyOn(fs, 'writeFile')
+      const mkdirSpy = vi.spyOn(fs, 'mkdir')
+      const rmSpy = vi.spyOn(fs, 'rm')
+
+      expect(await runCli(['check', 'test-skill'], testDir)).toBe(0)
+
+      expect(logSpy).toHaveBeenLastCalledWith('Ok')
+
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      expect(writeFileSpy).not.toHaveBeenCalled()
+      expect(mkdirSpy).not.toHaveBeenCalled()
+      expect(rmSpy).not.toHaveBeenCalled()
+    })
+
+    test('reports skill issues', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
+      await fs.writeFile(path.join(testDir, 'skills/test-skill/SKILL.md'), 'Updated skill.')
+
+      expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Issues:
+
+        - Documentation source changed
+        - Approved skill changed: SKILL.md
+
+        Run 'starlight-to-skills generate test-skill' to generate a new candidate."
+      `)
     })
   })
 })

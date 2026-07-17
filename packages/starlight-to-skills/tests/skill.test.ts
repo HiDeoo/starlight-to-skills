@@ -113,8 +113,8 @@ describe('loadSkill', () => {
     await expect(loadSkill(outputDir, 'test-skill')).resolves.toStrictEqual({ manifest, fileMismatches: [] })
   })
 
-  test('reports a modified file', async () => {
-    await fs.writeFile(new URL('references/details.md', skillUrl), 'Modified reference content.')
+  test('reports an updated file', async () => {
+    await fs.writeFile(new URL('references/details.md', skillUrl), 'Updated reference content.')
 
     await expect(loadSkill(outputDir, 'test-skill')).resolves.toStrictEqual({
       manifest,

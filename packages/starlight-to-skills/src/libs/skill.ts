@@ -11,6 +11,14 @@ import { getSkillManifestUrl, isFileNotFoundError, resolveDirectoryUrl } from '.
 
 export const SkillDefinitionSuffix = '.skill.ts'
 
+export const SkillCheckIssueMessages = {
+  'definition-change': 'Skill definition changed',
+  'source-change': 'Documentation source changed',
+  'model-change': 'Model changed',
+  'generator-change': 'Generation version changed',
+  'approved-skill-change': 'Approved skill changed',
+} satisfies Record<SkillCheckIssue['type'], string>
+
 export async function discoverSkillDefinitions(config: StarlightToSkillsConfig): Promise<URL[]> {
   const definitionUrls: URL[] = []
 
@@ -98,6 +106,7 @@ export function checkSkill(
       ),
     )
   ) {
+    // TODO(HiDeoo) Maybe we should provide updated source paths
     issues.push({ type: 'source-change' })
   }
 
