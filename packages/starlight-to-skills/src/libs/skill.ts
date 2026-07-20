@@ -13,7 +13,8 @@ import { computeSkillFileDigest, GeneratorVersion, normalizeLineEndings } from '
 import { getSkillManifestDirUrl, getSkillManifestUrl, isFileNotFoundError, pathExists, resolveDirectoryUrl } from './fs'
 import type { SkillConfiguration } from './loader'
 
-export const SkillDefinitionSuffix = '.skill.ts'
+const skillDefinitionSuffix = '.skill.ts'
+const skillManifestSuffix = '.json'
 
 // TODO(HiDeoo)
 export const SkillCheckIssueMessages = {
@@ -23,6 +24,14 @@ export const SkillCheckIssueMessages = {
   'generator-change': 'Generation version changed',
   'approved-skill-change': 'Approved skill changed',
 } satisfies Record<SkillCheckIssue['type'], string>
+
+export function getSkillNameByDefinitionUrl(url: URL): string {
+  return path.basename(fileURLToPath(url), skillDefinitionSuffix)
+}
+
+export function getSkillNameByManifestUrl(url: URL): string {
+  return path.basename(fileURLToPath(url), skillManifestSuffix)
+}
 
 export async function discoverSkillDefinitions(config: StarlightToSkillsConfig): Promise<URL[]> {
   const definitionUrls: URL[] = []
@@ -36,12 +45,8 @@ export async function discoverSkillDefinitions(config: StarlightToSkillsConfig):
   return definitionUrls.toSorted()
 }
 
-export function getSkillNameByDefinitionUrl(url: URL): string {
-  return path.basename(fileURLToPath(url), SkillDefinitionSuffix)
-}
-
 export function getSkillDefinitionUrlByName(definitionUrls: URL[], name: string): URL {
-  const filename = `${name}${SkillDefinitionSuffix}`
+  const filename = `${name}${skillDefinitionSuffix}`
 
   const matchingUrls = definitionUrls.filter((url) => getSkillNameByDefinitionUrl(url) === name)
   const [matchingUrl] = matchingUrls
@@ -66,7 +71,7 @@ export async function discoverSkillManifests(outputDir: URL): Promise<URL[]> {
   const manifestUrls: URL[] = []
 
   for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith('.json')) continue
+    if (!entry.isFile() || !entry.name.endsWith(skillManifestSuffix)) continue
     manifestUrls.push(new URL(entry.name, manifestDirUrl))
   }
 
@@ -118,6 +123,11 @@ export async function loadSkill(outputDir: URL, name: string) {
   return { manifest, fileMismatches }
 }
 
+export async function pruneSkill(outputDir: URL, name: string) {
+  await fs.rm(resolveDirectoryUrl(name, outputDir), { force: true, recursive: true })
+  await fs.rm(getSkillManifestUrl(outputDir, name), { force: true })
+}
+
 export function checkSkill(
   manifest: SkillManifest,
   digest: SkillDigest,
@@ -147,11 +157,7 @@ export function checkSkill(
   return issues.length === 0 ? { current: true } : { current: false, issues }
 }
 
-export async function approveExistingSkill(
-  config: StarlightToSkillsConfig,
-  skill: SkillConfiguration,
-  digest: SkillDigest,
-) {
+export async function approveSkill(config: StarlightToSkillsConfig, skill: SkillConfiguration, digest: SkillDigest) {
   const skillDirUrl = resolveDirectoryUrl(skill.name, config.outputDir)
   const manifestUrl = getSkillManifestUrl(config.outputDir, skill.name)
 

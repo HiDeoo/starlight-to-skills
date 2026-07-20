@@ -11,6 +11,13 @@ const mastra = vi.hoisted(() => ({
   generate: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
 }))
 
+const readline = vi.hoisted(() => {
+  const close = vi.fn()
+  const question = vi.fn<() => Promise<string>>()
+
+  return { close, createInterface: vi.fn(() => ({ close, question })), question }
+})
+
 vi.mock('@mastra/core/agent', () => ({
   Agent: class {
     generate(...args: unknown[]) {
@@ -19,12 +26,19 @@ vi.mock('@mastra/core/agent', () => ({
   },
 }))
 
+vi.mock('node:readline/promises', () => ({
+  createInterface: readline.createInterface,
+}))
+
 let logSpy: MockInstance
 let errorSpy: MockInstance
 
 beforeEach(() => {
   logSpy = vi.spyOn(console, 'log').mockReturnValue()
   errorSpy = vi.spyOn(console, 'error').mockReturnValue()
+  readline.close.mockClear()
+  readline.createInterface.mockClear()
+  readline.question.mockReset().mockResolvedValue('yes')
 })
 
 afterEach(() => {
@@ -53,9 +67,11 @@ describe('usage', () => {
         approve  <name>  Approve the current candidate for a skill
         check    [name]  Check whether one or all approved skills are up to date
         generate <name>  Generate a candidate for a skill
+        prune            Remove orphan approved skills
 
       Options:
             --existing  Approve the existing approved skill
+        -y, --yes       Skip confirmation
         -h, --help      Show help
         -v, --version   Show version"
     `)
@@ -157,6 +173,17 @@ Change foo to bar.`,
 
     expect(await runCli(['generate', name], testDir)).toBe(0)
     expect(await runCli(['approve', name], testDir)).toBe(0)
+  }
+
+  async function writeSkill(name: string) {
+    const skillDir = path.join(testDir, 'skills', name)
+    const manifestPath = path.join(testDir, 'skills/.starlight-to-skills', `${name}.json`)
+
+    await fs.mkdir(skillDir, { recursive: true })
+    await fs.mkdir(path.dirname(manifestPath), { recursive: true })
+    await fs.writeFile(manifestPath, '')
+
+    return { skillDir, manifestPath }
   }
 
   describe('generate', () => {
@@ -552,6 +579,66 @@ Change foo to bar.`,
       expect(writeFileSpy).not.toHaveBeenCalled()
       expect(mkdirSpy).not.toHaveBeenCalled()
       expect(rmSpy).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('prune', () => {
+    test('rejects arguments', async () => {
+      expect(await runCli(['prune', 'test-skill'])).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Command 'prune' accepts no arguments.
+
+        Run 'starlight-to-skills --help' for more information."
+      `)
+    })
+
+    test('rejects --yes for commands other than prune', async () => {
+      expect(await runCli(['check', '--yes'])).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Option '--yes' is only valid for command 'prune'.
+
+        Run 'starlight-to-skills --help' for more information."
+      `)
+    })
+
+    test('prunes orphan skills', async () => {
+      const orphanSkill = await writeSkill('orphan-skill')
+      const testSkill = await writeSkill('test-skill')
+
+      await fs.writeFile(path.join(testDir, 'src/skills/test-skill.skill.ts'), '')
+
+      expect(await runCli(['prune', '--yes'], testDir)).toBe(0)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      expect(readline.createInterface).not.toHaveBeenCalled()
+
+      await expect(fs.stat(orphanSkill.skillDir)).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(fs.stat(orphanSkill.manifestPath)).rejects.toMatchObject({ code: 'ENOENT' })
+
+      await expect(fs.stat(testSkill.skillDir)).resolves.toBeDefined()
+      await expect(fs.stat(testSkill.manifestPath)).resolves.toBeDefined()
+
+      expect(logSpy).toHaveBeenLastCalledWith("Pruned orphan approved skill 'orphan-skill'.")
+    })
+
+    test('does not delete orphan skills when cancelling', async () => {
+      vi.spyOn(process, 'stdin', 'get').mockReturnValue({ fd: 0, isTTY: true } as NodeJS.ReadStream & { fd: 0 })
+
+      const orphanSkill = await writeSkill('orphan-skill')
+
+      readline.question.mockResolvedValue('no')
+
+      expect(await runCli(['prune'], testDir)).toBe(0)
+
+      expect(readline.question).toHaveBeenCalledWith('Prune 1 orphan approved skills? [y/N] ')
+      expect(readline.close).toHaveBeenCalledOnce()
+
+      await expect(fs.stat(orphanSkill.skillDir)).resolves.toBeDefined()
+      await expect(fs.stat(orphanSkill.manifestPath)).resolves.toBeDefined()
+
+      expect(logSpy).toHaveBeenLastCalledWith('Pruning cancelled.')
     })
   })
 })

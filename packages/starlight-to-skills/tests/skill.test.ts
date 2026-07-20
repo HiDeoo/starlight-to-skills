@@ -10,11 +10,12 @@ import { approveCandidate, createCandidate } from '../src/libs/candidate'
 import { computeSkillFileDigest, GeneratorVersion } from '../src/libs/digest'
 import type { SkillConfiguration } from '../src/libs/loader'
 import {
-  approveExistingSkill,
+  approveSkill,
   checkSkill,
   discoverSkillDefinitions,
   getSkillDefinitionUrlByName,
   loadSkill,
+  pruneSkill,
 } from '../src/libs/skill'
 import type { SkillDigest } from '../src/schemas/digest'
 import type { SkillManifest } from '../src/schemas/manifest'
@@ -250,7 +251,7 @@ describe('checkSkill', () => {
   })
 })
 
-describe('approveExistingSkill', () => {
+describe('approveSkill', () => {
   let config: StarlightToSkillsConfig
   let skill: SkillConfiguration
   let testDir: string
@@ -309,7 +310,7 @@ describe('approveExistingSkill', () => {
       sources: [{ docsPath: './guide.md', contentHash: 'updated-source-hash' }],
     }
 
-    await approveExistingSkill(updatedConfig, updatedSkill, updatedDigest)
+    await approveSkill(updatedConfig, updatedSkill, updatedDigest)
 
     await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toBe(contentBefore)
 
@@ -334,7 +335,7 @@ describe('approveExistingSkill', () => {
     const manifestBefore = await fs.readFile(manifestUrl, 'utf8')
 
     await expect(
-      approveExistingSkill(
+      approveSkill(
         config,
         { ...skill, description: 'Migrate a project to v3.' },
         { ...digest, inputHash: 'updated-input-hash', definitionHash: 'updated-definition-hash' },
@@ -346,5 +347,47 @@ describe('approveExistingSkill', () => {
     await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toBe(contentBefore)
 
     await expect(fs.readFile(manifestUrl, 'utf8')).resolves.toBe(manifestBefore)
+  })
+})
+
+describe('pruneSkill', () => {
+  let testDir: string
+  let outputDir: URL
+
+  beforeEach(async () => {
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
+    outputDir = pathToFileURL(path.join(testDir, 'skills', path.sep))
+  })
+
+  afterEach(async () => {
+    await fs.rm(testDir, { force: true, recursive: true })
+  })
+
+  test('deletes a skill and its manifest', async () => {
+    const skillUrl = new URL('test-skill/', outputDir)
+    const manifestUrl = new URL('.starlight-to-skills/test-skill.json', outputDir)
+
+    await fs.mkdir(new URL('references/', skillUrl), { recursive: true })
+    await fs.writeFile(new URL('SKILL.md', skillUrl), 'Skill content.')
+    await fs.writeFile(new URL('references/details.md', skillUrl), 'Reference content.')
+
+    await fs.mkdir(new URL('.starlight-to-skills/', outputDir), { recursive: true })
+    await fs.writeFile(manifestUrl, '{}')
+
+    const otherSkillUrl = new URL('other-skill/', outputDir)
+    const otherManifestUrl = new URL('.starlight-to-skills/other-skill.json', outputDir)
+
+    await fs.mkdir(otherSkillUrl, { recursive: true })
+    await fs.writeFile(new URL('SKILL.md', otherSkillUrl), 'Other skill content.')
+
+    await fs.writeFile(otherManifestUrl, '{}')
+
+    await pruneSkill(outputDir, 'test-skill')
+
+    await expect(fs.stat(skillUrl)).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(fs.stat(manifestUrl)).rejects.toMatchObject({ code: 'ENOENT' })
+
+    await expect(fs.readFile(new URL('SKILL.md', otherSkillUrl), 'utf8')).resolves.toBe('Other skill content.')
+    await expect(fs.readFile(otherManifestUrl, 'utf8')).resolves.toBe('{}')
   })
 })

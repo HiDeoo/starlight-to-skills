@@ -1,5 +1,6 @@
 import path from 'node:path'
 import process from 'node:process'
+import { createInterface } from 'node:readline/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 
@@ -13,14 +14,16 @@ import { compileSkill, generateSkillContent } from './content'
 import { computeSkillDigest } from './digest'
 import { loadConfig, loadSkillDefinition, type SkillConfiguration } from './loader'
 import {
-  approveExistingSkill,
+  approveSkill,
   checkSkill,
   discoverSkillDefinitions,
   discoverSkillManifests,
   getSkillDefinitionUrlByName,
   getSkillNameByDefinitionUrl,
+  getSkillNameByManifestUrl,
   hasMatchingSkillDescription,
   loadSkill,
+  pruneSkill,
   SkillCheckIssueMessages,
 } from './skill'
 import { loadSkillDocs } from './starlight'
@@ -34,9 +37,11 @@ Commands:
   approve  <name>  Approve the current candidate for a skill
   check    [name]  Check whether one or all approved skills are up to date
   generate <name>  Generate a candidate for a skill
+  prune            Remove orphan approved skills
 
 Options:
       --existing  Approve the existing approved skill
+  -y, --yes       Skip confirmation
   -h, --help      Show help
   -v, --version   Show version`
 
@@ -51,6 +56,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
         existing: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
+        yes: { type: 'boolean', short: 'y' },
       },
       strict: true,
     })
@@ -74,9 +80,21 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 
   if (parsedArgs.values['existing'] && command !== 'approve') {
     return logUsageError("Option '--existing' is only valid for command 'approve'.")
+  } else if (parsedArgs.values['yes'] && command !== 'prune') {
+    return logUsageError("Option '--yes' is only valid for command 'prune'.")
   }
 
   const rootDir = pathToFileURL(path.join(cwd, path.sep))
+
+  if (command === 'prune') {
+    if (commandArgs.length > 0) return logUsageError("Command 'prune' accepts no arguments.")
+
+    try {
+      return await runPruneSkills(rootDir, parsedArgs.values['yes'] === true)
+    } catch (error) {
+      return logError(error instanceof Error ? error.message : String(error))
+    }
+  }
 
   if (command === 'generate' || command === 'approve' || command === 'check') {
     const [name, ...extraNames] = commandArgs
@@ -85,7 +103,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 
     if (command === 'check') {
       try {
-        return name ? await checkApprovedSkill(name, rootDir) : await checkApprovedSkills(rootDir)
+        return name ? await runCheckSkill(name, rootDir) : await runCheckSkills(rootDir)
       } catch (error) {
         return logError(error instanceof Error ? error.message : String(error))
       }
@@ -94,8 +112,8 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
     if (!name) return logUsageError(`Missing skill name for command '${command}'.`)
 
     try {
-      if (command === 'generate') return await generateCandidate(name, rootDir)
-      return await approveSkill(name, rootDir, parsedArgs.values['existing'] === true)
+      if (command === 'generate') return await runGenerateCandidate(name, rootDir)
+      return await runApproveSkill(name, rootDir, parsedArgs.values['existing'] === true)
     } catch (error) {
       return logError(error instanceof Error ? error.message : String(error))
     }
@@ -104,7 +122,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
   return logUsageError(`Unknown command '${command}'.`)
 }
 
-async function generateCandidate(name: string, rootDir: URL): Promise<number> {
+async function runGenerateCandidate(name: string, rootDir: URL): Promise<number> {
   const { config, definition, docs, digest } = await loadSkillInputs(name, rootDir)
   const content = await generateSkillContent(config.model, definition, docs)
 
@@ -129,11 +147,11 @@ async function generateCandidate(name: string, rootDir: URL): Promise<number> {
   return 0
 }
 
-async function approveSkill(name: string, rootDir: URL, existing: boolean): Promise<number> {
+async function runApproveSkill(name: string, rootDir: URL, existing: boolean): Promise<number> {
   const { config, definition, digest } = await loadSkillInputs(name, rootDir)
 
   if (existing) {
-    const approvedSkillUrl = await approveExistingSkill(config, definition, digest)
+    const approvedSkillUrl = await approveSkill(config, definition, digest)
 
     // TODO(HiDeoo)
     logMessage(`Approved existing skill at '${fileURLToPath(approvedSkillUrl)}'.`)
@@ -148,10 +166,10 @@ async function approveSkill(name: string, rootDir: URL, existing: boolean): Prom
   return 0
 }
 
-async function checkApprovedSkill(name: string, rootDir: URL): Promise<number> {
+async function runCheckSkill(name: string, rootDir: URL): Promise<number> {
   // TODO(HiDeoo) handle never approved skill
   const { config, definition, digest } = await loadSkillInputs(name, rootDir)
-  const issues = await getApprovedSkillIssues(config, definition, digest)
+  const issues = await getSkillIssues(config, definition, digest)
 
   if (!issues) {
     // TODO(HiDeoo)
@@ -162,7 +180,7 @@ async function checkApprovedSkill(name: string, rootDir: URL): Promise<number> {
   return logError(issues)
 }
 
-async function checkApprovedSkills(rootDir: URL): Promise<number> {
+async function runCheckSkills(rootDir: URL): Promise<number> {
   const config = await loadConfig(rootDir)
   const definitionUrls = await discoverSkillDefinitions(config)
   const definitionNames = new Set(definitionUrls.map(getSkillNameByDefinitionUrl))
@@ -174,7 +192,7 @@ async function checkApprovedSkills(rootDir: URL): Promise<number> {
     try {
       const definitionUrl = getSkillDefinitionUrlByName(definitionUrls, name)
       const { definition, digest } = await loadSkillDefinitionInputs(config, definitionUrl)
-      const issues = await getApprovedSkillIssues(config, definition, digest)
+      const issues = await getSkillIssues(config, definition, digest)
 
       if (issues) {
         allCurrent = false
@@ -189,7 +207,7 @@ async function checkApprovedSkills(rootDir: URL): Promise<number> {
   }
 
   for (const skillManifestUrl of await discoverSkillManifests(config.outputDir)) {
-    const skillName = path.basename(fileURLToPath(skillManifestUrl), '.json')
+    const skillName = getSkillNameByManifestUrl(skillManifestUrl)
     if (definitionNames.has(skillName)) continue
 
     allCurrent = false
@@ -203,7 +221,68 @@ async function checkApprovedSkills(rootDir: URL): Promise<number> {
   return 0
 }
 
-async function getApprovedSkillIssues(
+async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
+  // TODO(HiDeoo) validate names
+  const config = await loadConfig(rootDir)
+  const definitionUrls = await discoverSkillDefinitions(config)
+  const definitionNames = new Set(definitionUrls.map(getSkillNameByDefinitionUrl))
+  const orphans: { manifestUrl: URL; name: string }[] = []
+
+  for (const manifestUrl of await discoverSkillManifests(config.outputDir)) {
+    const name = getSkillNameByManifestUrl(manifestUrl)
+    if (!definitionNames.has(name)) orphans.push({ manifestUrl, name })
+  }
+
+  if (orphans.length === 0) {
+    logMessage('No orphan approved skills found.')
+    return 0
+  }
+
+  if (!yes) {
+    if (process.stdin.isTTY !== true) {
+      throw new Error("Unable to confirm prune from non-interactive input. Run 'starlight-to-skills prune --yes'.")
+    }
+
+    const readline = createInterface({ input: process.stdin, output: process.stdout })
+
+    try {
+      // TODO(HiDeoo) list orphans
+      const answer = await readline.question(`Prune ${orphans.length} orphan approved skills? [y/N] `)
+
+      if (!['y', 'yes'].includes(answer.trim().toLowerCase())) {
+        logMessage('Pruning cancelled.')
+        return 0
+      }
+    } finally {
+      readline.close()
+    }
+  }
+
+  for (const orphan of orphans) {
+    await pruneSkill(config.outputDir, orphan.name)
+    logMessage(`Pruned orphan approved skill '${orphan.name}'.`)
+  }
+
+  return 0
+}
+
+async function loadSkillInputs(name: string, rootDir: URL) {
+  const config = await loadConfig(rootDir)
+  const definitionUrls = await discoverSkillDefinitions(config)
+  const inputs = await loadSkillDefinitionInputs(config, getSkillDefinitionUrlByName(definitionUrls, name))
+
+  return { config, ...inputs }
+}
+
+async function loadSkillDefinitionInputs(config: StarlightToSkillsConfig, definitionUrl: URL) {
+  const definition = await loadSkillDefinition(definitionUrl)
+  const docs = await loadSkillDocs(config, definition)
+  const digest = computeSkillDigest(config.model, definition, docs)
+
+  return { definition, docs, digest }
+}
+
+async function getSkillIssues(
   config: StarlightToSkillsConfig,
   definition: SkillConfiguration,
   digest: SkillDigest,
@@ -229,22 +308,6 @@ async function getApprovedSkillIssues(
     : ''
 
   return `Issues:\n\n${issues.join('\n')}\n\nRun 'starlight-to-skills generate ${definition.name}' to generate a new candidate.${hint}`
-}
-
-async function loadSkillInputs(name: string, rootDir: URL) {
-  const config = await loadConfig(rootDir)
-  const definitionUrls = await discoverSkillDefinitions(config)
-  const inputs = await loadSkillDefinitionInputs(config, getSkillDefinitionUrlByName(definitionUrls, name))
-
-  return { config, ...inputs }
-}
-
-async function loadSkillDefinitionInputs(config: StarlightToSkillsConfig, definitionUrl: URL) {
-  const definition = await loadSkillDefinition(definitionUrl)
-  const docs = await loadSkillDocs(config, definition)
-  const digest = computeSkillDigest(config.model, definition, docs)
-
-  return { definition, docs, digest }
 }
 
 function logMessage(message: string) {
