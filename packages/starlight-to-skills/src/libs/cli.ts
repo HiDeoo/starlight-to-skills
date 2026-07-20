@@ -16,8 +16,9 @@ import {
   approveExistingSkill,
   checkSkill,
   discoverSkillDefinitions,
+  discoverSkillManifests,
   getSkillDefinitionUrlByName,
-  getSkillNameFromDefinitionUrl,
+  getSkillNameByDefinitionUrl,
   hasMatchingSkillDescription,
   loadSkill,
   SkillCheckIssueMessages,
@@ -163,14 +164,13 @@ async function checkApprovedSkill(name: string, rootDir: URL): Promise<number> {
 
 async function checkApprovedSkills(rootDir: URL): Promise<number> {
   const config = await loadConfig(rootDir)
-  // TODO(HiDeoo) handle orphan approved skills
   const definitionUrls = await discoverSkillDefinitions(config)
-  const names = new Set(definitionUrls.map(getSkillNameFromDefinitionUrl))
+  const definitionNames = new Set(definitionUrls.map(getSkillNameByDefinitionUrl))
 
   const reports: string[] = []
   let allCurrent = true
 
-  for (const name of names) {
+  for (const name of definitionNames) {
     try {
       const definitionUrl = getSkillDefinitionUrlByName(definitionUrls, name)
       const { definition, digest } = await loadSkillDefinitionInputs(config, definitionUrl)
@@ -186,6 +186,14 @@ async function checkApprovedSkills(rootDir: URL): Promise<number> {
       allCurrent = false
       reports.push(`${name}: Issue\n\n${error instanceof Error ? error.message : String(error)}`)
     }
+  }
+
+  for (const skillManifestUrl of await discoverSkillManifests(config.outputDir)) {
+    const skillName = path.basename(fileURLToPath(skillManifestUrl), '.json')
+    if (definitionNames.has(skillName)) continue
+
+    allCurrent = false
+    reports.push(`${skillName}: Issue\n\nOrphan approved skill.`)
   }
 
   const report = reports.join('\n\n')

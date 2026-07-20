@@ -1,3 +1,4 @@
+import type { Dirent } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -9,7 +10,7 @@ import type { SkillDigest } from '../schemas/digest'
 import { makeSkillManifest, SkillManifestSchema, type SkillManifest } from '../schemas/manifest'
 
 import { computeSkillFileDigest, GeneratorVersion, normalizeLineEndings } from './digest'
-import { getSkillManifestUrl, isFileNotFoundError, pathExists, resolveDirectoryUrl } from './fs'
+import { getSkillManifestDirUrl, getSkillManifestUrl, isFileNotFoundError, pathExists, resolveDirectoryUrl } from './fs'
 import type { SkillConfiguration } from './loader'
 
 export const SkillDefinitionSuffix = '.skill.ts'
@@ -35,20 +36,41 @@ export async function discoverSkillDefinitions(config: StarlightToSkillsConfig):
   return definitionUrls.toSorted()
 }
 
-export function getSkillNameFromDefinitionUrl(url: URL): string {
+export function getSkillNameByDefinitionUrl(url: URL): string {
   return path.basename(fileURLToPath(url), SkillDefinitionSuffix)
 }
 
 export function getSkillDefinitionUrlByName(definitionUrls: URL[], name: string): URL {
   const filename = `${name}${SkillDefinitionSuffix}`
 
-  const matchingUrls = definitionUrls.filter((url) => getSkillNameFromDefinitionUrl(url) === name)
+  const matchingUrls = definitionUrls.filter((url) => getSkillNameByDefinitionUrl(url) === name)
   const [matchingUrl] = matchingUrls
 
   if (!matchingUrl) throw new Error(`Failed to find skill definition '${filename}'.`)
   if (matchingUrls.length > 1) throw new Error(`Found multiple skill definitions named '${filename}'.`)
 
   return matchingUrl
+}
+
+export async function discoverSkillManifests(outputDir: URL): Promise<URL[]> {
+  const manifestDirUrl = getSkillManifestDirUrl(outputDir)
+  let entries: Dirent[]
+
+  try {
+    entries = await fs.readdir(manifestDirUrl, { withFileTypes: true })
+  } catch (error) {
+    if (isFileNotFoundError(error)) return []
+    throw error
+  }
+
+  const manifestUrls: URL[] = []
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith('.json')) continue
+    manifestUrls.push(new URL(entry.name, manifestDirUrl))
+  }
+
+  return manifestUrls.toSorted()
 }
 
 export async function loadSkillManifest(url: URL, name: string): Promise<SkillManifest> {

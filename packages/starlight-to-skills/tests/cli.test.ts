@@ -524,5 +524,34 @@ Change foo to bar.`,
         Found multiple skill definitions named 'duplicate.skill.ts'."
       `)
     })
+
+    test('reports orphan skills', async () => {
+      await addApprovedSkill('other-skill')
+
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      await fs.rm(path.join(testDir, 'src/skills/other-skill.skill.ts'))
+      mastra.generate.mockClear()
+
+      const writeFileSpy = vi.spyOn(fs, 'writeFile')
+      const mkdirSpy = vi.spyOn(fs, 'mkdir')
+      const rmSpy = vi.spyOn(fs, 'rm')
+
+      expect(await runCli(['check'], testDir)).toBe(1)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "test-skill: Ok
+
+        other-skill: Issue
+
+        Orphan approved skill."
+      `)
+
+      expect(writeFileSpy).not.toHaveBeenCalled()
+      expect(mkdirSpy).not.toHaveBeenCalled()
+      expect(rmSpy).not.toHaveBeenCalled()
+    })
   })
 })
