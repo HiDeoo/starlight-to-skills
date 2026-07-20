@@ -2,10 +2,10 @@ import fs from 'node:fs/promises'
 
 import type { StarlightToSkillsConfig } from '../schemas/config'
 import type { SkillDigest } from '../schemas/digest'
-import { CandidateManifestSchema, type SkillManifest } from '../schemas/manifest'
+import { CandidateManifestSchema, makeSkillManifest } from '../schemas/manifest'
 
 import type { SkillFile } from './content'
-import { computeSkillFileDigest, GeneratorVersion, type SkillFileDigest } from './digest'
+import { computeSkillFileDigest, type SkillFileDigest } from './digest'
 import { ensureDirectory, getSkillManifestUrl, isFileNotFoundError, pathExists, resolveDirectoryUrl } from './fs'
 import type { SkillConfiguration } from './loader'
 import { loadSkillManifest } from './skill'
@@ -131,16 +131,7 @@ export async function approveCandidate(
     await loadSkillManifest(manifestUrl, skill.name)
   }
 
-  const manifest: SkillManifest = {
-    schemaVersion: 1,
-    generatorVersion: GeneratorVersion,
-    model: config.model,
-    name: skill.name,
-    inputHash: digest.inputHash,
-    definitionHash: digest.definitionHash,
-    sources: digest.sources,
-    files: candidate.fileDigests,
-  }
+  const manifest = makeSkillManifest(config, skill, digest, candidate.fileDigests)
 
   await fs.rm(skillDirUrl, { force: true, recursive: true })
 

@@ -55,8 +55,9 @@ describe('usage', () => {
         generate <name>  Generate a candidate for a skill
 
       Options:
-        -h, --help     Show help
-        -v, --version  Show version"
+            --existing  Approve the existing approved skill
+        -h, --help      Show help
+        -v, --version   Show version"
     `)
   })
 
@@ -231,6 +232,16 @@ Then change baz to quux.`,
       `)
     })
 
+    test('rejects --existing for commands other than approve', async () => {
+      expect(await runCli(['generate', 'test-skill', '--existing'])).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      "Option '--existing' is only valid for command 'approve'.
+
+      Run 'starlight-to-skills --help' for more information."
+    `)
+    })
+
     test('approves the current candidate', async () => {
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
 
@@ -266,6 +277,60 @@ Then change baz to quux.`,
       expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(
         `"Candidate for skill 'test-skill' is outdated. Run 'starlight-to-skills generate test-skill' again."`,
       )
+    })
+
+    describe('--existing', () => {
+      test('approves an existing skill without changing the candidate', async () => {
+        expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+        expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+        await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
+        expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+
+        const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
+        const candidateBefore = await Promise.all([
+          fs.readFile(path.join(candidateDir, 'SKILL.md'), 'utf8'),
+          fs.readFile(path.join(candidateDir, 'manifest.json'), 'utf8'),
+        ])
+
+        mastra.generate.mockClear()
+
+        expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(0)
+        expect(mastra.generate).not.toHaveBeenCalled()
+
+        const candidateAfter = await Promise.all([
+          fs.readFile(path.join(candidateDir, 'SKILL.md'), 'utf8'),
+          fs.readFile(path.join(candidateDir, 'manifest.json'), 'utf8'),
+        ])
+
+        expect(candidateAfter).toStrictEqual(candidateBefore)
+        expect(await runCli(['check', 'test-skill'], testDir)).toBe(0)
+      })
+
+      test('rejects approving a missing existing skill', async () => {
+        expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(1)
+
+        expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`"Skill 'test-skill' has not yet been approved."`)
+      })
+
+      test('rejects approving an outdated existing skill', async () => {
+        expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+        expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+        const skillPath = path.join(testDir, 'skills/test-skill/SKILL.md')
+        const manifestPath = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
+
+        const manifestBefore = await fs.readFile(manifestPath, 'utf8')
+
+        await fs.appendFile(skillPath, '\nUpdate.')
+
+        expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(1)
+
+        expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`"The skill 'test-skill' has changed."`)
+
+        await expect(fs.readFile(skillPath, 'utf8')).resolves.toContain('Update.')
+        await expect(fs.readFile(manifestPath, 'utf8')).resolves.toBe(manifestBefore)
+      })
     })
   })
 
@@ -327,6 +392,25 @@ Then change baz to quux.`,
         - Approved skill changed: SKILL.md
 
         Run 'starlight-to-skills generate test-skill' to generate a new candidate."
+      `)
+    })
+
+    test('hints to approve an existing skill', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
+
+      expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Issues:
+
+        - Documentation source changed
+
+        Run 'starlight-to-skills generate test-skill' to generate a new candidate.
+
+        If the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
       `)
     })
   })

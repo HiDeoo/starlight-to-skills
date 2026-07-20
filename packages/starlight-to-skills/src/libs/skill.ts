@@ -2,15 +2,19 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import matter from 'gray-matter'
+
 import type { StarlightToSkillsConfig } from '../schemas/config'
 import type { SkillDigest } from '../schemas/digest'
-import { SkillManifestSchema, type SkillManifest } from '../schemas/manifest'
+import { makeSkillManifest, SkillManifestSchema, type SkillManifest } from '../schemas/manifest'
 
-import { computeSkillFileDigest, GeneratorVersion } from './digest'
-import { getSkillManifestUrl, isFileNotFoundError, resolveDirectoryUrl } from './fs'
+import { computeSkillFileDigest, GeneratorVersion, normalizeLineEndings } from './digest'
+import { getSkillManifestUrl, isFileNotFoundError, pathExists, resolveDirectoryUrl } from './fs'
+import type { SkillConfiguration } from './loader'
 
 export const SkillDefinitionSuffix = '.skill.ts'
 
+// TODO(HiDeoo)
 export const SkillCheckIssueMessages = {
   'definition-change': 'Skill definition changed',
   'source-change': 'Documentation source changed',
@@ -115,6 +119,55 @@ export function checkSkill(
   if (fileMismatches.length > 0) issues.push({ type: 'approved-skill-change', paths: fileMismatches })
 
   return issues.length === 0 ? { current: true } : { current: false, issues }
+}
+
+export async function approveExistingSkill(
+  config: StarlightToSkillsConfig,
+  skill: SkillConfiguration,
+  digest: SkillDigest,
+) {
+  const skillDirUrl = resolveDirectoryUrl(skill.name, config.outputDir)
+  const manifestUrl = getSkillManifestUrl(config.outputDir, skill.name)
+
+  if (!(await pathExists(skillDirUrl)) || !(await pathExists(manifestUrl))) {
+    throw new Error(`Skill '${skill.name}' has not yet been approved.`)
+  }
+
+  const { manifest, fileMismatches } = await loadSkill(config.outputDir, skill.name)
+
+  if (fileMismatches.length > 0) {
+    // TODO(HiDeoo)
+    throw new Error(`The skill '${skill.name}' has changed.`)
+  }
+
+  if (
+    manifest.definitionHash !== digest.definitionHash &&
+    !(await hasMatchingSkillDescription(config.outputDir, skill.name, skill.description))
+  ) {
+    throw new Error(
+      `The description for skill '${skill.name}' has changed. Run 'starlight-to-skills generate ${skill.name}' first.`,
+    )
+  }
+
+  await fs.writeFile(
+    manifestUrl,
+    JSON.stringify(makeSkillManifest(config, skill, digest, manifest.files), undefined, 2),
+  )
+
+  return skillDirUrl
+}
+
+export async function hasMatchingSkillDescription(outputDir: URL, name: string, expectedDescription: string) {
+  const content = await fs.readFile(new URL('SKILL.md', resolveDirectoryUrl(name, outputDir)), 'utf8')
+
+  try {
+    const description: unknown = matter(content).data['description']
+    return (
+      typeof description === 'string' && normalizeLineEndings(description) === normalizeLineEndings(expectedDescription)
+    )
+  } catch {
+    return false
+  }
 }
 
 type SkillCheckIssue =

@@ -49,7 +49,7 @@ function hashString(value: string): string {
   return createHash('sha256').update(value).digest('hex')
 }
 
-function normalizeLineEndings(value: string): string {
+export function normalizeLineEndings(value: string): string {
   return value.replaceAll(NonLfLineEndingRegex, '\n')
 }
 

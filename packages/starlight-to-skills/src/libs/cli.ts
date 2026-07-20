@@ -11,9 +11,11 @@ import { compileSkill, generateSkillContent } from './content'
 import { computeSkillDigest } from './digest'
 import { loadConfig, loadSkillDefinition } from './loader'
 import {
+  approveExistingSkill,
   checkSkill,
   discoverSkillDefinitions,
   getSkillDefinitionUrlByName,
+  hasMatchingSkillDescription,
   loadSkill,
   SkillCheckIssueMessages,
 } from './skill'
@@ -30,8 +32,9 @@ Commands:
   generate <name>  Generate a candidate for a skill
 
 Options:
-  -h, --help     Show help
-  -v, --version  Show version`
+      --existing  Approve the existing approved skill
+  -h, --help      Show help
+  -v, --version   Show version`
 
 export async function runCli(args: string[], cwd = process.cwd()): Promise<number> {
   let parsedArgs: ReturnType<typeof parseArgs>
@@ -41,6 +44,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
       args,
       allowPositionals: true,
       options: {
+        existing: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
       },
@@ -64,6 +68,10 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 
   if (!command) return logUsageError('Missing command.')
 
+  if (parsedArgs.values['existing'] && command !== 'approve') {
+    return logUsageError("Option '--existing' is only valid for command 'approve'.")
+  }
+
   const rootDir = pathToFileURL(path.join(cwd, path.sep))
 
   if (command === 'generate' || command === 'approve' || command === 'check') {
@@ -74,7 +82,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 
     try {
       if (command === 'generate') return await generateCandidate(name, rootDir)
-      if (command === 'approve') return await approveCurrentCandidate(name, rootDir)
+      if (command === 'approve') return await approveSkill(name, rootDir, parsedArgs.values['existing'] === true)
       return await checkApprovedSkill(name, rootDir)
     } catch (error) {
       return logError(error instanceof Error ? error.message : String(error))
@@ -109,8 +117,16 @@ async function generateCandidate(name: string, rootDir: URL): Promise<number> {
   return 0
 }
 
-async function approveCurrentCandidate(name: string, rootDir: URL): Promise<number> {
+async function approveSkill(name: string, rootDir: URL, existing: boolean): Promise<number> {
   const { config, definition, digest } = await loadSkillInputs(name, rootDir)
+
+  if (existing) {
+    const approvedSkillUrl = await approveExistingSkill(config, definition, digest)
+
+    // TODO(HiDeoo)
+    logMessage(`Approved existing skill at '${fileURLToPath(approvedSkillUrl)}'.`)
+    return 0
+  }
 
   const candidate = await loadCandidate(config.dataDir, definition.name, digest.inputHash)
   const approvedSkillUrl = await approveCandidate(config, definition, digest, candidate)
@@ -122,7 +138,7 @@ async function approveCurrentCandidate(name: string, rootDir: URL): Promise<numb
 
 async function checkApprovedSkill(name: string, rootDir: URL): Promise<number> {
   // TODO(HiDeoo) handle never approved skill
-  const { config, digest } = await loadSkillInputs(name, rootDir)
+  const { config, definition, digest } = await loadSkillInputs(name, rootDir)
   const { manifest, fileMismatches } = await loadSkill(config.outputDir, name)
   const result = checkSkill(manifest, digest, config.model, fileMismatches)
 
@@ -137,8 +153,17 @@ async function checkApprovedSkill(name: string, rootDir: URL): Promise<number> {
     return `- ${SkillCheckIssueMessages[issue.type]}${paths}`
   })
 
+  const canApproveExistingSkill =
+    fileMismatches.length === 0 &&
+    (manifest.definitionHash === digest.definitionHash ||
+      (await hasMatchingSkillDescription(config.outputDir, definition.name, definition.description)))
+
+  const hint = canApproveExistingSkill
+    ? `\n\nIf the existing approved skill is still valid, run 'starlight-to-skills approve ${name} --existing'.`
+    : ''
+
   return logError(
-    `Issues:\n\n${issues.join('\n')}\n\nRun 'starlight-to-skills generate ${name}' to generate a new candidate.`,
+    `Issues:\n\n${issues.join('\n')}\n\nRun 'starlight-to-skills generate ${name}' to generate a new candidate.${hint}`,
   )
 }
 

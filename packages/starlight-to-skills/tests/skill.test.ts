@@ -6,8 +6,16 @@ import { pathToFileURL } from 'node:url'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import type { StarlightToSkillsConfig } from '../src/config'
+import { approveCandidate, createCandidate } from '../src/libs/candidate'
 import { computeSkillFileDigest, GeneratorVersion } from '../src/libs/digest'
-import { checkSkill, discoverSkillDefinitions, getSkillDefinitionUrlByName, loadSkill } from '../src/libs/skill'
+import type { SkillConfiguration } from '../src/libs/loader'
+import {
+  approveExistingSkill,
+  checkSkill,
+  discoverSkillDefinitions,
+  getSkillDefinitionUrlByName,
+  loadSkill,
+} from '../src/libs/skill'
 import type { SkillDigest } from '../src/schemas/digest'
 import type { SkillManifest } from '../src/schemas/manifest'
 
@@ -241,5 +249,104 @@ describe('checkSkill', () => {
       current: false,
       issues: [{ type: 'model-change' }, { type: 'approved-skill-change', paths: ['SKILL.md'] }],
     })
+  })
+})
+
+describe('approveExistingSkill', () => {
+  let config: StarlightToSkillsConfig
+  let skill: SkillConfiguration
+  let testDir: string
+
+  const candidate = createCandidate('input-hash', [
+    {
+      path: 'SKILL.md',
+      content: `---\nname: "test-skill"\ndescription: "Migrate a project to v2."\n---\n\nSkill content.`,
+    },
+  ])
+
+  const digest = {
+    inputHash: 'input-hash',
+    definitionHash: 'definition-hash',
+    sources: [{ docsPath: './guide.md', contentHash: 'source-hash' }],
+  } satisfies SkillDigest
+
+  beforeEach(async () => {
+    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
+    const projectDir = pathToFileURL(`${testDir}${path.sep}`)
+
+    config = {
+      model: 'openai/gpt-5.6-luna',
+      definitions: './src/skills/*.skill.ts',
+      url: new URL('starlight-to-skills.config.ts', projectDir),
+      rootDir: projectDir,
+      dataDir: new URL('.starlight-to-skills/', projectDir),
+      outputDir: new URL('skills/', projectDir),
+    }
+
+    skill = {
+      name: 'test-skill',
+      url: new URL('src/skills/test-skill.skill.ts', projectDir),
+      description: 'Migrate a project to v2.',
+      docs: ['./guide.md'],
+    }
+  })
+
+  afterEach(async () => {
+    await fs.rm(testDir, { force: true, recursive: true })
+  })
+
+  test('approves an existing skill', async () => {
+    const approvedSkillUrl = await approveCandidate(config, skill, digest, candidate)
+
+    const manifestUrl = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
+
+    const contentBefore = await fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')
+    const manifestBefore = JSON.parse(await fs.readFile(manifestUrl, 'utf8')) as SkillManifest
+
+    const updatedConfig = { ...config, model: 'openai/gpt-5.6-terra' }
+    const updatedSkill = { ...skill, guidance: 'Keep the existing migration sequence.' }
+    const updatedDigest = {
+      inputHash: 'updated-input-hash',
+      definitionHash: 'updated-definition-hash',
+      sources: [{ docsPath: './guide.md', contentHash: 'updated-source-hash' }],
+    }
+
+    await approveExistingSkill(updatedConfig, updatedSkill, updatedDigest)
+
+    await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toBe(contentBefore)
+
+    const manifest = JSON.parse(await fs.readFile(manifestUrl, 'utf8')) as SkillManifest
+
+    expect(manifest).toStrictEqual({
+      schemaVersion: manifestBefore.schemaVersion,
+      generatorVersion: GeneratorVersion,
+      model: 'openai/gpt-5.6-terra',
+      name: manifestBefore.name,
+      ...updatedDigest,
+      files: candidate.fileDigests,
+    })
+  })
+
+  test('rejects approving an existing skill after a description change', async () => {
+    const approvedSkillUrl = await approveCandidate(config, skill, digest, candidate)
+
+    const manifestUrl = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
+
+    const contentBefore = await fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')
+    const manifestBefore = await fs.readFile(manifestUrl, 'utf8')
+
+    await expect(
+      approveExistingSkill(
+        config,
+        { ...skill, description: 'Migrate a project to v3.' },
+        { ...digest, inputHash: 'updated-input-hash', definitionHash: 'updated-definition-hash' },
+      ),
+    ).rejects.toThrowErrorMatchingInlineSnapshot(
+      `[Error: The description for skill 'test-skill' has changed. Run 'starlight-to-skills generate test-skill' first.]`,
+    )
+
+    await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toBe(contentBefore)
+
+    await expect(fs.readFile(manifestUrl, 'utf8')).resolves.toBe(manifestBefore)
   })
 })
