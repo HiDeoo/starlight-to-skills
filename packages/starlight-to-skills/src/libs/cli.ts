@@ -13,6 +13,7 @@ import { parseSkillName } from '../schemas/skill'
 import { approveCandidate, createCandidate, loadCandidate, removeCandidateForInput, writeCandidate } from './candidate'
 import { compileSkill, generateSkillContent } from './content'
 import { computeSkillDigest } from './digest'
+import { getSkillManifestUrl, pathExists } from './fs'
 import { loadConfig, loadSkillDefinition, type SkillConfiguration } from './loader'
 import {
   approveSkill,
@@ -168,7 +169,6 @@ async function runApproveSkill(name: string, rootDir: URL, existing: boolean): P
 }
 
 async function runCheckSkill(name: string, rootDir: URL): Promise<number> {
-  // TODO(HiDeoo) handle never approved skill
   const { config, definition, digest } = await loadSkillInputs(name, rootDir)
   const issues = await getSkillIssues(config, definition, digest)
 
@@ -311,7 +311,12 @@ async function getSkillIssues(
   definition: SkillConfiguration,
   digest: SkillDigest,
 ): Promise<string | undefined> {
-  // TODO(HiDeoo) handle never approved skill
+  const generateHint = `Run 'starlight-to-skills generate ${definition.name}' to generate a new candidate.`
+
+  if (!(await pathExists(getSkillManifestUrl(config.outputDir, definition.name)))) {
+    return `Issues:\n\n- Never approved\n\n${generateHint}`
+  }
+
   const { manifest, fileMismatches } = await loadSkill(config.outputDir, definition.name)
   const result = checkSkill(manifest, digest, config.model, fileMismatches)
 
@@ -331,7 +336,7 @@ async function getSkillIssues(
     ? `\n\nIf the existing approved skill is still valid, run 'starlight-to-skills approve ${definition.name} --existing'.`
     : ''
 
-  return `Issues:\n\n${issues.join('\n')}\n\nRun 'starlight-to-skills generate ${definition.name}' to generate a new candidate.${hint}`
+  return `Issues:\n\n${issues.join('\n')}\n\n${generateHint}${hint}`
 }
 
 function logMessage(message: string) {

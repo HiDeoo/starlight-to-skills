@@ -405,6 +405,18 @@ Change foo to bar.`,
       `)
     })
 
+    test('reports a never-approved skill', async () => {
+      expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "Issues:
+
+        - Never approved
+
+        Run 'starlight-to-skills generate test-skill' to generate a new candidate."
+      `)
+    })
+
     test('checks a current skill', async () => {
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
@@ -487,6 +499,27 @@ Change foo to bar.`,
       expect(writeFileSpy).not.toHaveBeenCalled()
       expect(mkdirSpy).not.toHaveBeenCalled()
       expect(rmSpy).not.toHaveBeenCalled()
+    })
+
+    test('reports never-approved skills', async () => {
+      await addApprovedSkill('other-skill')
+
+      mastra.generate.mockClear()
+
+      expect(await runCli(['check'], testDir)).toBe(1)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "other-skill: Ok
+
+        test-skill: Issue
+
+        Issues:
+
+        - Never approved
+
+        Run 'starlight-to-skills generate test-skill' to generate a new candidate."
+      `)
     })
 
     test('reports all current skills with issues', async () => {
