@@ -35,10 +35,14 @@ export async function discoverSkillDefinitions(config: StarlightToSkillsConfig):
   return definitionUrls.toSorted()
 }
 
+export function getSkillNameFromDefinitionUrl(url: URL): string {
+  return path.basename(fileURLToPath(url), SkillDefinitionSuffix)
+}
+
 export function getSkillDefinitionUrlByName(definitionUrls: URL[], name: string): URL {
   const filename = `${name}${SkillDefinitionSuffix}`
 
-  const matchingUrls = definitionUrls.filter((url) => path.basename(fileURLToPath(url)) === filename)
+  const matchingUrls = definitionUrls.filter((url) => getSkillNameFromDefinitionUrl(url) === name)
   const [matchingUrl] = matchingUrls
 
   if (!matchingUrl) throw new Error(`Failed to find skill definition '${filename}'.`)

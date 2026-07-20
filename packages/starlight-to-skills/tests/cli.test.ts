@@ -51,7 +51,7 @@ describe('usage', () => {
 
       Commands:
         approve  <name>  Approve the current candidate for a skill
-        check    <name>  Check whether an approved skill is current
+        check    [name]  Check whether one or all approved skills are up to date
         generate <name>  Generate a candidate for a skill
 
       Options:
@@ -108,29 +108,27 @@ describe('commands', () => {
     await fs.mkdir(path.join(testDir, 'src/content/docs'), { recursive: true })
     await fs.mkdir(path.join(testDir, 'src/skills'), { recursive: true })
 
-    await Promise.all([
-      fs.writeFile(
-        path.join(testDir, 'starlight-to-skills.config.ts'),
-        `export default { model: 'openai/gpt-5.6-luna' }`,
-      ),
-      fs.writeFile(
-        path.join(testDir, 'src/skills/test-skill.skill.ts'),
-        `export default {
+    await fs.writeFile(
+      path.join(testDir, 'starlight-to-skills.config.ts'),
+      `export default { model: 'openai/gpt-5.6-luna' }`,
+    )
+    await fs.writeFile(
+      path.join(testDir, 'src/skills/test-skill.skill.ts'),
+      `export default {
   description: 'Migrate a project to v2.',
   docs: ['./guide.md'],
 }`,
-      ),
-      fs.writeFile(
-        path.join(testDir, 'src/content/docs/guide.md'),
-        `---
+    )
+    await fs.writeFile(
+      path.join(testDir, 'src/content/docs/guide.md'),
+      `---
 title: V2 Migration Guide
 ---
 
 Change foo to bar.
 
 Then change baz to quux.`,
-      ),
-    ])
+    )
 
     mastra.generate.mockReset()
     mastra.generate.mockResolvedValue(mastraGenerateSuccessResponse)
@@ -139,6 +137,27 @@ Then change baz to quux.`,
   afterEach(async () => {
     await fs.rm(testDir, { force: true, recursive: true })
   })
+
+  async function addApprovedSkill(name: string) {
+    await fs.writeFile(
+      path.join(testDir, `src/skills/${name}.skill.ts`),
+      `export default {
+  description: 'Use ${name}.',
+  docs: ['./${name}.md'],
+}`,
+    )
+    await fs.writeFile(
+      path.join(testDir, `src/content/docs/${name}.md`),
+      `---
+title: ${name}
+---
+
+Change foo to bar.`,
+    )
+
+    expect(await runCli(['generate', name], testDir)).toBe(0)
+    expect(await runCli(['approve', name], testDir)).toBe(0)
+  }
 
   describe('generate', () => {
     test('rejects missing skill name', async () => {
@@ -335,16 +354,6 @@ Then change baz to quux.`,
   })
 
   describe('check', () => {
-    test('rejects missing skill name', async () => {
-      expect(await runCli(['check'])).toBe(1)
-
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
-        "Missing skill name for command 'check'.
-
-        Run 'starlight-to-skills --help' for more information."
-      `)
-    })
-
     test('rejects multiple skill names', async () => {
       expect(await runCli(['check', 'foo', 'bar'])).toBe(1)
 
@@ -366,10 +375,9 @@ Then change baz to quux.`,
       const rmSpy = vi.spyOn(fs, 'rm')
 
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(0)
+      expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(logSpy).toHaveBeenLastCalledWith('Ok')
-
-      expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(writeFileSpy).not.toHaveBeenCalled()
       expect(mkdirSpy).not.toHaveBeenCalled()
@@ -411,6 +419,109 @@ Then change baz to quux.`,
         Run 'starlight-to-skills generate test-skill' to generate a new candidate.
 
         If the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
+      `)
+    })
+
+    test('checks all current skills', async () => {
+      await addApprovedSkill('other-skill')
+
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      mastra.generate.mockClear()
+
+      const writeFileSpy = vi.spyOn(fs, 'writeFile')
+      const mkdirSpy = vi.spyOn(fs, 'mkdir')
+      const rmSpy = vi.spyOn(fs, 'rm')
+
+      expect(await runCli(['check'], testDir)).toBe(0)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      expect(logSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "other-skill: Ok
+
+        test-skill: Ok"
+      `)
+
+      expect(writeFileSpy).not.toHaveBeenCalled()
+      expect(mkdirSpy).not.toHaveBeenCalled()
+      expect(rmSpy).not.toHaveBeenCalled()
+    })
+
+    test('reports all current skills with issues', async () => {
+      await addApprovedSkill('other-skill')
+
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
+
+      mastra.generate.mockClear()
+
+      expect(await runCli(['check'], testDir)).toBe(1)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "other-skill: Ok
+
+        test-skill: Issue
+
+        Issues:
+
+        - Documentation source changed
+
+        Run 'starlight-to-skills generate test-skill' to generate a new candidate.
+
+        If the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
+      `)
+    })
+
+    test('reports an invalid definition with other current skills', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      await fs.writeFile(
+        path.join(testDir, 'src/skills/invalid-skill.skill.ts'),
+        `export default { description: '', docs: [] }`,
+      )
+
+      mastra.generate.mockClear()
+
+      expect(await runCli(['check'], testDir)).toBe(1)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "invalid-skill: Issue
+
+        Invalid skill definition 'invalid-skill.skill.ts'.
+
+        test-skill: Ok"
+      `)
+    })
+
+    test('reports duplicate skill definitions', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'starlight-to-skills.config.ts'),
+        `export default { model: 'openai/gpt-5.6-luna', definitions: './src/skills/*/*.skill.ts' }`,
+      )
+
+      await fs.mkdir(path.join(testDir, 'src/skills/first'))
+      await fs.mkdir(path.join(testDir, 'src/skills/second'))
+
+      const definition = `export default { description: 'Do the thing.', docs: ['./guide.md'] }`
+
+      await fs.writeFile(path.join(testDir, 'src/skills/first/duplicate.skill.ts'), definition)
+      await fs.writeFile(path.join(testDir, 'src/skills/second/duplicate.skill.ts'), definition)
+
+      mastra.generate.mockClear()
+
+      expect(await runCli(['check'], testDir)).toBe(1)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "duplicate: Issue
+
+        Found multiple skill definitions named 'duplicate.skill.ts'."
       `)
     })
   })

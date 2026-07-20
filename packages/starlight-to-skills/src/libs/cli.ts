@@ -4,17 +4,20 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 
 import packageJson from '../../package.json' with { type: 'json' }
+import type { StarlightToSkillsConfig } from '../schemas/config'
 import { ContentResultIssueLabels } from '../schemas/content'
+import type { SkillDigest } from '../schemas/digest'
 
 import { approveCandidate, createCandidate, loadCandidate, removeCandidateForInput, writeCandidate } from './candidate'
 import { compileSkill, generateSkillContent } from './content'
 import { computeSkillDigest } from './digest'
-import { loadConfig, loadSkillDefinition } from './loader'
+import { loadConfig, loadSkillDefinition, type SkillConfiguration } from './loader'
 import {
   approveExistingSkill,
   checkSkill,
   discoverSkillDefinitions,
   getSkillDefinitionUrlByName,
+  getSkillNameFromDefinitionUrl,
   hasMatchingSkillDescription,
   loadSkill,
   SkillCheckIssueMessages,
@@ -28,7 +31,7 @@ const help = `Usage: starlight-to-skills <command> [options]
 
 Commands:
   approve  <name>  Approve the current candidate for a skill
-  check    <name>  Check whether an approved skill is current
+  check    [name]  Check whether one or all approved skills are up to date
   generate <name>  Generate a candidate for a skill
 
 Options:
@@ -77,13 +80,21 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
   if (command === 'generate' || command === 'approve' || command === 'check') {
     const [name, ...extraNames] = commandArgs
 
-    if (!name) return logUsageError(`Missing skill name for command '${command}'.`)
     if (extraNames.length > 0) return logUsageError(`Command '${command}' accepts only one skill name.`)
+
+    if (command === 'check') {
+      try {
+        return name ? await checkApprovedSkill(name, rootDir) : await checkApprovedSkills(rootDir)
+      } catch (error) {
+        return logError(error instanceof Error ? error.message : String(error))
+      }
+    }
+
+    if (!name) return logUsageError(`Missing skill name for command '${command}'.`)
 
     try {
       if (command === 'generate') return await generateCandidate(name, rootDir)
-      if (command === 'approve') return await approveSkill(name, rootDir, parsedArgs.values['existing'] === true)
-      return await checkApprovedSkill(name, rootDir)
+      return await approveSkill(name, rootDir, parsedArgs.values['existing'] === true)
     } catch (error) {
       return logError(error instanceof Error ? error.message : String(error))
     }
@@ -139,14 +150,61 @@ async function approveSkill(name: string, rootDir: URL, existing: boolean): Prom
 async function checkApprovedSkill(name: string, rootDir: URL): Promise<number> {
   // TODO(HiDeoo) handle never approved skill
   const { config, definition, digest } = await loadSkillInputs(name, rootDir)
-  const { manifest, fileMismatches } = await loadSkill(config.outputDir, name)
-  const result = checkSkill(manifest, digest, config.model, fileMismatches)
+  const issues = await getApprovedSkillIssues(config, definition, digest)
 
-  if (result.current) {
+  if (!issues) {
     // TODO(HiDeoo)
     logMessage('Ok')
     return 0
   }
+
+  return logError(issues)
+}
+
+async function checkApprovedSkills(rootDir: URL): Promise<number> {
+  const config = await loadConfig(rootDir)
+  // TODO(HiDeoo) handle orphan approved skills
+  const definitionUrls = await discoverSkillDefinitions(config)
+  const names = new Set(definitionUrls.map(getSkillNameFromDefinitionUrl))
+
+  const reports: string[] = []
+  let allCurrent = true
+
+  for (const name of names) {
+    try {
+      const definitionUrl = getSkillDefinitionUrlByName(definitionUrls, name)
+      const { definition, digest } = await loadSkillDefinitionInputs(config, definitionUrl)
+      const issues = await getApprovedSkillIssues(config, definition, digest)
+
+      if (issues) {
+        allCurrent = false
+        reports.push(`${name}: Issue\n\n${issues}`)
+      } else {
+        reports.push(`${name}: Ok`)
+      }
+    } catch (error) {
+      allCurrent = false
+      reports.push(`${name}: Issue\n\n${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  const report = reports.join('\n\n')
+
+  if (!allCurrent) return logError(report)
+  if (report) logMessage(report)
+  return 0
+}
+
+async function getApprovedSkillIssues(
+  config: StarlightToSkillsConfig,
+  definition: SkillConfiguration,
+  digest: SkillDigest,
+): Promise<string | undefined> {
+  // TODO(HiDeoo) handle never approved skill
+  const { manifest, fileMismatches } = await loadSkill(config.outputDir, definition.name)
+  const result = checkSkill(manifest, digest, config.model, fileMismatches)
+
+  if (result.current) return
 
   const issues = result.issues.map((issue) => {
     const paths = issue.type === 'approved-skill-change' ? `: ${issue.paths.join(' - ')}` : ''
@@ -159,22 +217,26 @@ async function checkApprovedSkill(name: string, rootDir: URL): Promise<number> {
       (await hasMatchingSkillDescription(config.outputDir, definition.name, definition.description)))
 
   const hint = canApproveExistingSkill
-    ? `\n\nIf the existing approved skill is still valid, run 'starlight-to-skills approve ${name} --existing'.`
+    ? `\n\nIf the existing approved skill is still valid, run 'starlight-to-skills approve ${definition.name} --existing'.`
     : ''
 
-  return logError(
-    `Issues:\n\n${issues.join('\n')}\n\nRun 'starlight-to-skills generate ${name}' to generate a new candidate.${hint}`,
-  )
+  return `Issues:\n\n${issues.join('\n')}\n\nRun 'starlight-to-skills generate ${definition.name}' to generate a new candidate.${hint}`
 }
 
 async function loadSkillInputs(name: string, rootDir: URL) {
   const config = await loadConfig(rootDir)
   const definitionUrls = await discoverSkillDefinitions(config)
-  const definition = await loadSkillDefinition(getSkillDefinitionUrlByName(definitionUrls, name))
+  const inputs = await loadSkillDefinitionInputs(config, getSkillDefinitionUrlByName(definitionUrls, name))
+
+  return { config, ...inputs }
+}
+
+async function loadSkillDefinitionInputs(config: StarlightToSkillsConfig, definitionUrl: URL) {
+  const definition = await loadSkillDefinition(definitionUrl)
   const docs = await loadSkillDocs(config, definition)
   const digest = computeSkillDigest(config.model, definition, docs)
 
-  return { config, definition, docs, digest }
+  return { definition, docs, digest }
 }
 
 function logMessage(message: string) {

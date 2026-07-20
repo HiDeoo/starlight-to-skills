@@ -96,10 +96,8 @@ describe('loadSkill', () => {
     outputDir = pathToFileURL(path.join(testDir, 'skills', path.sep))
     skillUrl = new URL('test-skill/', outputDir)
 
-    await Promise.all([
-      fs.mkdir(new URL('references/', skillUrl), { recursive: true }),
-      fs.mkdir(new URL('.starlight-to-skills/', outputDir), { recursive: true }),
-    ])
+    await fs.mkdir(new URL('references/', skillUrl), { recursive: true })
+    await fs.mkdir(new URL('.starlight-to-skills/', outputDir), { recursive: true })
 
     await Promise.all([
       ...files.map((file) => fs.writeFile(new URL(file.path, skillUrl), file.content)),

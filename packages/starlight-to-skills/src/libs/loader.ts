@@ -7,7 +7,7 @@ import { ConfigSchema, type StarlightToSkillsConfig } from '../schemas/config'
 import { SkillDefinitionSchema, type SkillDefinition } from '../schemas/skill'
 
 import { getDataDirUrl, resolveDirectoryUrl } from './fs'
-import { SkillDefinitionSuffix } from './skill'
+import { getSkillNameFromDefinitionUrl } from './skill'
 
 const configFilename = 'starlight-to-skills.config.ts'
 
@@ -50,7 +50,7 @@ export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig>
 export async function loadSkillDefinition(url: URL): Promise<SkillConfiguration> {
   const definitionPath = fileURLToPath(url)
   const filename = path.basename(definitionPath)
-  const name = filename.slice(0, -SkillDefinitionSuffix.length)
+  const name = getSkillNameFromDefinitionUrl(url)
 
   // TODO(HiDeoo) validate name
   // TODO(HiDeoo) slugify?
