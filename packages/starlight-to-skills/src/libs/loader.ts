@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { createJiti } from 'jiti'
 
 import { ConfigSchema, type StarlightToSkillsConfig } from '../schemas/config'
-import { SkillDefinitionSchema, type SkillDefinition } from '../schemas/skill'
+import { parseSkillName, SkillDefinitionSchema, type SkillDefinition } from '../schemas/skill'
 
 import { getDataDirUrl, resolveDirectoryUrl } from './fs'
 import { getSkillNameByDefinitionUrl } from './skill'
@@ -50,10 +50,7 @@ export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig>
 export async function loadSkillDefinition(url: URL): Promise<SkillConfiguration> {
   const definitionPath = fileURLToPath(url)
   const filename = path.basename(definitionPath)
-  const name = getSkillNameByDefinitionUrl(url)
-
-  // TODO(HiDeoo) validate name
-  // TODO(HiDeoo) slugify?
+  const name = parseSkillName(getSkillNameByDefinitionUrl(url))
 
   let definitionModule: unknown
 

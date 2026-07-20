@@ -8,6 +8,7 @@ import packageJson from '../../package.json' with { type: 'json' }
 import type { StarlightToSkillsConfig } from '../schemas/config'
 import { ContentResultIssueLabels } from '../schemas/content'
 import type { SkillDigest } from '../schemas/digest'
+import { parseSkillName } from '../schemas/skill'
 
 import { approveCandidate, createCandidate, loadCandidate, removeCandidateForInput, writeCandidate } from './candidate'
 import { compileSkill, generateSkillContent } from './content'
@@ -183,10 +184,20 @@ async function runCheckSkill(name: string, rootDir: URL): Promise<number> {
 async function runCheckSkills(rootDir: URL): Promise<number> {
   const config = await loadConfig(rootDir)
   const definitionUrls = await discoverSkillDefinitions(config)
-  const definitionNames = new Set(definitionUrls.map(getSkillNameByDefinitionUrl))
-
   const reports: string[] = []
   let allCurrent = true
+  const definitionNames = new Set<string>()
+
+  for (const definitionUrl of definitionUrls) {
+    const name = getSkillNameByDefinitionUrl(definitionUrl)
+
+    try {
+      definitionNames.add(parseSkillName(name))
+    } catch (error) {
+      allCurrent = false
+      reports.push(`${name}: Issue\n\n${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
 
   for (const name of definitionNames) {
     try {
@@ -207,7 +218,17 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
   }
 
   for (const skillManifestUrl of await discoverSkillManifests(config.outputDir)) {
-    const skillName = getSkillNameByManifestUrl(skillManifestUrl)
+    const name = getSkillNameByManifestUrl(skillManifestUrl)
+    let skillName: string
+
+    try {
+      skillName = parseSkillName(name)
+    } catch (error) {
+      allCurrent = false
+      reports.push(`${name}: Issue\n\n${error instanceof Error ? error.message : String(error)}`)
+      continue
+    }
+
     if (definitionNames.has(skillName)) continue
 
     allCurrent = false
@@ -222,15 +243,18 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
 }
 
 async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
-  // TODO(HiDeoo) validate names
   const config = await loadConfig(rootDir)
   const definitionUrls = await discoverSkillDefinitions(config)
-  const definitionNames = new Set(definitionUrls.map(getSkillNameByDefinitionUrl))
+  const definitionNames = new Set(definitionUrls.map((url) => parseSkillName(getSkillNameByDefinitionUrl(url))))
+  const manifestUrls = await discoverSkillManifests(config.outputDir)
+  const manifests = manifestUrls.map((manifestUrl) => ({
+    manifestUrl,
+    name: parseSkillName(getSkillNameByManifestUrl(manifestUrl)),
+  }))
   const orphans: { manifestUrl: URL; name: string }[] = []
 
-  for (const manifestUrl of await discoverSkillManifests(config.outputDir)) {
-    const name = getSkillNameByManifestUrl(manifestUrl)
-    if (!definitionNames.has(name)) orphans.push({ manifestUrl, name })
+  for (const manifest of manifests) {
+    if (!definitionNames.has(manifest.name)) orphans.push(manifest)
   }
 
   if (orphans.length === 0) {

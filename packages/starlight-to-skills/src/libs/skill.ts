@@ -8,6 +8,7 @@ import matter from 'gray-matter'
 import type { StarlightToSkillsConfig } from '../schemas/config'
 import type { SkillDigest } from '../schemas/digest'
 import { makeSkillManifest, SkillManifestSchema, type SkillManifest } from '../schemas/manifest'
+import { parseSkillName } from '../schemas/skill'
 
 import { computeSkillFileDigest, GeneratorVersion, normalizeLineEndings } from './digest'
 import { getSkillManifestDirUrl, getSkillManifestUrl, isFileNotFoundError, pathExists, resolveDirectoryUrl } from './fs'
@@ -26,11 +27,11 @@ export const SkillCheckIssueMessages = {
 } satisfies Record<SkillCheckIssue['type'], string>
 
 export function getSkillNameByDefinitionUrl(url: URL): string {
-  return path.basename(fileURLToPath(url), skillDefinitionSuffix)
+  return getSkillNameByUrl(url, skillDefinitionSuffix)
 }
 
 export function getSkillNameByManifestUrl(url: URL): string {
-  return path.basename(fileURLToPath(url), skillManifestSuffix)
+  return getSkillNameByUrl(url, skillManifestSuffix)
 }
 
 export async function discoverSkillDefinitions(config: StarlightToSkillsConfig): Promise<URL[]> {
@@ -46,9 +47,10 @@ export async function discoverSkillDefinitions(config: StarlightToSkillsConfig):
 }
 
 export function getSkillDefinitionUrlByName(definitionUrls: URL[], name: string): URL {
-  const filename = `${name}${skillDefinitionSuffix}`
+  const skillName = parseSkillName(name)
+  const filename = `${skillName}${skillDefinitionSuffix}`
 
-  const matchingUrls = definitionUrls.filter((url) => getSkillNameByDefinitionUrl(url) === name)
+  const matchingUrls = definitionUrls.filter((url) => getSkillNameByUrl(url, skillDefinitionSuffix) === skillName)
   const [matchingUrl] = matchingUrls
 
   if (!matchingUrl) throw new Error(`Failed to find skill definition '${filename}'.`)
@@ -200,6 +202,10 @@ export async function hasMatchingSkillDescription(outputDir: URL, name: string, 
   } catch {
     return false
   }
+}
+
+function getSkillNameByUrl(url: URL, suffix: string): string {
+  return path.basename(fileURLToPath(url), suffix)
 }
 
 type SkillCheckIssue =

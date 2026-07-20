@@ -5,6 +5,7 @@ import type { SkillConfiguration } from '../libs/loader'
 
 import type { StarlightToSkillsConfig } from './config'
 import { SkillDigestSchema, type SkillDigest } from './digest'
+import { SkillNameSchema } from './skill'
 
 export const CandidateManifestSchema = z.strictObject({
   inputHash: z.string(),
@@ -22,7 +23,7 @@ export const SkillManifestSchema = z.strictObject({
   schemaVersion: z.literal(1),
   generatorVersion: z.number(),
   model: z.string(),
-  name: z.string(),
+  name: SkillNameSchema,
   ...SkillDigestSchema.shape,
   ...CandidateManifestSchema.shape,
 })

@@ -207,6 +207,20 @@ Change foo to bar.`,
       `)
     })
 
+    test('rejects an invalid skill name', async () => {
+      expect(await runCli(['generate', 'invalid--name'], testDir)).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(
+        `"Invalid skill name 'invalid--name'. Skill name must be 1-64 characters, must only contain unicode lowercase alphanumeric characters and hyphens, must not start or end with a hyphen, and must not contain consecutive hyphens."`,
+      )
+    })
+
+    test('ignores an unrelated definition with an invalid name', async () => {
+      await fs.writeFile(path.join(testDir, 'src/skills/invalid--name.skill.ts'), '')
+
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+    })
+
     test('generates a candidate', async () => {
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
 
@@ -503,7 +517,7 @@ Change foo to bar.`,
       `)
     })
 
-    test('reports an invalid definition with other current skills', async () => {
+    test('reports an invalid definition', async () => {
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
 
@@ -526,6 +540,26 @@ Change foo to bar.`,
       `)
     })
 
+    test('reports an invalid filename-derived skill name', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      await fs.writeFile(
+        path.join(testDir, 'src/skills/invalid--skill.skill.ts'),
+        `export default { description: 'Migrate a project to v2.', docs: ['./guide.md'] }`,
+      )
+
+      expect(await runCli(['check'], testDir)).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "invalid--skill: Issue
+
+        Invalid skill name 'invalid--skill'. Skill name must be 1-64 characters, must only contain unicode lowercase alphanumeric characters and hyphens, must not start or end with a hyphen, and must not contain consecutive hyphens.
+
+        test-skill: Ok"
+      `)
+    })
+
     test('reports duplicate skill definitions', async () => {
       await fs.writeFile(
         path.join(testDir, 'starlight-to-skills.config.ts'),
@@ -535,7 +569,7 @@ Change foo to bar.`,
       await fs.mkdir(path.join(testDir, 'src/skills/first'))
       await fs.mkdir(path.join(testDir, 'src/skills/second'))
 
-      const definition = `export default { description: 'Do the thing.', docs: ['./guide.md'] }`
+      const definition = `export default { description: 'Migrate a project to v2.', docs: ['./guide.md'] }`
 
       await fs.writeFile(path.join(testDir, 'src/skills/first/duplicate.skill.ts'), definition)
       await fs.writeFile(path.join(testDir, 'src/skills/second/duplicate.skill.ts'), definition)
@@ -580,6 +614,23 @@ Change foo to bar.`,
       expect(mkdirSpy).not.toHaveBeenCalled()
       expect(rmSpy).not.toHaveBeenCalled()
     })
+
+    test('reports an invalid manifest filename', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      await fs.writeFile(path.join(testDir, 'skills/.starlight-to-skills/...json'), '')
+
+      expect(await runCli(['check'], testDir)).toBe(1)
+
+      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+        "test-skill: Ok
+
+        ..: Issue
+
+        Invalid skill name '..'. Skill name must be 1-64 characters, must only contain unicode lowercase alphanumeric characters and hyphens, must not start or end with a hyphen, and must not contain consecutive hyphens."
+      `)
+    })
   })
 
   describe('prune', () => {
@@ -621,6 +672,28 @@ Change foo to bar.`,
       await expect(fs.stat(testSkill.manifestPath)).resolves.toBeDefined()
 
       expect(logSpy).toHaveBeenLastCalledWith("Pruned orphan approved skill 'orphan-skill'.")
+    })
+
+    test('does not prune when a definition filename has an invalid skill name', async () => {
+      const orphanSkill = await writeSkill('orphan-skill')
+
+      await fs.writeFile(path.join(testDir, 'src/skills/invalid--skill.skill.ts'), '')
+
+      expect(await runCli(['prune', '--yes'], testDir)).toBe(1)
+
+      await expect(fs.stat(orphanSkill.skillDir)).resolves.toBeDefined()
+      await expect(fs.stat(orphanSkill.manifestPath)).resolves.toBeDefined()
+    })
+
+    test('does not prune when a manifest filename has an invalid skill name', async () => {
+      const orphanSkill = await writeSkill('orphan-skill')
+
+      await fs.writeFile(path.join(testDir, 'skills/.starlight-to-skills/...json'), '')
+
+      expect(await runCli(['prune', '--yes'], testDir)).toBe(1)
+
+      await expect(fs.stat(orphanSkill.skillDir)).resolves.toBeDefined()
+      await expect(fs.stat(orphanSkill.manifestPath)).resolves.toBeDefined()
     })
 
     test('does not delete orphan skills when cancelling', async () => {
