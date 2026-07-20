@@ -23,9 +23,7 @@ export function parseSkillName(name: string): string {
 }
 
 export const SkillDefinitionSchema = z.strictObject({
-  // TODO(HiDeoo) max
-  // TODO(HiDeoo) trim
-  description: z.string().min(1),
+  description: z.string().min(1).max(1024),
   docs: z
     .array(
       z
