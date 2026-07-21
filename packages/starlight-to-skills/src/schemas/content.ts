@@ -1,5 +1,7 @@
 import { z } from 'astro/zod'
 
+import { CandidateReferencePathSchema } from './candidate'
+
 const contentResultIssueTypeSchema = z.enum(['source-conflict', 'source-incomplete'])
 
 export const ContentResultSchema = z.strictObject({
@@ -21,7 +23,7 @@ export const ContentResultSchema = z.strictObject({
       body: z.string().min(1),
       references: z.array(
         z.strictObject({
-          path: z.string().min(1),
+          path: CandidateReferencePathSchema,
           body: z.string().min(1),
         }),
       ),

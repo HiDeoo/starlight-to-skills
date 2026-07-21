@@ -3,11 +3,11 @@ import { describe, expect, test } from 'vitest'
 import { parseSkillName, SkillDefinitionSchema } from '../../src/schemas/skill'
 
 describe('name', () => {
-  test.each(['a', 'skill-name'])('accepts valid skill name %j', (name) => {
+  test.for(['a', 'skill-name'])('accepts valid skill name %j', (name) => {
     expect(() => parseSkillName(name)).not.toThrow()
   })
 
-  test.each([
+  test.for([
     '',
     'a'.repeat(65),
     'Skill-name',

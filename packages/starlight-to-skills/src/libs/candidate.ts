@@ -1,28 +1,39 @@
 import fs from 'node:fs/promises'
 
+import { validateCandidateFilePaths } from '../schemas/candidate'
 import type { StarlightToSkillsConfig } from '../schemas/config'
 import type { SkillDigest } from '../schemas/digest'
 import { CandidateManifestSchema, makeSkillManifest } from '../schemas/manifest'
 
 import type { SkillFile } from './content'
 import { computeSkillFileDigest, type SkillFileDigest } from './digest'
-import { ensureDirectory, getSkillManifestUrl, isFileNotFoundError, pathExists, resolveDirectoryUrl } from './fs'
+import {
+  ensureDirectory,
+  getSkillManifestUrl,
+  isFileNotFoundError,
+  pathExists,
+  resolveDirectoryUrl,
+  resolveRelativeFilePathUrl,
+} from './fs'
 import type { SkillConfiguration } from './loader'
 import { loadSkillManifest } from './skill'
 
 export function createCandidate(inputHash: string, files: SkillFile[]): Candidate {
   // TODO(HiDeoo) validation
-  // TODO(HiDeoo) validate paths
+  validateCandidateFilePaths(files)
+
   return { inputHash, files, fileDigests: computeSkillFileDigest(files) }
 }
 
 export async function writeCandidate(dataDir: URL, name: string, candidate: Candidate) {
+  validateCandidateFilePaths(candidate.files)
+
   const candidateUrl = getCandidateDirUrl(dataDir, name)
 
   await fs.rm(candidateUrl, { force: true, recursive: true })
 
   for (const file of candidate.files) {
-    const fileUrl = new URL(file.path, candidateUrl)
+    const fileUrl = resolveRelativeFilePathUrl(file.path, candidateUrl)
 
     await fs.mkdir(new URL('.', fileUrl), { recursive: true })
     await fs.writeFile(fileUrl, file.content)
@@ -65,7 +76,7 @@ export async function loadCandidate(dataDir: URL, name: string, expectedInputHas
     try {
       files.push({
         path: file.path,
-        content: await fs.readFile(new URL(file.path, candidateUrl), 'utf8'),
+        content: await fs.readFile(resolveRelativeFilePathUrl(file.path, candidateUrl), 'utf8'),
       })
     } catch (error) {
       if (isFileNotFoundError(error)) throwInvalidCandidateError(name)
@@ -115,6 +126,8 @@ export async function approveCandidate(
   digest: SkillDigest,
   candidate: Candidate,
 ) {
+  validateCandidateFilePaths(candidate.files)
+
   const skillDirUrl = resolveDirectoryUrl(skill.name, config.outputDir)
   const manifestUrl = getSkillManifestUrl(config.outputDir, skill.name)
 
@@ -136,7 +149,7 @@ export async function approveCandidate(
   await fs.rm(skillDirUrl, { force: true, recursive: true })
 
   for (const file of candidate.files) {
-    const fileUrl = new URL(file.path, skillDirUrl)
+    const fileUrl = resolveRelativeFilePathUrl(file.path, skillDirUrl)
 
     await fs.mkdir(new URL('.', fileUrl), { recursive: true })
     await fs.writeFile(fileUrl, file.content)

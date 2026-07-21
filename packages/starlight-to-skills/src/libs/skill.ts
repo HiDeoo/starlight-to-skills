@@ -11,7 +11,14 @@ import { makeSkillManifest, SkillManifestSchema, type SkillManifest } from '../s
 import { parseSkillName } from '../schemas/skill'
 
 import { computeSkillFileDigest, GeneratorVersion, normalizeLineEndings } from './digest'
-import { getSkillManifestDirUrl, getSkillManifestUrl, isFileNotFoundError, pathExists, resolveDirectoryUrl } from './fs'
+import {
+  getSkillManifestDirUrl,
+  getSkillManifestUrl,
+  isFileNotFoundError,
+  pathExists,
+  resolveDirectoryUrl,
+  resolveRelativeFilePathUrl,
+} from './fs'
 import type { SkillConfiguration } from './loader'
 
 const skillDefinitionSuffix = '.skill.ts'
@@ -74,7 +81,7 @@ export async function discoverSkillManifests(outputDir: URL): Promise<URL[]> {
 
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(skillManifestSuffix)) continue
-    manifestUrls.push(new URL(entry.name, manifestDirUrl))
+    manifestUrls.push(resolveRelativeFilePathUrl(entry.name, manifestDirUrl))
   }
 
   return manifestUrls.toSorted()
@@ -97,7 +104,7 @@ export async function loadSkill(outputDir: URL, name: string) {
   const fileMismatches: string[] = []
 
   for (const file of manifest.files) {
-    const fileUrl = new URL(file.path, skillUrl)
+    const fileUrl = resolveRelativeFilePathUrl(file.path, skillUrl)
     let content: string
 
     try {

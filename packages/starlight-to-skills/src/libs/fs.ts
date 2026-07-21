@@ -14,8 +14,12 @@ export function getSkillManifestUrl(outputDir: URL, name: string): URL {
   return new URL(`${name}.json`, getSkillManifestDirUrl(outputDir))
 }
 
-export function resolveDirectoryUrl(name: string, base: URL): URL {
-  return new URL(name.endsWith('/') ? name : `${name}/`, base)
+export function resolveDirectoryUrl(directoryPath: string, base: URL): URL {
+  return resolveRelativeFilePathUrl(directoryPath.endsWith('/') ? directoryPath : `${directoryPath}/`, base)
+}
+
+export function resolveRelativeFilePathUrl(filePath: string, base: URL): URL {
+  return new URL(filePath.split('/').map(encodeURIComponent).join('/'), base)
 }
 
 export async function ensureDirectory(url: URL) {

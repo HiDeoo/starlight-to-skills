@@ -163,6 +163,22 @@ describe('loadSkill', () => {
       fileMismatches: ['references/details.md'],
     })
   })
+
+  test('rejects an invalid manifested path', async () => {
+    const invalidManifest = {
+      ...manifest,
+      files: [...manifest.files, { path: '../outside.md', contentHash: 'outside-hash' }],
+    }
+
+    await fs.writeFile(
+      new URL('.starlight-to-skills/test-skill.json', outputDir),
+      JSON.stringify(invalidManifest, undefined, 2),
+    )
+
+    await expect(loadSkill(outputDir, 'test-skill')).rejects.toThrowErrorMatchingInlineSnapshot(
+      `[Error: Invalid manifest for skill 'test-skill'.]`,
+    )
+  })
 })
 
 describe('checkSkill', () => {

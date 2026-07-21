@@ -37,6 +37,15 @@ describe('createCandidate', () => {
     expect(candidate.fileDigests[1]?.path).toBe('references/details.md')
     expect(candidate.fileDigests[1]?.contentHash).toBeSha256()
   })
+
+  test('validates files before creating a candidate', () => {
+    expect(() =>
+      createCandidate('input-hash', [
+        { path: 'SKILL.md', content: 'Skill content.' },
+        { path: 'README.md', content: 'Invalid content.' },
+      ]),
+    ).toThrow("Invalid candidate file path 'README.md'.")
+  })
 })
 
 describe('persistence', () => {
@@ -121,6 +130,41 @@ describe('persistence', () => {
       }"
     `)
     })
+
+    test('writes and loads reference filenames containing URL-reserved characters', async () => {
+      const referencePath = 'references/Reference Guide_v2.1 #1.md'
+      const candidate = createCandidate('input-hash', [
+        { path: 'SKILL.md', content: 'Skill content.' },
+        { path: referencePath, content: 'Reference content.' },
+      ])
+
+      await writeCandidate(dataDir, 'test-skill', candidate)
+
+      await expect(
+        fs.readFile(path.join(testDir, '.starlight-to-skills', 'test-skill', referencePath), 'utf8'),
+      ).resolves.toBe('Reference content.')
+
+      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).resolves.toStrictEqual(candidate)
+    })
+
+    test('rejects invalid paths', async () => {
+      const candidateUrl = await writeCandidate(
+        dataDir,
+        'test-skill',
+        createCandidate('old-input-hash', [{ path: 'SKILL.md', content: 'Old skill content.' }]),
+      )
+      const candidate = createCandidate('new-input-hash', [{ path: 'SKILL.md', content: 'New skill content.' }])
+
+      const [file] = candidate.files
+      expect.assert(file)
+      file.path = '../outside.md'
+
+      await expect(writeCandidate(dataDir, 'test-skill', candidate)).rejects.toThrow(
+        "Invalid candidate file path '../outside.md'.",
+      )
+
+      await expect(fs.readFile(new URL('SKILL.md', candidateUrl), 'utf8')).resolves.toBe('Old skill content.')
+    })
   })
 
   describe('loadCandidate', () => {
@@ -161,6 +205,26 @@ describe('persistence', () => {
       )
 
       await fs.writeFile(new URL('SKILL.md', candidateUrl), 'Edited skill content.')
+
+      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: Candidate for skill 'test-skill' is invalid. Run 'starlight-to-skills generate test-skill' again.]`,
+      )
+    })
+
+    test('rejects an invalid manifested path', async () => {
+      const candidateUrl = await writeCandidate(
+        dataDir,
+        'test-skill',
+        createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
+      )
+      const manifestUrl = new URL('manifest.json', candidateUrl)
+      const manifest = JSON.parse(await fs.readFile(manifestUrl, 'utf8')) as SkillManifest
+
+      const [file] = manifest.files
+      expect.assert(file)
+      file.path = '../outside.md'
+
+      await fs.writeFile(manifestUrl, JSON.stringify(manifest))
 
       await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toThrowErrorMatchingInlineSnapshot(
         `[Error: Candidate for skill 'test-skill' is invalid. Run 'starlight-to-skills generate test-skill' again.]`,
@@ -296,6 +360,26 @@ describe('persistence', () => {
       await expect(fs.stat(new URL('references/deprecated.md', approvedSkillUrl))).rejects.toMatchObject({
         code: 'ENOENT',
       })
+    })
+
+    test('rejects an invalid candidate', async () => {
+      const approvedSkillUrl = await approveCandidate(
+        config,
+        skill,
+        digest,
+        createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Old skill content.' }]),
+      )
+      const candidate = createCandidate('input-hash', [{ path: 'SKILL.md', content: 'New skill content.' }])
+
+      const [file] = candidate.files
+      expect.assert(file)
+      file.path = '../outside.md'
+
+      await expect(approveCandidate(config, skill, digest, candidate)).rejects.toThrow(
+        "Invalid candidate file path '../outside.md'.",
+      )
+
+      await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toBe('Old skill content.')
     })
 
     test('rejects an unmanaged skill', async () => {

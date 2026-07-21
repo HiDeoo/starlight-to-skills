@@ -102,6 +102,20 @@ describe('generateSkillContent', () => {
 
     await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toThrow()
   })
+
+  test('rejects invalid reference paths', async () => {
+    mastra.generate.mockResolvedValue({
+      object: {
+        data: {
+          status: 'success',
+          body: 'Change foo to bar.',
+          references: [{ path: '../outside.md', body: 'Outside content.' }],
+        },
+      },
+    })
+
+    await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toThrow()
+  })
 })
 
 describe('compileSkill', () => {
