@@ -14,6 +14,7 @@ import { approveCandidate, createCandidate, loadCandidate, removeCandidateForInp
 import { compileSkill, generateSkillContent } from './content'
 import { computeSkillDigest } from './digest'
 import { getSkillManifestUrl, pathExists } from './fs'
+import { getHelp } from './help'
 import { loadConfig, loadSkillDefinition, type SkillConfiguration } from './loader'
 import {
   approveSkill,
@@ -32,20 +33,6 @@ import { loadSkillDocs } from './starlight'
 
 // TODO(HiDeoo) CLI UI
 // TODO(HiDeoo) Progress/logs
-
-const help = `Usage: starlight-to-skills <command> [options]
-
-Commands:
-  approve  <name>  Approve the current candidate for a skill
-  check    [name]  Check whether one or all approved skills are up to date
-  generate <name>  Generate a candidate for a skill
-  prune            Remove orphan approved skills
-
-Options:
-      --existing  Approve the existing approved skill
-  -y, --yes       Skip confirmation
-  -h, --help      Show help
-  -v, --version   Show version`
 
 export async function runCli(args: string[], cwd = process.cwd()): Promise<number> {
   let parsedArgs: ReturnType<typeof parseArgs>
@@ -66,8 +53,10 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
     return logUsageError(error instanceof Error ? error.message : String(error))
   }
 
+  const [command, ...commandArgs] = parsedArgs.positionals
+
   if (parsedArgs.values['help']) {
-    logMessage(help)
+    logMessage(getHelp(command))
     return 0
   }
 
@@ -75,8 +64,6 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
     logMessage(packageJson.version)
     return 0
   }
-
-  const [command, ...commandArgs] = parsedArgs.positionals
 
   if (!command) return logUsageError('Missing command.')
 

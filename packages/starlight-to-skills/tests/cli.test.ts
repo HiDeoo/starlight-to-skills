@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import { stripVTControlCharacters } from 'node:util'
 
 import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest'
 
@@ -60,34 +61,50 @@ describe('usage', () => {
     expect(await runCli(['--help'])).toBe(0)
 
     expect(logSpy).toHaveBeenCalledOnce()
-    expect(logSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
-      "Usage: starlight-to-skills <command> [options]
+    expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`
+      "
+        starlight-to-skills <command> [options]
 
-      Commands:
-        approve  <name>  Approve the current candidate for a skill
-        check    [name]  Check whether one or all approved skills are up to date
-        generate <name>  Generate a candidate for a skill
-        prune            Remove orphan approved skills
+         Commands\u0020
+                approve  Approve a generated skill.
+                  check  Check whether approved skills are up to date.
+               generate  Generate a skill for review.
+                  prune  Remove orphan approved skills.
 
-      Options:
-            --existing  Approve the existing approved skill
-        -y, --yes       Skip confirmation
-        -h, --help      Show help
-        -v, --version   Show version"
+         Global options\u0020
+             -h, --help  Show this help message.
+          -v, --version  Show the version number."
     `)
+  })
+
+  test.for(['approve', 'check', 'generate', 'prune'])('prints help for the %s command', async (command) => {
+    expect(await runCli([command, '--help'])).toBe(0)
+
+    expect(logSpy).toHaveBeenCalledOnce()
+
+    const output = getLastLogMessage(logSpy)
+
+    expect(output).toContain(`starlight-to-skills ${command}`)
+    expect(output).toContain('--help')
+
+    if (command === 'approve') expect(output).toContain('--existing')
+    else expect(output).not.toContain('--existing')
+
+    if (command === 'prune') expect(output).toContain('--yes')
+    else expect(output).not.toContain('--yes')
   })
 
   test('prints the version', async () => {
     expect(await runCli(['--version'])).toBe(0)
 
     expect(logSpy).toHaveBeenCalledOnce()
-    expect(logSpy).toHaveBeenCalledWith(packageJson.version)
+    expect(getLastLogMessage(logSpy)).toBe(packageJson.version)
   })
 
   test('rejects a missing command', async () => {
     expect(await runCli([])).toBe(1)
 
-    expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+    expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
       "Missing command.
 
       Run 'starlight-to-skills --help' for more information."
@@ -97,7 +114,7 @@ describe('usage', () => {
   test('rejects unknown commands', async () => {
     expect(await runCli(['test'])).toBe(1)
 
-    expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+    expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
       "Unknown command 'test'.
 
       Run 'starlight-to-skills --help' for more information."
@@ -107,7 +124,7 @@ describe('usage', () => {
   test('rejects unknown options', async () => {
     expect(await runCli(['--test'])).toBe(1)
 
-    expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+    expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
       "Unknown option '--test'. To specify a positional argument starting with a '-', place it at the end of the command after '--', as in '-- "--test"
 
       Run 'starlight-to-skills --help' for more information."
@@ -190,7 +207,7 @@ Change foo to bar.`,
     test('rejects missing skill name', async () => {
       expect(await runCli(['generate'])).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Missing skill name for command 'generate'.
 
         Run 'starlight-to-skills --help' for more information."
@@ -200,7 +217,7 @@ Change foo to bar.`,
     test('rejects multiple skill names', async () => {
       expect(await runCli(['generate', 'foo', 'bar'])).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Command 'generate' accepts only one skill name.
 
         Run 'starlight-to-skills --help' for more information."
@@ -210,7 +227,7 @@ Change foo to bar.`,
     test('rejects an invalid skill name', async () => {
       expect(await runCli(['generate', 'invalid--name'], testDir)).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(
         `"Invalid skill name 'invalid--name'. Skill name must be 1-64 characters, must only contain unicode lowercase alphanumeric characters and hyphens, must not start or end with a hyphen, and must not contain consecutive hyphens."`,
       )
     })
@@ -227,8 +244,8 @@ Change foo to bar.`,
       const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
 
       await expect(fs.stat(candidateDir)).resolves.toBeDefined()
-      expect(logSpy.mock.lastCall?.[0]).toContain(candidateDir)
-      expect(logSpy.mock.lastCall?.[0]).toContain('Generated files:\n\n- SKILL.md')
+      expect(getLastLogMessage(logSpy)).toContain(candidateDir)
+      expect(getLastLogMessage(logSpy)).toContain('Generated files:\n\n- SKILL.md')
     })
 
     test('reports issues', async () => {
@@ -260,7 +277,7 @@ Change foo to bar.`,
 
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
       "Source incomplete: The migration steps are missing.
       Documentation sources: ./guide.md
 
@@ -276,7 +293,7 @@ Change foo to bar.`,
     test('rejects missing skill name', async () => {
       expect(await runCli(['approve'])).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Missing skill name for command 'approve'.
 
         Run 'starlight-to-skills --help' for more information."
@@ -286,7 +303,7 @@ Change foo to bar.`,
     test('rejects multiple skill names', async () => {
       expect(await runCli(['approve', 'foo', 'bar'])).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Command 'approve' accepts only one skill name.
 
         Run 'starlight-to-skills --help' for more information."
@@ -296,7 +313,7 @@ Change foo to bar.`,
     test('rejects --existing for commands other than approve', async () => {
       expect(await runCli(['generate', 'test-skill', '--existing'])).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
       "Option '--existing' is only valid for command 'approve'.
 
       Run 'starlight-to-skills --help' for more information."
@@ -317,13 +334,13 @@ Change foo to bar.`,
       await expect(fs.stat(candidateDir)).resolves.toBeDefined()
       await expect(fs.stat(skillDir)).resolves.toBeDefined()
 
-      expect(logSpy.mock.lastCall?.[0]).toContain(skillDir)
+      expect(getLastLogMessage(logSpy)).toContain(skillDir)
     })
 
     test('rejects a missing candidate', async () => {
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(
         `"No candidate found for skill 'test-skill'. Run 'starlight-to-skills generate test-skill' first."`,
       )
     })
@@ -335,7 +352,7 @@ Change foo to bar.`,
 
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(
         `"Candidate for skill 'test-skill' is outdated. Run 'starlight-to-skills generate test-skill' again."`,
       )
     })
@@ -371,7 +388,7 @@ Change foo to bar.`,
       test('rejects approving a missing existing skill', async () => {
         expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(1)
 
-        expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`"Skill 'test-skill' has not yet been approved."`)
+        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`"Skill 'test-skill' has not yet been approved."`)
       })
 
       test('rejects approving an outdated existing skill', async () => {
@@ -387,7 +404,7 @@ Change foo to bar.`,
 
         expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(1)
 
-        expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`"The skill 'test-skill' has changed."`)
+        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`"The skill 'test-skill' has changed."`)
 
         await expect(fs.readFile(skillPath, 'utf8')).resolves.toContain('Update.')
         await expect(fs.readFile(manifestPath, 'utf8')).resolves.toBe(manifestBefore)
@@ -399,7 +416,7 @@ Change foo to bar.`,
     test('rejects multiple skill names', async () => {
       expect(await runCli(['check', 'foo', 'bar'])).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Command 'check' accepts only one skill name.
 
         Run 'starlight-to-skills --help' for more information."
@@ -409,7 +426,7 @@ Change foo to bar.`,
     test('reports a never-approved skill', async () => {
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Issues:
 
         - Never approved
@@ -431,7 +448,7 @@ Change foo to bar.`,
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(0)
       expect(mastra.generate).not.toHaveBeenCalled()
 
-      expect(logSpy).toHaveBeenLastCalledWith('Ok')
+      expect(getLastLogMessage(logSpy)).toBe('Ok')
 
       expect(writeFileSpy).not.toHaveBeenCalled()
       expect(mkdirSpy).not.toHaveBeenCalled()
@@ -447,7 +464,7 @@ Change foo to bar.`,
 
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Issues:
 
         - Documentation source changed
@@ -465,7 +482,7 @@ Change foo to bar.`,
 
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Issues:
 
         - Documentation source changed
@@ -491,7 +508,7 @@ Change foo to bar.`,
       expect(await runCli(['check'], testDir)).toBe(0)
       expect(mastra.generate).not.toHaveBeenCalled()
 
-      expect(logSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`
         "other-skill: Ok
 
         test-skill: Ok"
@@ -510,7 +527,7 @@ Change foo to bar.`,
       expect(await runCli(['check'], testDir)).toBe(1)
       expect(mastra.generate).not.toHaveBeenCalled()
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "other-skill: Ok
 
         test-skill: Issue
@@ -536,7 +553,7 @@ Change foo to bar.`,
       expect(await runCli(['check'], testDir)).toBe(1)
       expect(mastra.generate).not.toHaveBeenCalled()
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "other-skill: Ok
 
         test-skill: Issue
@@ -565,7 +582,7 @@ Change foo to bar.`,
       expect(await runCli(['check'], testDir)).toBe(1)
       expect(mastra.generate).not.toHaveBeenCalled()
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "invalid-skill: Issue
 
         Invalid skill definition 'invalid-skill.skill.ts'.
@@ -585,7 +602,7 @@ Change foo to bar.`,
 
       expect(await runCli(['check'], testDir)).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "invalid--skill: Issue
 
         Invalid skill name 'invalid--skill'. Skill name must be 1-64 characters, must only contain unicode lowercase alphanumeric characters and hyphens, must not start or end with a hyphen, and must not contain consecutive hyphens.
@@ -613,7 +630,7 @@ Change foo to bar.`,
       expect(await runCli(['check'], testDir)).toBe(1)
       expect(mastra.generate).not.toHaveBeenCalled()
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "duplicate: Issue
 
         Found multiple skill definitions named 'duplicate.skill.ts'."
@@ -636,7 +653,7 @@ Change foo to bar.`,
       expect(await runCli(['check'], testDir)).toBe(1)
       expect(mastra.generate).not.toHaveBeenCalled()
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "test-skill: Ok
 
         other-skill: Issue
@@ -657,7 +674,7 @@ Change foo to bar.`,
 
       expect(await runCli(['check'], testDir)).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "test-skill: Ok
 
         ..: Issue
@@ -671,7 +688,7 @@ Change foo to bar.`,
     test('rejects arguments', async () => {
       expect(await runCli(['prune', 'test-skill'])).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Command 'prune' accepts no arguments.
 
         Run 'starlight-to-skills --help' for more information."
@@ -681,7 +698,7 @@ Change foo to bar.`,
     test('rejects --yes for commands other than prune', async () => {
       expect(await runCli(['check', '--yes'])).toBe(1)
 
-      expect(errorSpy.mock.lastCall?.[0]).toMatchInlineSnapshot(`
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Option '--yes' is only valid for command 'prune'.
 
         Run 'starlight-to-skills --help' for more information."
@@ -705,9 +722,9 @@ Change foo to bar.`,
       await expect(fs.stat(testSkill.skillDir)).resolves.toBeDefined()
       await expect(fs.stat(testSkill.manifestPath)).resolves.toBeDefined()
 
-      expect(logSpy.mock.calls).toStrictEqual([
-        ['Orphan approved skills:\n\n- orphan-skill'],
-        ["Pruned orphan approved skill 'orphan-skill'."],
+      expect(getLogMessages(logSpy)).toStrictEqual([
+        'Orphan approved skills:\n\n- orphan-skill',
+        "Pruned orphan approved skill 'orphan-skill'.",
       ])
     })
 
@@ -748,7 +765,20 @@ Change foo to bar.`,
       await expect(fs.stat(orphanSkill.skillDir)).resolves.toBeDefined()
       await expect(fs.stat(orphanSkill.manifestPath)).resolves.toBeDefined()
 
-      expect(logSpy).toHaveBeenLastCalledWith('Pruning cancelled.')
+      expect(getLastLogMessage(logSpy)).toBe('Pruning cancelled.')
     })
   })
 })
+
+function getLogMessages(spy: MockInstance): string[] {
+  return spy.mock.calls.map(([message]) => {
+    if (typeof message !== 'string') throw new Error('Expected a string log message.')
+    return stripVTControlCharacters(message)
+  })
+}
+
+function getLastLogMessage(spy: MockInstance): string {
+  const message = getLogMessages(spy).at(-1)
+  if (message === undefined) throw new Error('Expected at least one log message.')
+  return message
+}
