@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 
-import { validateCandidateFilePaths } from '../schemas/candidate'
+import { validateCandidateFiles } from '../schemas/candidate'
 import type { StarlightToSkillsConfig } from '../schemas/config'
 import type { SkillDigest } from '../schemas/digest'
 import { CandidateManifestSchema, makeSkillManifest } from '../schemas/manifest'
@@ -19,14 +19,13 @@ import type { SkillConfiguration } from './loader'
 import { loadSkillManifest } from './skill'
 
 export function createCandidate(inputHash: string, files: SkillFile[]): Candidate {
-  // TODO(HiDeoo) validation
-  validateCandidateFilePaths(files)
+  validateCandidateFiles(files)
 
   return { inputHash, files, fileDigests: computeSkillFileDigest(files) }
 }
 
 export async function writeCandidate(dataDir: URL, name: string, candidate: Candidate) {
-  validateCandidateFilePaths(candidate.files)
+  validateCandidateFiles(candidate.files)
 
   const candidateUrl = getCandidateDirUrl(dataDir, name)
 
@@ -84,6 +83,8 @@ export async function loadCandidate(dataDir: URL, name: string, expectedInputHas
     }
   }
 
+  validateCandidateFiles(files)
+
   const fileDigests = computeSkillFileDigest(files)
 
   if (fileDigests.some((file, index) => file.contentHash !== manifest.files[index]?.contentHash)) {
@@ -126,7 +127,7 @@ export async function approveCandidate(
   digest: SkillDigest,
   candidate: Candidate,
 ) {
-  validateCandidateFilePaths(candidate.files)
+  validateCandidateFiles(candidate.files)
 
   const skillDirUrl = resolveDirectoryUrl(skill.name, config.outputDir)
   const manifestUrl = getSkillManifestUrl(config.outputDir, skill.name)

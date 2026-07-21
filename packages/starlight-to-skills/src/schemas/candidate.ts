@@ -1,5 +1,11 @@
 import { z } from 'astro/zod'
 
+import type { SkillFile } from '../libs/content'
+import { normalizeLineEndings } from '../libs/digest'
+
+// https://agentskills.io/specification#progressive-disclosure
+const maxSkillLines = 500
+
 export const CandidateReferencePathSchema = z
   .string()
   .regex(/^references\/(?:[^/\\]+\/)*[^/\\]+\.md$/)
@@ -55,7 +61,25 @@ export const CandidateFilePathsSchema = z.array(CandidateFilePathSchema).superRe
   }
 })
 
-export function validateCandidateFilePaths(files: { path: string }[]) {
+export function validateCandidateFiles(files: SkillFile[]) {
+  validateCandidateFilePaths(files)
+
+  for (const file of files) {
+    if (file.path !== 'SKILL.md') continue
+
+    const lines = normalizeLineEndings(file.content).split('\n')
+    // Remove trailing empty line at the end of the file.
+    if (lines.at(-1) === '') lines.pop()
+
+    if (lines.length > maxSkillLines) {
+      throw new Error(`Candidate 'SKILL.md' must not contain more than ${maxSkillLines} lines.`)
+    }
+
+    return
+  }
+}
+
+function validateCandidateFilePaths(files: { path: string }[]) {
   const result = CandidateFilePathsSchema.safeParse(files.map((file) => file.path))
   if (result.success) return
 
