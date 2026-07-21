@@ -1,5 +1,7 @@
 import { styleText } from 'node:util'
 
+import { bold, dim, primary } from './style'
+
 const help = `
   ${bold(`${primary('starlight-to-skills')} <command> [options]`)}
 
@@ -41,18 +43,6 @@ const commandHelp: Record<string, string> = {
 export function getHelp(command?: string): string {
   if (!command || !Object.hasOwn(commandHelp, command)) return help
   return commandHelp[command] ?? help
-}
-
-function dim(text: string) {
-  return styleText('dim', text)
-}
-
-function bold(text: string) {
-  return styleText('bold', text)
-}
-
-function primary(text: string) {
-  return styleText('cyan', text)
 }
 
 function section(title: string) {

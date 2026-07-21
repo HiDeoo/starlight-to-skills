@@ -6,6 +6,7 @@ import { createJiti } from 'jiti'
 import { ConfigSchema, type StarlightToSkillsConfig } from '../schemas/config'
 import { parseSkillName, SkillDefinitionSchema, type SkillDefinition } from '../schemas/skill'
 
+import { throwError } from './error'
 import { getDataDirUrl, resolveDirectoryUrl } from './fs'
 import { getSkillNameByDefinitionUrl } from './skill'
 
@@ -13,7 +14,6 @@ const configFilename = 'starlight-to-skills.config.ts'
 
 const jiti = createJiti(import.meta.url)
 
-// TODO(HiDeoo) make sure to surface proper error in CLI
 export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig> {
   const url = new URL(configFilename, rootDir)
 
@@ -22,20 +22,16 @@ export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig>
   try {
     configModule = await jiti.import(fileURLToPath(url), { default: true })
   } catch (error) {
-    // TODO(HiDeoo)
-    throw new Error(`Failed to load Starlight to Skills configuration '${configFilename}'.`, {
-      cause: error,
-    })
+    throwError(`Failed to load configuration file '${configFilename}'.`, { cause: error })
   }
 
-  let config: ReturnType<typeof ConfigSchema.parse>
+  const result = ConfigSchema.safeParse(configModule)
 
-  try {
-    config = ConfigSchema.parse(configModule)
-  } catch (error) {
-    // TODO(HiDeoo)
-    throw new Error(`Invalid Starlight to Skills configuration '${configFilename}'.`, { cause: error })
+  if (!result.success) {
+    throwError(`Invalid configuration file '${configFilename}'.`, { cause: result.error })
   }
+
+  const config = result.data
 
   return {
     ...config,
@@ -46,7 +42,6 @@ export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig>
   }
 }
 
-// TODO(HiDeoo) make sure to surface proper error in CLI
 export async function loadSkillDefinition(url: URL): Promise<SkillConfiguration> {
   const definitionPath = fileURLToPath(url)
   const filename = path.basename(definitionPath)
@@ -57,20 +52,16 @@ export async function loadSkillDefinition(url: URL): Promise<SkillConfiguration>
   try {
     definitionModule = await jiti.import(definitionPath, { default: true })
   } catch (error) {
-    // TODO(HiDeoo)
-    throw new Error(`Failed to load skill definition '${filename}'.`, { cause: error })
+    throwError(`Failed to load skill definition '${filename}'.`, { cause: error })
   }
 
-  let definition: SkillDefinition
+  const result = SkillDefinitionSchema.safeParse(definitionModule)
 
-  try {
-    definition = SkillDefinitionSchema.parse(definitionModule)
-  } catch (error) {
-    // TODO(HiDeoo)
-    throw new Error(`Invalid skill definition '${filename}'.`, { cause: error })
+  if (!result.success) {
+    throwError(`Invalid skill definition '${filename}'.`, { cause: result.error })
   }
 
-  return { name, url, ...definition }
+  return { name, url, ...result.data }
 }
 
 export interface SkillConfiguration extends SkillDefinition {

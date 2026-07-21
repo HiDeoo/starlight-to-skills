@@ -100,7 +100,10 @@ describe('generateSkillContent', () => {
   test('rejects invalid model output', async () => {
     mastra.generate.mockResolvedValue({ object: { result: { status: 'success' } } })
 
-    await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toThrow()
+    await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toMatchObject({
+      message: "Model 'openai/gpt-5.6-luna' returned an invalid response.",
+      hint: "Run 'starlight-to-skills generate migrate-to-v2' again.",
+    })
   })
 
   test('rejects invalid reference paths', async () => {

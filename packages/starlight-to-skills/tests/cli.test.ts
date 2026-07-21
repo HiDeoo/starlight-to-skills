@@ -105,9 +105,9 @@ describe('usage', () => {
     expect(await runCli([])).toBe(1)
 
     expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-      "Missing command.
+      "Error: Missing command.
 
-      Run 'starlight-to-skills --help' for more information."
+      Hint: Run 'starlight-to-skills --help' for more information."
     `)
   })
 
@@ -115,9 +115,9 @@ describe('usage', () => {
     expect(await runCli(['test'])).toBe(1)
 
     expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-      "Unknown command 'test'.
+      "Error: Unknown command 'test'.
 
-      Run 'starlight-to-skills --help' for more information."
+      Hint: Run 'starlight-to-skills --help' for more information."
     `)
   })
 
@@ -125,9 +125,9 @@ describe('usage', () => {
     expect(await runCli(['--test'])).toBe(1)
 
     expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-      "Unknown option '--test'. To specify a positional argument starting with a '-', place it at the end of the command after '--', as in '-- "--test"
+      "Error: Unknown option '--test'. To specify a positional argument starting with a '-', place it at the end of the command after '--', as in '-- "--test"
 
-      Run 'starlight-to-skills --help' for more information."
+      Hint: Run 'starlight-to-skills --help' for more information."
     `)
   })
 })
@@ -208,9 +208,9 @@ Change foo to bar.`,
       expect(await runCli(['generate'])).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Missing skill name for command 'generate'.
+        "Error: Missing skill name for command 'generate'.
 
-        Run 'starlight-to-skills --help' for more information."
+        Hint: Run 'starlight-to-skills generate --help' for more information."
       `)
     })
 
@@ -218,18 +218,20 @@ Change foo to bar.`,
       expect(await runCli(['generate', 'foo', 'bar'])).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Command 'generate' accepts only one skill name.
+        "Error: Command 'generate' accepts only one skill name.
 
-        Run 'starlight-to-skills --help' for more information."
+        Hint: Run 'starlight-to-skills generate --help' for more information."
       `)
     })
 
     test('rejects an invalid skill name', async () => {
       expect(await runCli(['generate', 'invalid--name'], testDir)).toBe(1)
 
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(
-        `"Invalid skill name 'invalid--name'. Skill name must be 1-64 characters, must only contain unicode lowercase alphanumeric characters and hyphens, must not start or end with a hyphen, and must not contain consecutive hyphens."`,
-      )
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Invalid skill name 'invalid--name'.
+
+        A skill name must be 1-64 characters and contain only lowercase letters (a-z), numbers (0-9), and hyphens. It cannot start or end with a hyphen or contain consecutive hyphens."
+      `)
     })
 
     test('ignores an unrelated definition with an invalid name', async () => {
@@ -278,7 +280,7 @@ Change foo to bar.`,
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-      "Source incomplete: The migration steps are missing.
+      "Error: Source incomplete: The migration steps are missing.
       Documentation sources: ./guide.md
 
       Source conflict: The migration guide is for v3.
@@ -294,9 +296,9 @@ Change foo to bar.`,
       expect(await runCli(['approve'])).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Missing skill name for command 'approve'.
+        "Error: Missing skill name for command 'approve'.
 
-        Run 'starlight-to-skills --help' for more information."
+        Hint: Run 'starlight-to-skills generate --help' for more information."
       `)
     })
 
@@ -304,9 +306,9 @@ Change foo to bar.`,
       expect(await runCli(['approve', 'foo', 'bar'])).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Command 'approve' accepts only one skill name.
+        "Error: Command 'approve' accepts only one skill name.
 
-        Run 'starlight-to-skills --help' for more information."
+        Hint: Run 'starlight-to-skills approve --help' for more information."
       `)
     })
 
@@ -314,10 +316,10 @@ Change foo to bar.`,
       expect(await runCli(['generate', 'test-skill', '--existing'])).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-      "Option '--existing' is only valid for command 'approve'.
+        "Error: Option '--existing' is only valid for command 'approve'.
 
-      Run 'starlight-to-skills --help' for more information."
-    `)
+        Hint: Run 'starlight-to-skills approve --help' for more information."
+      `)
     })
 
     test('approves the current candidate', async () => {
@@ -341,7 +343,7 @@ Change foo to bar.`,
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(
-        `"No candidate found for skill 'test-skill'. Run 'starlight-to-skills generate test-skill' first."`,
+        `"Error: No candidate found for skill 'test-skill'. Run 'starlight-to-skills generate test-skill' first."`,
       )
     })
 
@@ -353,7 +355,7 @@ Change foo to bar.`,
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(
-        `"Candidate for skill 'test-skill' is outdated. Run 'starlight-to-skills generate test-skill' again."`,
+        `"Error: Candidate for skill 'test-skill' is outdated. Run 'starlight-to-skills generate test-skill' again."`,
       )
     })
 
@@ -388,7 +390,9 @@ Change foo to bar.`,
       test('rejects approving a missing existing skill', async () => {
         expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(1)
 
-        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`"Skill 'test-skill' has not yet been approved."`)
+        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(
+          `"Error: Skill 'test-skill' has not yet been approved."`,
+        )
       })
 
       test('rejects approving an outdated existing skill', async () => {
@@ -404,7 +408,7 @@ Change foo to bar.`,
 
         expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(1)
 
-        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`"The skill 'test-skill' has changed."`)
+        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`"Error: The skill 'test-skill' has changed."`)
 
         await expect(fs.readFile(skillPath, 'utf8')).resolves.toContain('Update.')
         await expect(fs.readFile(manifestPath, 'utf8')).resolves.toBe(manifestBefore)
@@ -417,9 +421,9 @@ Change foo to bar.`,
       expect(await runCli(['check', 'foo', 'bar'])).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Command 'check' accepts only one skill name.
+        "Error: Command 'check' accepts only one skill name.
 
-        Run 'starlight-to-skills --help' for more information."
+        Hint: Run 'starlight-to-skills check --help' for more information."
       `)
     })
 
@@ -427,11 +431,11 @@ Change foo to bar.`,
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Issues:
+        "Error: Issues:
 
         - Never approved
 
-        Run 'starlight-to-skills generate test-skill' to generate a new candidate."
+        Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate."
       `)
     })
 
@@ -465,12 +469,12 @@ Change foo to bar.`,
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Issues:
+        "Error: Issues:
 
         - Documentation source changed
         - Approved skill changed: SKILL.md
 
-        Run 'starlight-to-skills generate test-skill' to generate a new candidate."
+        Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate."
       `)
     })
 
@@ -483,11 +487,11 @@ Change foo to bar.`,
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Issues:
+        "Error: Issues:
 
         - Documentation source changed
 
-        Run 'starlight-to-skills generate test-skill' to generate a new candidate.
+        Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate.
 
         If the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
       `)
@@ -528,7 +532,7 @@ Change foo to bar.`,
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "other-skill: Ok
+        "Error: other-skill: Ok
 
         test-skill: Issue
 
@@ -536,7 +540,7 @@ Change foo to bar.`,
 
         - Never approved
 
-        Run 'starlight-to-skills generate test-skill' to generate a new candidate."
+        Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate."
       `)
     })
 
@@ -554,7 +558,7 @@ Change foo to bar.`,
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "other-skill: Ok
+        "Error: other-skill: Ok
 
         test-skill: Issue
 
@@ -562,7 +566,7 @@ Change foo to bar.`,
 
         - Documentation source changed
 
-        Run 'starlight-to-skills generate test-skill' to generate a new candidate.
+        Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate.
 
         If the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
       `)
@@ -583,9 +587,14 @@ Change foo to bar.`,
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "invalid-skill: Issue
+        "Error: invalid-skill: Issue
 
         Invalid skill definition 'invalid-skill.skill.ts'.
+
+        ✖ Too small: expected string to have >=1 characters
+          → at description
+        ✖ Too small: expected array to have >=1 items
+          → at docs
 
         test-skill: Ok"
       `)
@@ -603,9 +612,11 @@ Change foo to bar.`,
       expect(await runCli(['check'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "invalid--skill: Issue
+        "Error: invalid--skill: Issue
 
-        Invalid skill name 'invalid--skill'. Skill name must be 1-64 characters, must only contain unicode lowercase alphanumeric characters and hyphens, must not start or end with a hyphen, and must not contain consecutive hyphens.
+        Invalid skill name 'invalid--skill'.
+
+        A skill name must be 1-64 characters and contain only lowercase letters (a-z), numbers (0-9), and hyphens. It cannot start or end with a hyphen or contain consecutive hyphens.
 
         test-skill: Ok"
       `)
@@ -631,7 +642,7 @@ Change foo to bar.`,
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "duplicate: Issue
+        "Error: duplicate: Issue
 
         Found multiple skill definitions named 'duplicate.skill.ts'."
       `)
@@ -654,7 +665,7 @@ Change foo to bar.`,
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "test-skill: Ok
+        "Error: test-skill: Ok
 
         other-skill: Issue
 
@@ -675,11 +686,13 @@ Change foo to bar.`,
       expect(await runCli(['check'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "test-skill: Ok
+        "Error: test-skill: Ok
 
         ..: Issue
 
-        Invalid skill name '..'. Skill name must be 1-64 characters, must only contain unicode lowercase alphanumeric characters and hyphens, must not start or end with a hyphen, and must not contain consecutive hyphens."
+        Invalid skill name '..'.
+
+        A skill name must be 1-64 characters and contain only lowercase letters (a-z), numbers (0-9), and hyphens. It cannot start or end with a hyphen or contain consecutive hyphens."
       `)
     })
   })
@@ -689,9 +702,9 @@ Change foo to bar.`,
       expect(await runCli(['prune', 'test-skill'])).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Command 'prune' accepts no arguments.
+        "Error: Command 'prune' accepts no arguments.
 
-        Run 'starlight-to-skills --help' for more information."
+        Hint: Run 'starlight-to-skills prune --help' for more information."
       `)
     })
 
@@ -699,9 +712,9 @@ Change foo to bar.`,
       expect(await runCli(['check', '--yes'])).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Option '--yes' is only valid for command 'prune'.
+        "Error: Option '--yes' is only valid for command 'prune'.
 
-        Run 'starlight-to-skills --help' for more information."
+        Hint: Run 'starlight-to-skills prune --help' for more information."
       `)
     })
 
@@ -723,8 +736,8 @@ Change foo to bar.`,
       await expect(fs.stat(testSkill.manifestPath)).resolves.toBeDefined()
 
       expect(getLogMessages(logSpy)).toStrictEqual([
-        'Orphan approved skills:\n\n- orphan-skill',
-        "Pruned orphan approved skill 'orphan-skill'.",
+        'Orphan approved skills:\n\n - orphan-skill\n',
+        "Pruned 'orphan-skill'.",
       ])
     })
 

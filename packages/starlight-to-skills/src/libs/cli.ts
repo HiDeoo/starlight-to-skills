@@ -13,6 +13,7 @@ import { parseSkillName } from '../schemas/skill'
 import { approveCandidate, createCandidate, loadCandidate, removeCandidateForInput, writeCandidate } from './candidate'
 import { compileSkill, generateSkillContent } from './content'
 import { computeSkillDigest } from './digest'
+import { createError, StarlightToSkillsError, throwError } from './error'
 import { getSkillManifestUrl, pathExists } from './fs'
 import { getHelp } from './help'
 import { loadConfig, loadSkillDefinition, type SkillConfiguration } from './loader'
@@ -30,6 +31,7 @@ import {
   SkillCheckIssueMessages,
 } from './skill'
 import { loadSkillDocs } from './starlight'
+import { bold, dim, error, hint, primary, success } from './style'
 
 // TODO(HiDeoo) CLI UI
 // TODO(HiDeoo) Progress/logs
@@ -50,7 +52,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
       strict: true,
     })
   } catch (error) {
-    return logUsageError(error instanceof Error ? error.message : String(error))
+    return logUsageError(error)
   }
 
   const [command, ...commandArgs] = parsedArgs.positionals
@@ -68,43 +70,43 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
   if (!command) return logUsageError('Missing command.')
 
   if (parsedArgs.values['existing'] && command !== 'approve') {
-    return logUsageError("Option '--existing' is only valid for command 'approve'.")
+    return logUsageError("Option '--existing' is only valid for command 'approve'.", 'approve')
   } else if (parsedArgs.values['yes'] && command !== 'prune') {
-    return logUsageError("Option '--yes' is only valid for command 'prune'.")
+    return logUsageError("Option '--yes' is only valid for command 'prune'.", 'prune')
   }
 
   const rootDir = pathToFileURL(path.join(cwd, path.sep))
 
   if (command === 'prune') {
-    if (commandArgs.length > 0) return logUsageError("Command 'prune' accepts no arguments.")
+    if (commandArgs.length > 0) return logUsageError("Command 'prune' accepts no arguments.", 'prune')
 
     try {
       return await runPruneSkills(rootDir, parsedArgs.values['yes'] === true)
     } catch (error) {
-      return logError(error instanceof Error ? error.message : String(error))
+      return logError(error)
     }
   }
 
   if (command === 'generate' || command === 'approve' || command === 'check') {
     const [name, ...extraNames] = commandArgs
 
-    if (extraNames.length > 0) return logUsageError(`Command '${command}' accepts only one skill name.`)
+    if (extraNames.length > 0) return logUsageError(`Command '${command}' accepts only one skill name.`, command)
 
     if (command === 'check') {
       try {
         return name ? await runCheckSkill(name, rootDir) : await runCheckSkills(rootDir)
       } catch (error) {
-        return logError(error instanceof Error ? error.message : String(error))
+        return logError(error)
       }
     }
 
-    if (!name) return logUsageError(`Missing skill name for command '${command}'.`)
+    if (!name) return logUsageError(`Missing skill name for command '${command}'.`, command)
 
     try {
       if (command === 'generate') return await runGenerateCandidate(name, rootDir)
       return await runApproveSkill(name, rootDir, parsedArgs.values['existing'] === true)
     } catch (error) {
-      return logError(error instanceof Error ? error.message : String(error))
+      return logError(error)
     }
   }
 
@@ -183,7 +185,7 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
       definitionNames.add(parseSkillName(name))
     } catch (error) {
       allCurrent = false
-      reports.push(`${name}: Issue\n\n${error instanceof Error ? error.message : String(error)}`)
+      reports.push(`${name}: Issue\n\n${formatError(error)}`)
     }
   }
 
@@ -195,13 +197,13 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
 
       if (issues) {
         allCurrent = false
-        reports.push(`${name}: Issue\n\n${issues}`)
+        reports.push(`${name}: Issue\n\n${formatError(issues)}`)
       } else {
         reports.push(`${name}: Ok`)
       }
     } catch (error) {
       allCurrent = false
-      reports.push(`${name}: Issue\n\n${error instanceof Error ? error.message : String(error)}`)
+      reports.push(`${name}: Issue\n\n${formatError(error)}`)
     }
   }
 
@@ -213,7 +215,7 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
       skillName = parseSkillName(name)
     } catch (error) {
       allCurrent = false
-      reports.push(`${name}: Issue\n\n${error instanceof Error ? error.message : String(error)}`)
+      reports.push(`${name}: Issue\n\n${formatError(error)}`)
       continue
     }
 
@@ -246,21 +248,30 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
   }
 
   if (orphans.length === 0) {
-    logMessage('No orphan approved skills found.')
+    logMessage('No orphan approved skills to prune.')
     return 0
   }
 
-  logMessage(`Orphan approved skills:\n\n${orphans.map((orphan) => `- ${orphan.name}`).join('\n')}`)
+  logMessage(
+    `${bold('Orphan approved skills:')}
+
+${orphans.map((orphan) => `${dim(' -')} ${primary(orphan.name)}`).join('\n')}
+`,
+  )
 
   if (!yes) {
     if (process.stdin.isTTY !== true) {
-      throw new Error("Unable to confirm prune from non-interactive input. Run 'starlight-to-skills prune --yes'.")
+      throwError('Pruning requires confirmation but no interactive terminal is available.', {
+        hint: "Run 'starlight-to-skills prune --yes'.",
+      })
     }
 
     const readline = createInterface({ input: process.stdin, output: process.stdout })
 
     try {
-      const answer = await readline.question(`Prune ${orphans.length} orphan approved skills? [y/N] `)
+      // TODO(HiDeoo) plural
+      const answer = await readline.question(`Prune ${orphans.length} orphan approved skills? ${dim('[y/N]')} `)
+      logMessage('')
 
       if (!['y', 'yes'].includes(answer.trim().toLowerCase())) {
         logMessage('Pruning cancelled.')
@@ -272,8 +283,13 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
   }
 
   for (const orphan of orphans) {
-    await pruneSkill(config.outputDir, orphan.name)
-    logMessage(`Pruned orphan approved skill '${orphan.name}'.`)
+    try {
+      await pruneSkill(config.outputDir, orphan.name)
+    } catch (error) {
+      throwError(`Failed to prune '${orphan.name}'.`, { cause: error })
+    }
+
+    logMessage(`${success('Pruned')} '${primary(orphan.name)}'.`)
   }
 
   return 0
@@ -299,11 +315,12 @@ async function getSkillIssues(
   config: StarlightToSkillsConfig,
   definition: SkillConfiguration,
   digest: SkillDigest,
-): Promise<string | undefined> {
+): Promise<StarlightToSkillsError | undefined> {
   const generateHint = `Run 'starlight-to-skills generate ${definition.name}' to generate a new candidate.`
 
   if (!(await pathExists(getSkillManifestUrl(config.outputDir, definition.name)))) {
-    return `Issues:\n\n- Never approved\n\n${generateHint}`
+    // TODO(HiDeoo) no colon
+    return createError('Issues:\n\n- Never approved', { hint: generateHint })
   }
 
   const { manifest, fileMismatches } = await loadSkill(config.outputDir, definition.name)
@@ -321,11 +338,16 @@ async function getSkillIssues(
     (manifest.definitionHash === digest.definitionHash ||
       (await hasMatchingSkillDescription(config.outputDir, definition.name, definition.description)))
 
-  const hint = canApproveExistingSkill
-    ? `\n\nIf the existing approved skill is still valid, run 'starlight-to-skills approve ${definition.name} --existing'.`
-    : ''
+  const hints = [generateHint]
 
-  return `Issues:\n\n${issues.join('\n')}\n\n${generateHint}${hint}`
+  if (canApproveExistingSkill) {
+    hints.push(
+      `If the existing approved skill is still valid, run 'starlight-to-skills approve ${definition.name} --existing'.`,
+    )
+  }
+
+  // TODO(HiDeoo) no colon
+  return createError(`Issues:\n\n${issues.join('\n')}`, { hint: hints.join('\n\n') })
 }
 
 function logMessage(message: string) {
@@ -333,11 +355,25 @@ function logMessage(message: string) {
   console.log(message)
 }
 
-function logUsageError(message: string): number {
-  return logError(`${message}\n\nRun 'starlight-to-skills --help' for more information.`)
+function logUsageError(error: unknown, command?: string): number {
+  const helpCommand = command ? ` ${command}` : ''
+  return logError(
+    createError(formatError(error), { hint: `Run 'starlight-to-skills${helpCommand} --help' for more information.` }),
+  )
 }
 
-function logError(message: string): number {
-  console.error(message)
+function logError(maybeError: unknown): number {
+  console.error(`${error('Error:')} ${formatError(maybeError)}`)
   return 1
+}
+
+function formatError(error: unknown): string {
+  const message =
+    error instanceof Error ? error.message : typeof error === 'string' ? error : 'An unknown error occurred.'
+
+  if (!(error instanceof StarlightToSkillsError) || !error.hint) {
+    return message
+  }
+
+  return `${message}\n\n${hint('Hint:')} ${error.hint}`
 }

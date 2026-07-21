@@ -2,6 +2,7 @@ import { Agent } from '@mastra/core/agent'
 
 import { ContentResultJSONSchema, ContentResultSchema, type SkillContentResult } from '../schemas/content'
 
+import { throwError } from './error'
 import type { SkillConfiguration } from './loader'
 import type { SkillDocumentation } from './starlight'
 
@@ -44,15 +45,23 @@ export async function generateSkillContent(
     model,
   })
 
-  const result = await agent.generate(JSON.stringify(input), {
+  const output = await agent.generate(JSON.stringify(input), {
     maxSteps: 1,
     modelSettings: { maxRetries: 0 },
     structuredOutput: { schema: ContentResultJSONSchema, errorStrategy: 'strict' },
   })
 
-  const { data } = ContentResultSchema.parse(result.object)
+  const result = ContentResultSchema.safeParse(output.object)
 
-  return data
+  if (!result.success) {
+    throwError(`Model '${model}' returned an invalid response.`, {
+      cause: result.error,
+      hint: `Run 'starlight-to-skills generate ${skill.name}' again.`,
+      withCause: false,
+    })
+  }
+
+  return result.data.data
 }
 
 export function compileSkill(

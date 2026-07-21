@@ -21,25 +21,21 @@ describe('loadConfig', () => {
   test('does not search parent directories', async () => {
     const rootDir = new URL('fixtures/config-parent/nested/', import.meta.url)
 
-    await expect(loadConfig(rootDir)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Failed to load Starlight to Skills configuration 'starlight-to-skills.config.ts'.]`,
+    await expect(loadConfig(rootDir)).rejects.toThrow(
+      "Failed to load configuration file 'starlight-to-skills.config.ts'.",
     )
   })
 
   test('rejects configuration without a default export', async () => {
     const rootDir = new URL('fixtures/config-no-default/', import.meta.url)
 
-    await expect(loadConfig(rootDir)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Invalid Starlight to Skills configuration 'starlight-to-skills.config.ts'.]`,
-    )
+    await expect(loadConfig(rootDir)).rejects.toThrow("Invalid configuration file 'starlight-to-skills.config.ts'.")
   })
 
   test('rejects invalid configuration', async () => {
     const rootDir = new URL('fixtures/config-invalid/', import.meta.url)
 
-    await expect(loadConfig(rootDir)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Invalid Starlight to Skills configuration 'starlight-to-skills.config.ts'.]`,
-    )
+    await expect(loadConfig(rootDir)).rejects.toThrow("Invalid configuration file 'starlight-to-skills.config.ts'.")
   })
 })
 
@@ -61,16 +57,16 @@ describe('loadSkillDefinition', () => {
   test('rejects definition without a default export', async () => {
     const definitionUrl = new URL('fixtures/skill-no-default.skill.ts', import.meta.url)
 
-    await expect(loadSkillDefinition(definitionUrl)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Invalid skill definition 'skill-no-default.skill.ts'.]`,
+    await expect(loadSkillDefinition(definitionUrl)).rejects.toThrow(
+      "Invalid skill definition 'skill-no-default.skill.ts'.",
     )
   })
 
   test('rejects invalid definition', async () => {
     const definitionUrl = new URL('fixtures/skill-invalid.skill.ts', import.meta.url)
 
-    await expect(loadSkillDefinition(definitionUrl)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Invalid skill definition 'skill-invalid.skill.ts'.]`,
+    await expect(loadSkillDefinition(definitionUrl)).rejects.toThrow(
+      "Invalid skill definition 'skill-invalid.skill.ts'.",
     )
   })
 })

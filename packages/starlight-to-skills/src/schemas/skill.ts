@@ -9,14 +9,14 @@ export const SkillNameSchema = z
   .max(64)
   .regex(
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-    'Skill name must be 1-64 characters, must only contain unicode lowercase alphanumeric characters and hyphens, must not start or end with a hyphen, and must not contain consecutive hyphens.',
+    'A skill name must be 1-64 characters and contain only lowercase letters (a-z), numbers (0-9), and hyphens. It cannot start or end with a hyphen or contain consecutive hyphens.',
   )
 
 export function parseSkillName(name: string): string {
   const result = SkillNameSchema.safeParse(name)
 
   if (!result.success) {
-    throw new Error(`Invalid skill name '${name}'. ${result.error.issues[0]?.message}`)
+    throw new Error(`Invalid skill name '${name}'.\n\n${result.error.issues[0]?.message}`)
   }
 
   return result.data

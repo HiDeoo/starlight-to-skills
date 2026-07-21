@@ -62,9 +62,11 @@ describe('getSkillDefinitionUrlByName', () => {
   })
 
   test('rejects an invalid requested skill name', () => {
-    expect(() => getSkillDefinitionUrlByName([], 'invalid--name')).toThrowErrorMatchingInlineSnapshot(
-      `[Error: Invalid skill name 'invalid--name'. Skill name must be 1-64 characters, must only contain unicode lowercase alphanumeric characters and hyphens, must not start or end with a hyphen, and must not contain consecutive hyphens.]`,
-    )
+    expect(() => getSkillDefinitionUrlByName([], 'invalid--name')).toThrowErrorMatchingInlineSnapshot(`
+      [Error: Invalid skill name 'invalid--name'.
+
+      A skill name must be 1-64 characters and contain only lowercase letters (a-z), numbers (0-9), and hyphens. It cannot start or end with a hyphen or contain consecutive hyphens.]
+    `)
   })
 
   test('ignores unrelated definitions with invalid names', () => {
