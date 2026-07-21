@@ -704,7 +704,10 @@ Change foo to bar.`,
       await expect(fs.stat(testSkill.skillDir)).resolves.toBeDefined()
       await expect(fs.stat(testSkill.manifestPath)).resolves.toBeDefined()
 
-      expect(logSpy).toHaveBeenLastCalledWith("Pruned orphan approved skill 'orphan-skill'.")
+      expect(logSpy.mock.calls).toStrictEqual([
+        ['Orphan approved skills:\n\n- orphan-skill'],
+        ["Pruned orphan approved skill 'orphan-skill'."],
+      ])
     })
 
     test('does not prune when a definition filename has an invalid skill name', async () => {

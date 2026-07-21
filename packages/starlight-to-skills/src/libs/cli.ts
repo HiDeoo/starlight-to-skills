@@ -262,6 +262,8 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
     return 0
   }
 
+  logMessage(`Orphan approved skills:\n\n${orphans.map((orphan) => `- ${orphan.name}`).join('\n')}`)
+
   if (!yes) {
     if (process.stdin.isTTY !== true) {
       throw new Error("Unable to confirm prune from non-interactive input. Run 'starlight-to-skills prune --yes'.")
@@ -270,7 +272,6 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
     const readline = createInterface({ input: process.stdin, output: process.stdout })
 
     try {
-      // TODO(HiDeoo) list orphans
       const answer = await readline.question(`Prune ${orphans.length} orphan approved skills? [y/N] `)
 
       if (!['y', 'yes'].includes(answer.trim().toLowerCase())) {
