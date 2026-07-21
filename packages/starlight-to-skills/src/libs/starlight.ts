@@ -24,7 +24,13 @@ export async function loadSkillDocs(
 }
 
 async function loadSkillDoc(docsCollectionPath: string, docsPath: string): Promise<SkillDocumentation> {
-  // TODO(HiDeoo) validate we don't escape src/content/docs/ ?
+  const normalizedDocsPath = path.normalize(docsPath)
+  const [firstSegment] = normalizedDocsPath.split(path.sep)
+
+  if (path.parse(normalizedDocsPath).root !== '' || firstSegment === '..') {
+    throw new Error(`Documentation source '${docsPath}' must resolve within '${docsCollectionDir}'.`)
+  }
+
   const sourcePath = path.resolve(docsCollectionPath, docsPath)
 
   let sourceStats: Stats

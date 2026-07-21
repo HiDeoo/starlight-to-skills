@@ -50,6 +50,17 @@ describe('loadSkillDocs', () => {
     )
   })
 
+  test.for(['../outside.md', '/outside.md'])(
+    'rejects documentation source path %j outside of Starlight docs collection',
+    async (docsPath) => {
+      const skill = { docs: [docsPath] } as SkillDefinition
+
+      await expect(loadSkillDocs(config, skill)).rejects.toThrow(
+        `Documentation source '${docsPath}' must resolve within 'src/content/docs/'.`,
+      )
+    },
+  )
+
   test('rejects a documentation source that is not a file', async () => {
     const skill = { docs: ['./directory.md'] } as SkillDefinition
 
