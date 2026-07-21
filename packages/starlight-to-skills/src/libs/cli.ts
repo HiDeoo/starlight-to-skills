@@ -144,8 +144,9 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
 
   const candidateUrl = await writeCandidate(config.dataDir, definition.name, candidate)
 
-  // TODO(HiDeoo)
-  logMessage(`Candidate written to '${fileURLToPath(candidateUrl)}'.`)
+  logMessage(
+    `Candidate written to '${fileURLToPath(candidateUrl)}'.\n\nGenerated files:\n\n${candidate.files.map((file) => `- ${file.path}`).join('\n')}`,
+  )
   return 0
 }
 

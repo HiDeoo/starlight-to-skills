@@ -228,6 +228,7 @@ Change foo to bar.`,
 
       await expect(fs.stat(candidateDir)).resolves.toBeDefined()
       expect(logSpy.mock.lastCall?.[0]).toContain(candidateDir)
+      expect(logSpy.mock.lastCall?.[0]).toContain('Generated files:\n\n- SKILL.md')
     })
 
     test('reports issues', async () => {
