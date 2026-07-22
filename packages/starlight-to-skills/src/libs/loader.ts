@@ -22,7 +22,10 @@ export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig>
   try {
     configModule = await jiti.import(fileURLToPath(url), { default: true })
   } catch (error) {
-    throwError(`Failed to load configuration file '${configFilename}'.`, { cause: error })
+    throwError(`Failed to load configuration file '${configFilename}'.`, {
+      cause: error,
+      hint: `Run the command from a directory containing a valid '${configFilename}' file.`,
+    })
   }
 
   const result = ConfigSchema.safeParse(configModule)
@@ -52,7 +55,10 @@ export async function loadSkillDefinition(url: URL): Promise<SkillConfiguration>
   try {
     definitionModule = await jiti.import(definitionPath, { default: true })
   } catch (error) {
-    throwError(`Failed to load skill definition '${filename}'.`, { cause: error })
+    throwError(`Failed to load skill definition '${filename}'.`, {
+      cause: error,
+      hint: `Make sure '${filename}' exists and is a valid skill definition file.`,
+    })
   }
 
   const result = SkillDefinitionSchema.safeParse(definitionModule)

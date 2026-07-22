@@ -10,6 +10,7 @@ import type { StarlightToSkillsConfig } from '../schemas/config'
 import type { SkillDefinition } from '../schemas/skill'
 
 import { throwError } from './error'
+import { isFileNotFoundError } from './fs'
 
 // https://github.com/withastro/starlight/blob/bbab7b19e74de7f1758dafea52b16f8011149cd1/packages/starlight/loaders.ts#L6
 export const StarlightDocsExtensionsRegex = /\.(?:markdown|mdown|mkdn|mkd|mdwn|md|mdx)$/
@@ -40,10 +41,20 @@ async function loadSkillDoc(docsCollectionPath: string, docsPath: string): Promi
   try {
     sourceStats = await fs.stat(sourcePath)
   } catch (error) {
-    throwError(`Failed to load documentation file '${docsPath}'.`, { cause: error })
+    const message = `Failed to load documentation file '${docsPath}'.`
+
+    if (isFileNotFoundError(error)) {
+      throwError(message, { hint: 'Check the path in the skill definition and try again.' })
+    }
+
+    throwError(message, { cause: error })
   }
 
-  if (!sourceStats.isFile()) throw new Error(`Documentation file '${docsPath}' is not a file.`)
+  if (!sourceStats.isFile()) {
+    throwError(`Documentation path '${docsPath}' is not a file.`, {
+      hint: 'Specify a Markdown or MDX file in the skill definition and try again.',
+    })
+  }
 
   let source: string
 
@@ -56,7 +67,9 @@ async function loadSkillDoc(docsCollectionPath: string, docsPath: string): Promi
   const frontmatter = parseFrontmatter(source, docsPath)
 
   if (typeof frontmatter.data['title'] !== 'string') {
-    throw new TypeError(`Documentation file '${docsPath}' must have a valid 'title' frontmatter property.`)
+    throwError(`Documentation file '${docsPath}' has an invalid title.`, {
+      hint: `Fix 'title' in the file's frontmatter and try again.`,
+    })
   }
 
   return {

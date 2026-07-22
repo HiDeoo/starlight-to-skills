@@ -1,7 +1,7 @@
 import path from 'node:path'
 import process from 'node:process'
 import { createInterface } from 'node:readline/promises'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 
 import packageJson from '../../package.json' with { type: 'json' }
@@ -31,9 +31,9 @@ import {
   SkillCheckIssueMessages,
 } from './skill'
 import { loadSkillDocs } from './starlight'
-import { bold, dim, error, hint, primary, success } from './style'
+import { bold, dim, error, hint, primary, section, success } from './style'
 
-// TODO(HiDeoo) CLI UI
+// TODO(HiDeoo) show generated file contents for new skills and a unified diff for updates.
 // TODO(HiDeoo) Progress/logs
 
 export async function runCli(args: string[], cwd = process.cwd()): Promise<number> {
@@ -100,7 +100,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
       }
     }
 
-    if (!name) return logUsageError(`Missing skill name for command '${command}'.`, command)
+    if (!name) return logUsageError(`Command '${command}' requires a skill name.`, command)
 
     try {
       if (command === 'generate') return await runGenerateCandidate(name, rootDir)
@@ -118,24 +118,50 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
   const content = await generateSkillContent(config.model, definition, docs)
 
   if (content.status === 'error') {
-    await removeCandidateForInput(config.dataDir, definition.name, digest.inputHash)
-    // TODO(HiDeoo) hint on how to fix the issues?
+    try {
+      await removeCandidateForInput(config.dataDir, definition.name, digest.inputHash)
+    } catch (error) {
+      throwError(`Could not generate '${primary(definition.name)}'.`, { cause: error })
+    }
+
+    const issues = content.issues
+      .map((issue) => {
+        const paths = issue.docsPaths.map((docsPath) => `${dim(' -')} ${docsPath}`).join('\n')
+
+        // TODO(HiDeoo) pluralize
+        return `${section(ContentResultIssueLabels[issue.type])}
+
+${issue.details}
+
+${dim(`${issue.docsPaths.length === 1 ? 'Documentation file' : 'Documentation files'}:`)}
+
+${paths}`
+      })
+      .join('\n\n')
+
     return logError(
-      content.issues
-        .map((issue) => {
-          return `${ContentResultIssueLabels[issue.type]}: ${issue.details}\nDocumentation files: ${issue.docsPaths.join(' - ')}`
-        })
-        .join('\n\n'),
+      createError(`Could not generate '${primary(definition.name)}'.\n\n${issues}`, {
+        hint: `Resolve these issues and run 'starlight-to-skills generate ${definition.name}' again.`,
+      }),
     )
   }
 
-  const candidate = createCandidate(digest.inputHash, compileSkill(definition, content))
+  let candidate: ReturnType<typeof createCandidate>
 
-  const candidateUrl = await writeCandidate(config.dataDir, definition.name, candidate)
+  try {
+    candidate = createCandidate(digest.inputHash, compileSkill(definition, content))
+  } catch (error) {
+    throwError(`Could not generate '${primary(definition.name)}'.`, {
+      cause: error,
+      hint: `Run 'starlight-to-skills generate ${definition.name}' again.`,
+    })
+  }
 
-  logMessage(
-    `Candidate written to '${fileURLToPath(candidateUrl)}'.\n\nGenerated files:\n\n${candidate.files.map((file) => `- ${file.path}`).join('\n')}`,
-  )
+  await writeCandidate(config.dataDir, definition.name, candidate)
+
+  const paths = candidate.files.map((file) => `${dim(' -')} ${file.path}`).join('\n')
+
+  logMessage(`${success('Generated')} '${primary(definition.name)}'.\n\n${paths}`)
   return 0
 }
 

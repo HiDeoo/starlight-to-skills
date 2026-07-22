@@ -1,5 +1,6 @@
 import { z } from 'astro/zod'
 
+import { throwError } from '../libs/error'
 import { StarlightDocsExtensionsRegex } from '../libs/starlight'
 
 // https://agentskills.io/specification#name-field
@@ -7,16 +8,15 @@ export const SkillNameSchema = z
   .string()
   .min(1)
   .max(64)
-  .regex(
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-    'A skill name must be 1-64 characters and contain only lowercase letters (a-z), numbers (0-9), and hyphens. It cannot start or end with a hyphen or contain consecutive hyphens.',
-  )
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
 
 export function parseSkillName(name: string): string {
   const result = SkillNameSchema.safeParse(name)
 
   if (!result.success) {
-    throw new Error(`Invalid skill name '${name}'.\n\n${result.error.issues[0]?.message}`)
+    throwError(`Invalid skill name '${name}'.`, {
+      hint: 'Use 1-64 lowercase letters, numbers, or hyphens, without leading, trailing, or consecutive hyphens.',
+    })
   }
 
   return result.data

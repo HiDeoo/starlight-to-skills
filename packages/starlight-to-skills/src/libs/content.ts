@@ -45,11 +45,17 @@ export async function generateSkillContent(
     model,
   })
 
-  const output = await agent.generate(JSON.stringify(input), {
-    maxSteps: 1,
-    modelSettings: { maxRetries: 0 },
-    structuredOutput: { schema: ContentResultJSONSchema, errorStrategy: 'strict' },
-  })
+  let output: Awaited<ReturnType<typeof agent.generate>>
+
+  try {
+    output = await agent.generate(JSON.stringify(input), {
+      maxSteps: 1,
+      modelSettings: { maxRetries: 0 },
+      structuredOutput: { schema: ContentResultJSONSchema, errorStrategy: 'strict' },
+    })
+  } catch (error) {
+    throwError(`Model '${model}' failed to generate '${skill.name}'.`, { cause: error })
+  }
 
   const result = ContentResultSchema.safeParse(output.object)
 

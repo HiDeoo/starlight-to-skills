@@ -97,6 +97,16 @@ describe('generateSkillContent', () => {
     await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).resolves.toStrictEqual(content)
   })
 
+  test('rejects model failures', async () => {
+    mastra.generate.mockRejectedValue(new Error('Request failed.'))
+
+    await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toThrowErrorMatchingInlineSnapshot(`
+      [StarlightToSkillsError: Model 'openai/gpt-5.6-luna' failed to generate 'migrate-to-v2'.
+
+      Request failed.]
+    `)
+  })
+
   test('rejects invalid model output', async () => {
     mastra.generate.mockResolvedValue({ object: { result: { status: 'success' } } })
 

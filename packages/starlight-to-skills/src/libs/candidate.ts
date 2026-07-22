@@ -33,20 +33,22 @@ export async function writeCandidate(dataDir: URL, name: string, candidate: Cand
 
   const candidateUrl = getCandidateDirUrl(dataDir, name)
 
-  await fs.rm(candidateUrl, { force: true, recursive: true })
+  try {
+    await fs.rm(candidateUrl, { force: true, recursive: true })
 
-  for (const file of candidate.files) {
-    const fileUrl = resolveRelativeFilePathUrl(file.path, candidateUrl)
+    for (const file of candidate.files) {
+      const fileUrl = resolveRelativeFilePathUrl(file.path, candidateUrl)
 
-    await fs.mkdir(new URL('.', fileUrl), { recursive: true })
-    await fs.writeFile(fileUrl, file.content)
+      await fs.mkdir(new URL('.', fileUrl), { recursive: true })
+      await fs.writeFile(fileUrl, file.content)
+    }
+
+    const manifest = { inputHash: candidate.inputHash, files: candidate.fileDigests }
+
+    await fs.writeFile(new URL('manifest.json', candidateUrl), JSON.stringify(manifest, undefined, 2))
+  } catch (error) {
+    throwError(`Failed to save generated skill '${name}'.`, { cause: error })
   }
-
-  const manifest = { inputHash: candidate.inputHash, files: candidate.fileDigests }
-
-  await fs.writeFile(new URL('manifest.json', candidateUrl), JSON.stringify(manifest, undefined, 2))
-
-  return candidateUrl
 }
 
 export async function loadCandidate(dataDir: URL, name: string, expectedInputHash: string): Promise<Candidate> {

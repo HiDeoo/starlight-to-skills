@@ -39,7 +39,7 @@ test.for(['SKILL.md', 'references/details.md'])('rejects duplicate candidate fil
   const file = createCandidateFile(candidatePath)
   const files = candidatePath === 'SKILL.md' ? [file, file] : [createCandidateFile('SKILL.md'), file, file]
 
-  expect(() => validateCandidateFiles(files)).toThrow(`Duplicate candidate file path '${candidatePath}'.`)
+  expect(() => validateCandidateFiles(files)).toThrow(`Generated skill contains duplicate file '${candidatePath}'.`)
 })
 
 test('rejects collisions', () => {
@@ -50,14 +50,14 @@ test('rejects collisions', () => {
       createCandidateFile('references/topic.md/details.md'),
     ]),
   ).toThrowErrorMatchingInlineSnapshot(
-    `[Error: Candidate file path 'references/topic.md' conflicts with 'references/topic.md/details.md'.]`,
+    `[Error: Generated skill contains conflicting file paths: 'references/topic.md' and 'references/topic.md/details.md'.]`,
   )
 })
 
 test('rejects a 501-line SKILL.md', () => {
   expect(() =>
     validateCandidateFiles([{ path: 'SKILL.md', content: Array.from({ length: 501 }, () => 'Line.').join('\n') }]),
-  ).toThrowErrorMatchingInlineSnapshot(`[Error: Generated 'SKILL.md' must not exceed 500 lines.]`)
+  ).toThrowErrorMatchingInlineSnapshot(`[Error: Generated 'SKILL.md' exceeds the 500-line limit (501 lines).]`)
 })
 
 function createCandidateFile(path: string, content = 'Content.'): SkillFile {

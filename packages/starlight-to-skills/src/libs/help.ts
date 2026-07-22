@@ -1,6 +1,4 @@
-import { styleText } from 'node:util'
-
-import { bold, dim, primary } from './style'
+import { bold, dim, primary, section } from './style'
 
 const help = `
   ${bold(`${primary('starlight-to-skills')} <command> [options]`)}
@@ -17,6 +15,7 @@ const help = `
 
 // TODO(HiDeoo) Include command description
 // TODO(HiDeoo) typecheck everything based on commands using a union or somethjing.
+// TODO(HiDeoo) we should probably explain what's name
 const commandHelp: Record<string, string> = {
   approve: `
   ${bold(`${primary('starlight-to-skills approve')} <name> [options]`)}
@@ -45,8 +44,4 @@ const commandHelp: Record<string, string> = {
 export function getHelp(command?: string): string {
   if (!command || !Object.hasOwn(commandHelp, command)) return help
   return commandHelp[command] ?? help
-}
-
-function section(title: string) {
-  return styleText(['bgWhite', 'black'], ` ${title} `)
 }

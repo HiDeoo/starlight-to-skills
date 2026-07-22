@@ -28,7 +28,7 @@ export const CandidateFilePathsSchema = z.array(CandidateFilePathSchema).superRe
     if (paths.has(filePath)) {
       context.addIssue({
         code: 'custom',
-        message: `Duplicate candidate file path '${filePath}'.`,
+        message: `Generated skill contains duplicate file '${filePath}'.`,
         path: [index],
       })
     }
@@ -53,7 +53,7 @@ export const CandidateFilePathsSchema = z.array(CandidateFilePathSchema).superRe
 
       context.addIssue({
         code: 'custom',
-        message: `Candidate file path '${ancestorPath}' conflicts with '${filePath}'.`,
+        message: `Generated skill contains conflicting file paths: '${ancestorPath}' and '${filePath}'.`,
         path: [index],
       })
       break
@@ -72,7 +72,7 @@ export function validateCandidateFiles(files: SkillFile[]) {
     if (lines.at(-1) === '') lines.pop()
 
     if (lines.length > maxSkillLines) {
-      throw new Error(`Generated 'SKILL.md' must not exceed ${maxSkillLines} lines.`)
+      throw new Error(`Generated 'SKILL.md' exceeds the ${maxSkillLines}-line limit (${lines.length} lines).`)
     }
 
     return

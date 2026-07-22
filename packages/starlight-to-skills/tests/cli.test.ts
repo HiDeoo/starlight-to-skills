@@ -208,7 +208,7 @@ Change foo to bar.`,
       expect(await runCli(['generate'])).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Missing skill name for command 'generate'.
+        "Error: Command 'generate' requires a skill name.
 
         Hint: Run 'starlight-to-skills generate --help' for more information."
       `)
@@ -230,7 +230,7 @@ Change foo to bar.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Invalid skill name 'invalid--name'.
 
-        A skill name must be 1-64 characters and contain only lowercase letters (a-z), numbers (0-9), and hyphens. It cannot start or end with a hyphen or contain consecutive hyphens."
+        Hint: Use 1-64 lowercase letters, numbers, or hyphens, without leading, trailing, or consecutive hyphens."
       `)
     })
 
@@ -241,13 +241,28 @@ Change foo to bar.`,
     })
 
     test('generates a candidate', async () => {
+      mastra.generate.mockResolvedValueOnce({
+        object: {
+          data: {
+            status: 'success',
+            body: 'Change foo to bar and then change baz to quux.',
+            references: [{ path: 'references/details.md', body: 'Additional details.' }],
+          },
+        },
+      })
+
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
 
       const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
 
       await expect(fs.stat(candidateDir)).resolves.toBeDefined()
-      expect(getLastLogMessage(logSpy)).toContain(candidateDir)
-      expect(getLastLogMessage(logSpy)).toContain('Generated files:\n\n- SKILL.md')
+
+      expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`
+        "Generated 'test-skill'.
+
+         - SKILL.md
+         - references/details.md"
+      `)
     })
 
     test('reports issues', async () => {
@@ -263,7 +278,7 @@ Change foo to bar.`,
               },
               {
                 type: 'source-conflict',
-                docsPaths: ['./guide.md'],
+                docsPaths: ['./guide.md', './changelog.md'],
                 details: 'The migration guide is for v3.',
               },
             ],
@@ -280,12 +295,27 @@ Change foo to bar.`,
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-      "Error: File incomplete: The migration steps are missing.
-      Documentation files: ./guide.md
+        "Error: Could not generate 'test-skill'.
 
-      File conflict: The migration guide is for v3.
-      Documentation files: ./guide.md"
-    `)
+         File incomplete 
+
+        The migration steps are missing.
+
+        Documentation file:
+
+         - ./guide.md
+
+         File conflict 
+
+        The migration guide is for v3.
+
+        Documentation files:
+
+         - ./guide.md
+         - ./changelog.md
+
+        Hint: Resolve these issues and run 'starlight-to-skills generate test-skill' again."
+      `)
 
       await expect(fs.stat(candidateDir)).rejects.toMatchObject({ code: 'ENOENT' })
     })
@@ -296,7 +326,7 @@ Change foo to bar.`,
       expect(await runCli(['approve'])).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Missing skill name for command 'approve'.
+        "Error: Command 'approve' requires a skill name.
 
         Hint: Run 'starlight-to-skills approve --help' for more information."
       `)
@@ -628,7 +658,7 @@ Change foo to bar.`,
 
         Invalid skill name 'invalid--skill'.
 
-        A skill name must be 1-64 characters and contain only lowercase letters (a-z), numbers (0-9), and hyphens. It cannot start or end with a hyphen or contain consecutive hyphens.
+        Hint: Use 1-64 lowercase letters, numbers, or hyphens, without leading, trailing, or consecutive hyphens.
 
         test-skill: Ok"
       `)
@@ -658,7 +688,7 @@ Change foo to bar.`,
 
         Multiple skill definitions found for 'duplicate'.
 
-        Hint: Rename duplicate 'duplicate.skill.ts' files."
+        Hint: Keep only one skill definition named 'duplicate.skill.ts'."
       `)
     })
 
@@ -706,7 +736,7 @@ Change foo to bar.`,
 
         Invalid skill name '..'.
 
-        A skill name must be 1-64 characters and contain only lowercase letters (a-z), numbers (0-9), and hyphens. It cannot start or end with a hyphen or contain consecutive hyphens."
+        Hint: Use 1-64 lowercase letters, numbers, or hyphens, without leading, trailing, or consecutive hyphens."
       `)
     })
   })

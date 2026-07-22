@@ -23,3 +23,7 @@ export function dim(text: string) {
 export function bold(text: string) {
   return styleText('bold', text)
 }
+
+export function section(title: string) {
+  return styleText(['bgWhite', 'black'], ` ${title} `)
+}

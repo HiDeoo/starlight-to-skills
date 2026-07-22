@@ -51,10 +51,12 @@ describe('createCandidate', () => {
 describe('persistence', () => {
   let dataDir: URL
   let testDir: string
+  let candidateUrl: URL
 
   beforeEach(async () => {
     testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
     dataDir = pathToFileURL(path.join(testDir, '.starlight-to-skills', path.sep))
+    candidateUrl = new URL('test-skill/', dataDir)
   })
 
   afterEach(async () => {
@@ -68,7 +70,7 @@ describe('persistence', () => {
         { path: 'references/details.md', content: 'Reference content.' },
       ])
 
-      const candidateUrl = await writeCandidate(dataDir, 'test-skill', candidate)
+      await writeCandidate(dataDir, 'test-skill', candidate)
 
       await expect(fs.readFile(new URL('SKILL.md', candidateUrl), 'utf8')).resolves.toMatchInlineSnapshot(
         `"Skill content."`,
@@ -92,8 +94,6 @@ describe('persistence', () => {
         ]
       }"
     `)
-
-      expect(candidateUrl).toEqual(new URL('test-skill/', dataDir))
     })
 
     test('replaces a candidate', async () => {
@@ -148,7 +148,7 @@ describe('persistence', () => {
     })
 
     test('rejects invalid paths', async () => {
-      const candidateUrl = await writeCandidate(
+      await writeCandidate(
         dataDir,
         'test-skill',
         createCandidate('old-input-hash', [{ path: 'SKILL.md', content: 'Old skill content.' }]),
@@ -200,7 +200,7 @@ describe('persistence', () => {
     })
 
     test('rejects a manually updated candidate', async () => {
-      const candidateUrl = await writeCandidate(
+      await writeCandidate(
         dataDir,
         'test-skill',
         createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
@@ -215,7 +215,7 @@ describe('persistence', () => {
     })
 
     test('rejects an invalid manifested path', async () => {
-      const candidateUrl = await writeCandidate(
+      await writeCandidate(
         dataDir,
         'test-skill',
         createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
@@ -238,7 +238,7 @@ describe('persistence', () => {
 
   describe('removeCandidateForInput', () => {
     test('removes a candidate', async () => {
-      const candidateUrl = await writeCandidate(
+      await writeCandidate(
         dataDir,
         'test-skill',
         createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
@@ -250,7 +250,7 @@ describe('persistence', () => {
     })
 
     test('preserves a candidate with a different input hash', async () => {
-      const candidateUrl = await writeCandidate(
+      await writeCandidate(
         dataDir,
         'test-skill',
         createCandidate('old-input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
@@ -266,7 +266,7 @@ describe('persistence', () => {
     })
 
     test('removes a candidate with an invalid manifest', async () => {
-      const candidateUrl = await writeCandidate(
+      await writeCandidate(
         dataDir,
         'test-skill',
         createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),

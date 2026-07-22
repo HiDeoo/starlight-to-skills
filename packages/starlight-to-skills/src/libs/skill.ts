@@ -74,7 +74,7 @@ export function getSkillDefinitionUrlByName(definitionUrls: URL[], name: string)
     })
   } else if (matchingUrls.length > 1) {
     throwError(`Multiple skill definitions found for '${skillName}'.`, {
-      hint: `Rename duplicate '${filename}' files.`,
+      hint: `Keep only one skill definition named '${filename}'.`,
     })
   }
 
