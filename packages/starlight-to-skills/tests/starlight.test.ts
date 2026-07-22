@@ -42,38 +42,36 @@ describe('loadSkillDocs', () => {
     `)
   })
 
-  test('rejects an unknown documentation source', async () => {
+  test('rejects an unknown documentation file', async () => {
     const skill = { docs: ['./unknown.md'] } as SkillDefinition
 
-    await expect(loadSkillDocs(config, skill)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Failed to load documentation source './unknown.md'.]`,
-    )
+    await expect(loadSkillDocs(config, skill)).rejects.toThrow(/Failed to load documentation file '\.\/unknown\.md'./)
   })
 
   test.for(['../outside.md', '/outside.md'])(
-    'rejects documentation source path %j outside of Starlight docs collection',
+    'rejects documentation file path %j outside of Starlight docs collection',
     async (docsPath) => {
       const skill = { docs: [docsPath] } as SkillDefinition
 
       await expect(loadSkillDocs(config, skill)).rejects.toThrow(
-        `Documentation source '${docsPath}' must resolve within 'src/content/docs/'.`,
+        `Documentation file '${docsPath}' must be inside 'src/content/docs/'.`,
       )
     },
   )
 
-  test('rejects a documentation source that is not a file', async () => {
+  test('rejects a documentation file that is not a file', async () => {
     const skill = { docs: ['./directory.md'] } as SkillDefinition
 
     await expect(loadSkillDocs(config, skill)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Documentation source './directory.md' is not a file.]`,
+      `[Error: Documentation file './directory.md' is not a file.]`,
     )
   })
 
-  test('rejects a documentation source with an invalid frontmatter', async () => {
+  test('rejects a documentation file with an invalid frontmatter', async () => {
     const skill = { docs: ['./invalid-frontmatter.md'] } as SkillDefinition
 
     await expect(loadSkillDocs(config, skill)).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[TypeError: Documentation source './invalid-frontmatter.md' must have a valid 'title' frontmatter property.]`,
+      `[TypeError: Documentation file './invalid-frontmatter.md' must have a valid 'title' frontmatter property.]`,
     )
   })
 })

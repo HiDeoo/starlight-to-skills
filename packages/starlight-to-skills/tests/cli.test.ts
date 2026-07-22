@@ -280,11 +280,11 @@ Change foo to bar.`,
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-      "Error: Source incomplete: The migration steps are missing.
-      Documentation sources: ./guide.md
+      "Error: File incomplete: The migration steps are missing.
+      Documentation files: ./guide.md
 
-      Source conflict: The migration guide is for v3.
-      Documentation sources: ./guide.md"
+      File conflict: The migration guide is for v3.
+      Documentation files: ./guide.md"
     `)
 
       await expect(fs.stat(candidateDir)).rejects.toMatchObject({ code: 'ENOENT' })
@@ -298,7 +298,7 @@ Change foo to bar.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Missing skill name for command 'approve'.
 
-        Hint: Run 'starlight-to-skills generate --help' for more information."
+        Hint: Run 'starlight-to-skills approve --help' for more information."
       `)
     })
 
@@ -336,15 +336,17 @@ Change foo to bar.`,
       await expect(fs.stat(candidateDir)).resolves.toBeDefined()
       await expect(fs.stat(skillDir)).resolves.toBeDefined()
 
-      expect(getLastLogMessage(logSpy)).toContain(skillDir)
+      expect(getLastLogMessage(logSpy)).toBe("Approved 'test-skill'.")
     })
 
     test('rejects a missing candidate', async () => {
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(1)
 
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(
-        `"Error: No candidate found for skill 'test-skill'. Run 'starlight-to-skills generate test-skill' first."`,
-      )
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: No generated skill found for 'test-skill'.
+
+        Hint: Run 'starlight-to-skills generate test-skill'."
+      `)
     })
 
     test('rejects an outdated candidate', async () => {
@@ -354,9 +356,11 @@ Change foo to bar.`,
 
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(1)
 
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(
-        `"Error: Candidate for skill 'test-skill' is outdated. Run 'starlight-to-skills generate test-skill' again."`,
-      )
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Generated skill for 'test-skill' is out of date.
+
+        Hint: Run 'starlight-to-skills generate test-skill' again."
+      `)
     })
 
     describe('--existing', () => {
@@ -390,9 +394,11 @@ Change foo to bar.`,
       test('rejects approving a missing existing skill', async () => {
         expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(1)
 
-        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(
-          `"Error: Skill 'test-skill' has not yet been approved."`,
-        )
+        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+          "Error: No approved skill found for 'test-skill'.
+
+          Hint: If needed, run 'starlight-to-skills generate test-skill', then run 'starlight-to-skills approve test-skill' without '--existing'."
+        `)
       })
 
       test('rejects approving an outdated existing skill', async () => {
@@ -408,7 +414,13 @@ Change foo to bar.`,
 
         expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(1)
 
-        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`"Error: The skill 'test-skill' has changed."`)
+        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+          "Error: The following files in approved skill 'test-skill' have changed:
+
+           - SKILL.md
+
+          Hint: Restore the listed files or run 'starlight-to-skills generate test-skill'."
+        `)
 
         await expect(fs.readFile(skillPath, 'utf8')).resolves.toContain('Update.')
         await expect(fs.readFile(manifestPath, 'utf8')).resolves.toBe(manifestBefore)
@@ -471,7 +483,7 @@ Change foo to bar.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Issues:
 
-        - Documentation source changed
+        - Documentation file changed
         - Approved skill changed: SKILL.md
 
         Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate."
@@ -489,7 +501,7 @@ Change foo to bar.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Issues:
 
-        - Documentation source changed
+        - Documentation file changed
 
         Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate.
 
@@ -564,7 +576,7 @@ Change foo to bar.`,
 
         Issues:
 
-        - Documentation source changed
+        - Documentation file changed
 
         Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate.
 
@@ -644,7 +656,9 @@ Change foo to bar.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: duplicate: Issue
 
-        Found multiple skill definitions named 'duplicate.skill.ts'."
+        Multiple skill definitions found for 'duplicate'.
+
+        Hint: Rename duplicate 'duplicate.skill.ts' files."
       `)
     })
 

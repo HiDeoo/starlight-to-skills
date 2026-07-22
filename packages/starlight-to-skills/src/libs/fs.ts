@@ -1,4 +1,7 @@
 import fs from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+
+import { throwError } from './error'
 
 const pluginDirectoryName = '.starlight-to-skills'
 
@@ -23,12 +26,24 @@ export function resolveRelativeFilePathUrl(filePath: string, base: URL): URL {
 }
 
 export async function ensureDirectory(url: URL) {
+  const directoryUrl = new URL(url)
+
+  if (directoryUrl.pathname.endsWith('/')) {
+    // A trailing slash makes `stat()` throw `ENOTDIR` when a file exists at the path.
+    directoryUrl.pathname = directoryUrl.pathname.slice(0, -1)
+  }
+
   try {
-    const stats = await fs.stat(url)
-    if (!stats.isDirectory()) throw new Error(`Failed to create directory because a file already exists at '${url}'.`)
+    const stats = await fs.stat(directoryUrl)
+    if (!stats.isDirectory()) {
+      throwError(
+        `Failed to create directory '${fileURLToPath(directoryUrl)}' because a file already exists at that path.`,
+        { hint: 'Move the existing file and try again.' },
+      )
+    }
   } catch (error) {
     if (!isFileNotFoundError(error)) throw error
-    await fs.mkdir(url, { recursive: true })
+    await fs.mkdir(directoryUrl, { recursive: true })
   }
 }
 

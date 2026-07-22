@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
@@ -180,9 +180,10 @@ describe('persistence', () => {
     })
 
     test('rejects a missing candidate', async () => {
-      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toThrowErrorMatchingInlineSnapshot(
-        `[Error: No candidate found for skill 'test-skill'. Run 'starlight-to-skills generate test-skill' first.]`,
-      )
+      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchObject({
+        message: "No generated skill found for 'test-skill'.",
+        hint: "Run 'starlight-to-skills generate test-skill'.",
+      })
     })
 
     test('rejects an outdated candidate', async () => {
@@ -192,9 +193,10 @@ describe('persistence', () => {
         createCandidate('old-input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
       )
 
-      await expect(loadCandidate(dataDir, 'test-skill', 'new-input-hash')).rejects.toThrowErrorMatchingInlineSnapshot(
-        `[Error: Candidate for skill 'test-skill' is outdated. Run 'starlight-to-skills generate test-skill' again.]`,
-      )
+      await expect(loadCandidate(dataDir, 'test-skill', 'new-input-hash')).rejects.toMatchObject({
+        message: "Generated skill for 'test-skill' is out of date.",
+        hint: "Run 'starlight-to-skills generate test-skill' again.",
+      })
     })
 
     test('rejects a manually updated candidate', async () => {
@@ -206,9 +208,10 @@ describe('persistence', () => {
 
       await fs.writeFile(new URL('SKILL.md', candidateUrl), 'Edited skill content.')
 
-      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toThrowErrorMatchingInlineSnapshot(
-        `[Error: Candidate for skill 'test-skill' is invalid. Run 'starlight-to-skills generate test-skill' again.]`,
-      )
+      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchObject({
+        message: "Generated skill for 'test-skill' is invalid.",
+        hint: "Run 'starlight-to-skills generate test-skill' again.",
+      })
     })
 
     test('rejects an invalid manifested path', async () => {
@@ -226,9 +229,10 @@ describe('persistence', () => {
 
       await fs.writeFile(manifestUrl, JSON.stringify(manifest))
 
-      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toThrowErrorMatchingInlineSnapshot(
-        `[Error: Candidate for skill 'test-skill' is invalid. Run 'starlight-to-skills generate test-skill' again.]`,
-      )
+      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchObject({
+        message: "Generated skill for 'test-skill' is invalid.",
+        hint: "Run 'starlight-to-skills generate test-skill' again.",
+      })
     })
   })
 
@@ -313,7 +317,9 @@ describe('persistence', () => {
         { path: 'references/details.md', content: 'Reference content.' },
       ])
 
-      const approvedSkillUrl = await approveCandidate(config, skill, digest, candidate)
+      await approveCandidate(config, skill, digest, candidate)
+
+      const approvedSkillUrl = new URL(`${skill.name}/`, config.outputDir)
 
       await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toBe('Skill content.')
       await expect(fs.readFile(new URL('references/details.md', approvedSkillUrl), 'utf8')).resolves.toBe(
@@ -346,12 +352,14 @@ describe('persistence', () => {
         ]),
       )
 
-      const approvedSkillUrl = await approveCandidate(
+      await approveCandidate(
         config,
         skill,
         digest,
         createCandidate('input-hash', [{ path: 'SKILL.md', content: 'New skill content.' }]),
       )
+
+      const approvedSkillUrl = new URL(`${skill.name}/`, config.outputDir)
 
       await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toMatchInlineSnapshot(
         `"New skill content."`,
@@ -363,7 +371,7 @@ describe('persistence', () => {
     })
 
     test('rejects an invalid candidate', async () => {
-      const approvedSkillUrl = await approveCandidate(
+      await approveCandidate(
         config,
         skill,
         digest,
@@ -375,11 +383,13 @@ describe('persistence', () => {
       expect.assert(file)
       file.path = '../outside.md'
 
-      await expect(approveCandidate(config, skill, digest, candidate)).rejects.toThrow(
-        "Invalid candidate file path '../outside.md'.",
+      await expect(approveCandidate(config, skill, digest, candidate)).rejects.toThrowErrorMatchingInlineSnapshot(
+        `[Error: Invalid candidate file path '../outside.md'.]`,
       )
 
-      await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toBe('Old skill content.')
+      await expect(fs.readFile(new URL(`${skill.name}/SKILL.md`, config.outputDir), 'utf8')).resolves.toBe(
+        'Old skill content.',
+      )
     })
 
     test('rejects an unmanaged skill', async () => {
@@ -395,9 +405,10 @@ describe('persistence', () => {
           digest,
           createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Candidate content.' }]),
         ),
-      ).rejects.toThrowErrorMatchingInlineSnapshot(
-        `[Error: The existing 'test-skill' skill is not managed by Starlight to Skills.]`,
-      )
+      ).rejects.toMatchObject({
+        message: `Cannot approve 'test-skill' because a file or directory already exists at '${fileURLToPath(approvedSkillUrl)}'.`,
+        hint: 'Move the existing file or directory and try again.',
+      })
 
       await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toMatchInlineSnapshot(
         `"Unmanaged content."`,

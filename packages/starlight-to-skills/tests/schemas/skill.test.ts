@@ -38,7 +38,7 @@ describe('definition', () => {
     expect(result.error.issues[0]?.message).toMatchInlineSnapshot(`"Too small: expected string to have >=1 characters"`)
   })
 
-  test('requires at least one documentation source', () => {
+  test('requires at least one documentation file', () => {
     const result = SkillDefinitionSchema.safeParse({ ...baseDefinition, docs: [] })
 
     expect.assert(!result.success)
@@ -47,7 +47,7 @@ describe('definition', () => {
     expect(result.error.issues[0]?.message).toMatchInlineSnapshot(`"Too small: expected array to have >=1 items"`)
   })
 
-  test('rejects duplicate documentation sources', () => {
+  test('rejects duplicate documentation files', () => {
     const result = SkillDefinitionSchema.safeParse({
       ...baseDefinition,
       docs: ['./getting-started.mdx', './guides/custom-thing.md', './getting-started.mdx'],
@@ -57,18 +57,18 @@ describe('definition', () => {
 
     expect(result.error.issues[0]?.path).toStrictEqual(['docs', 2])
     expect(result.error.issues[0]?.message).toMatchInlineSnapshot(
-      `"Duplicate documentation source path './getting-started.mdx'."`,
+      `"Duplicate documentation file path './getting-started.mdx'."`,
     )
   })
 
-  test('rejects unsupported documentation source extensions', () => {
+  test('rejects unsupported documentation file extensions', () => {
     const result = SkillDefinitionSchema.safeParse({ ...baseDefinition, docs: ['./getting-started.mdoc'] })
 
     expect.assert(!result.success)
 
     expect(result.error.issues[0]?.path).toStrictEqual(['docs', 0])
     expect(result.error.issues[0]?.message).toMatchInlineSnapshot(
-      `"Documentation source must use a supported Markdown or MDX extension."`,
+      `"A documentation file must use a supported Markdown or MDX extension."`,
     )
   })
 })

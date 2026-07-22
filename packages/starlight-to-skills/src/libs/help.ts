@@ -15,6 +15,8 @@ const help = `
        -h, --help  ${dim('Show this help message.')}
     -v, --version  ${dim('Show the version number.')}`
 
+// TODO(HiDeoo) Include command description
+// TODO(HiDeoo) typecheck everything based on commands using a union or somethjing.
 const commandHelp: Record<string, string> = {
   approve: `
   ${bold(`${primary('starlight-to-skills approve')} <name> [options]`)}

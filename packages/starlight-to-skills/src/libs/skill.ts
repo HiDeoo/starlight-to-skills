@@ -11,6 +11,7 @@ import { makeSkillManifest, SkillManifestSchema, type SkillManifest } from '../s
 import { parseSkillName } from '../schemas/skill'
 
 import { computeSkillFileDigest, GeneratorVersion, normalizeLineEndings } from './digest'
+import { throwError } from './error'
 import {
   getSkillManifestDirUrl,
   getSkillManifestUrl,
@@ -27,7 +28,7 @@ const skillManifestSuffix = '.json'
 // TODO(HiDeoo)
 export const SkillCheckIssueMessages = {
   'definition-change': 'Skill definition changed',
-  'source-change': 'Documentation source changed',
+  'source-change': 'Documentation file changed',
   'model-change': 'Model changed',
   'generator-change': 'Generation version changed',
   'approved-skill-change': 'Approved skill changed',
@@ -44,10 +45,17 @@ export function getSkillNameByManifestUrl(url: URL): string {
 export async function discoverSkillDefinitions(config: StarlightToSkillsConfig): Promise<URL[]> {
   const definitionUrls: URL[] = []
 
-  for await (const entry of fs.glob(config.definitions, { cwd: fileURLToPath(config.rootDir), withFileTypes: true })) {
-    if (!entry.isFile()) continue
+  try {
+    for await (const entry of fs.glob(config.definitions, {
+      cwd: fileURLToPath(config.rootDir),
+      withFileTypes: true,
+    })) {
+      if (!entry.isFile()) continue
 
-    definitionUrls.push(pathToFileURL(path.join(entry.parentPath, entry.name)))
+      definitionUrls.push(pathToFileURL(path.join(entry.parentPath, entry.name)))
+    }
+  } catch (error) {
+    throwError('Failed to find skill definitions.', { cause: error })
   }
 
   return definitionUrls.toSorted()
@@ -60,8 +68,15 @@ export function getSkillDefinitionUrlByName(definitionUrls: URL[], name: string)
   const matchingUrls = definitionUrls.filter((url) => getSkillNameByUrl(url, skillDefinitionSuffix) === skillName)
   const [matchingUrl] = matchingUrls
 
-  if (!matchingUrl) throw new Error(`Failed to find skill definition '${filename}'.`)
-  if (matchingUrls.length > 1) throw new Error(`Found multiple skill definitions named '${filename}'.`)
+  if (!matchingUrl) {
+    throwError(`No skill definition found for '${skillName}'.`, {
+      hint: `Check the skill name or create '${filename}'.`,
+    })
+  } else if (matchingUrls.length > 1) {
+    throwError(`Multiple skill definitions found for '${skillName}'.`, {
+      hint: `Rename duplicate '${filename}' files.`,
+    })
+  }
 
   return matchingUrl
 }
@@ -88,13 +103,21 @@ export async function discoverSkillManifests(outputDir: URL): Promise<URL[]> {
 }
 
 export async function loadSkillManifest(url: URL, name: string): Promise<SkillManifest> {
+  let content: string
+
   try {
-    const data: unknown = JSON.parse(await fs.readFile(url, 'utf8'))
+    content = await fs.readFile(url, 'utf8')
+  } catch (error) {
+    throwError(`Failed to load approved skill '${name}'.`, { cause: error })
+  }
+
+  try {
+    const data: unknown = JSON.parse(content)
     const manifest = SkillManifestSchema.parse(data)
     if (manifest.name !== name) throw new Error(`Invalid manifest for skill '${name}': invalid name.`)
     return manifest
   } catch {
-    throw new Error(`Invalid manifest for skill '${name}'.`)
+    throw new Error(`Failed to load approved skill '${name}'.`)
   }
 }
 
@@ -121,7 +144,7 @@ export async function loadSkill(outputDir: URL, name: string) {
         fileMismatches.push(file.path)
         continue
       }
-      throw error
+      throwError(`Failed to load approved skill '${name}'.`, { cause: error })
     }
 
     const [digest] = computeSkillFileDigest([{ path: file.path, content }])
@@ -170,36 +193,60 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
   const skillDirUrl = resolveDirectoryUrl(skill.name, config.outputDir)
   const manifestUrl = getSkillManifestUrl(config.outputDir, skill.name)
 
-  if (!(await pathExists(skillDirUrl)) || !(await pathExists(manifestUrl))) {
-    throw new Error(`Skill '${skill.name}' has not yet been approved.`)
+  let hasSkill: boolean
+  let hasManifest: boolean
+
+  try {
+    hasSkill = await pathExists(skillDirUrl)
+    hasManifest = await pathExists(manifestUrl)
+  } catch (error) {
+    throwError(`Failed to approve '${skill.name}'.`, { cause: error })
+  }
+
+  if (!hasSkill || !hasManifest) {
+    throwError(`No approved skill found for '${skill.name}'.`, {
+      hint: `If needed, run 'starlight-to-skills generate ${skill.name}', then run 'starlight-to-skills approve ${skill.name}' without '--existing'.`,
+    })
   }
 
   const { manifest, fileMismatches } = await loadSkill(config.outputDir, skill.name)
 
   if (fileMismatches.length > 0) {
-    // TODO(HiDeoo)
-    throw new Error(`The skill '${skill.name}' has changed.`)
+    throwError(
+      `The following files in approved skill '${skill.name}' have changed:\n\n${fileMismatches
+        .map((path) => ` - ${path}`)
+        .join('\n')}`,
+      { hint: `Restore the listed files or run 'starlight-to-skills generate ${skill.name}'.` },
+    )
   }
 
   if (
     manifest.definitionHash !== digest.definitionHash &&
     !(await hasMatchingSkillDescription(config.outputDir, skill.name, skill.description))
   ) {
-    throw new Error(
-      `The description for skill '${skill.name}' has changed. Run 'starlight-to-skills generate ${skill.name}' first.`,
-    )
+    throwError(`Description for '${skill.name}' has changed.`, {
+      hint: `Run 'starlight-to-skills generate ${skill.name}'.`,
+    })
   }
 
-  await fs.writeFile(
-    manifestUrl,
-    JSON.stringify(makeSkillManifest(config, skill, digest, manifest.files), undefined, 2),
-  )
-
-  return skillDirUrl
+  try {
+    await fs.writeFile(
+      manifestUrl,
+      JSON.stringify(makeSkillManifest(config, skill, digest, manifest.files), undefined, 2),
+    )
+  } catch (error) {
+    throwError(`Failed to approve '${skill.name}'.`, { cause: error })
+  }
 }
 
 export async function hasMatchingSkillDescription(outputDir: URL, name: string, expectedDescription: string) {
-  const content = await fs.readFile(new URL('SKILL.md', resolveDirectoryUrl(name, outputDir)), 'utf8')
+  let content: string
+
+  try {
+    content = await fs.readFile(new URL('SKILL.md', resolveDirectoryUrl(name, outputDir)), 'utf8')
+  } catch (error) {
+    throwError(`Failed to load approved skill '${name}'.`, { cause: error })
+  }
 
   try {
     const description: unknown = matter(content).data['description']

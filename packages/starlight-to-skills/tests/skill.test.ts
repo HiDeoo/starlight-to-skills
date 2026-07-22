@@ -57,7 +57,7 @@ describe('getSkillDefinitionUrlByName', () => {
 
   test('rejects an unknown skill name', () => {
     expect(() => getSkillDefinitionUrlByName([], 'unknown')).toThrowErrorMatchingInlineSnapshot(
-      `[Error: Failed to find skill definition 'unknown.skill.ts'.]`,
+      `[StarlightToSkillsError: No skill definition found for 'unknown'.]`,
     )
   })
 
@@ -83,7 +83,7 @@ describe('getSkillDefinitionUrlByName', () => {
         [new URL('a/duplicate.skill.ts', rootDir), new URL('b/duplicate.skill.ts', rootDir)],
         'duplicate',
       ),
-    ).toThrowErrorMatchingInlineSnapshot(`[Error: Found multiple skill definitions named 'duplicate.skill.ts'.]`)
+    ).toThrowErrorMatchingInlineSnapshot(`[StarlightToSkillsError: Multiple skill definitions found for 'duplicate'.]`)
   })
 })
 
@@ -178,7 +178,7 @@ describe('loadSkill', () => {
     )
 
     await expect(loadSkill(outputDir, 'test-skill')).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Invalid manifest for skill 'test-skill'.]`,
+      `[Error: Failed to load approved skill 'test-skill'.]`,
     )
   })
 })
@@ -327,8 +327,9 @@ describe('approveSkill', () => {
   })
 
   test('approves an existing skill', async () => {
-    const approvedSkillUrl = await approveCandidate(config, skill, digest, candidate)
+    await approveCandidate(config, skill, digest, candidate)
 
+    const approvedSkillUrl = new URL(`${skill.name}/`, config.outputDir)
     const manifestUrl = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
 
     const contentBefore = await fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')
@@ -359,8 +360,9 @@ describe('approveSkill', () => {
   })
 
   test('rejects approving an existing skill after a description change', async () => {
-    const approvedSkillUrl = await approveCandidate(config, skill, digest, candidate)
+    await approveCandidate(config, skill, digest, candidate)
 
+    const approvedSkillUrl = new URL(`${skill.name}/`, config.outputDir)
     const manifestUrl = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
 
     const contentBefore = await fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')
@@ -372,9 +374,10 @@ describe('approveSkill', () => {
         { ...skill, description: 'Migrate a project to v3.' },
         { ...digest, inputHash: 'updated-input-hash', definitionHash: 'updated-definition-hash' },
       ),
-    ).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: The description for skill 'test-skill' has changed. Run 'starlight-to-skills generate test-skill' first.]`,
-    )
+    ).rejects.toMatchObject({
+      message: "Description for 'test-skill' has changed.",
+      hint: "Run 'starlight-to-skills generate test-skill'.",
+    })
 
     await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toBe(contentBefore)
 

@@ -57,7 +57,7 @@ test('rejects collisions', () => {
 test('rejects a 501-line SKILL.md', () => {
   expect(() =>
     validateCandidateFiles([{ path: 'SKILL.md', content: Array.from({ length: 501 }, () => 'Line.').join('\n') }]),
-  ).toThrowErrorMatchingInlineSnapshot(`[Error: Candidate 'SKILL.md' must not contain more than 500 lines.]`)
+  ).toThrowErrorMatchingInlineSnapshot(`[Error: Generated 'SKILL.md' must not exceed 500 lines.]`)
 })
 
 function createCandidateFile(path: string, content = 'Content.'): SkillFile {

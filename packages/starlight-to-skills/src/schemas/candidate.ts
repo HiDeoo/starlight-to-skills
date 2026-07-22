@@ -72,7 +72,7 @@ export function validateCandidateFiles(files: SkillFile[]) {
     if (lines.at(-1) === '') lines.pop()
 
     if (lines.length > maxSkillLines) {
-      throw new Error(`Candidate 'SKILL.md' must not contain more than ${maxSkillLines} lines.`)
+      throw new Error(`Generated 'SKILL.md' must not exceed ${maxSkillLines} lines.`)
     }
 
     return

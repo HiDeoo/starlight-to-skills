@@ -9,6 +9,8 @@ import { parse as parseToml } from 'smol-toml'
 import type { StarlightToSkillsConfig } from '../schemas/config'
 import type { SkillDefinition } from '../schemas/skill'
 
+import { throwError } from './error'
+
 // https://github.com/withastro/starlight/blob/bbab7b19e74de7f1758dafea52b16f8011149cd1/packages/starlight/loaders.ts#L6
 export const StarlightDocsExtensionsRegex = /\.(?:markdown|mdown|mkdn|mkd|mdwn|md|mdx)$/
 
@@ -28,7 +30,7 @@ async function loadSkillDoc(docsCollectionPath: string, docsPath: string): Promi
   const [firstSegment] = normalizedDocsPath.split(path.sep)
 
   if (path.parse(normalizedDocsPath).root !== '' || firstSegment === '..') {
-    throw new Error(`Documentation source '${docsPath}' must resolve within '${docsCollectionDir}'.`)
+    throw new Error(`Documentation file '${docsPath}' must be inside '${docsCollectionDir}'.`)
   }
 
   const sourcePath = path.resolve(docsCollectionPath, docsPath)
@@ -38,24 +40,23 @@ async function loadSkillDoc(docsCollectionPath: string, docsPath: string): Promi
   try {
     sourceStats = await fs.stat(sourcePath)
   } catch (error) {
-    throw new Error(`Failed to load documentation source '${docsPath}'.`, { cause: error })
+    throwError(`Failed to load documentation file '${docsPath}'.`, { cause: error })
   }
 
-  if (!sourceStats.isFile()) throw new Error(`Documentation source '${docsPath}' is not a file.`)
+  if (!sourceStats.isFile()) throw new Error(`Documentation file '${docsPath}' is not a file.`)
 
   let source: string
 
   try {
     source = await fs.readFile(sourcePath, 'utf8')
   } catch (error) {
-    throw new Error(`Failed to read documentation source '${docsPath}'.`, { cause: error })
+    throwError(`Failed to read documentation file '${docsPath}'.`, { cause: error })
   }
 
   const frontmatter = parseFrontmatter(source, docsPath)
 
   if (typeof frontmatter.data['title'] !== 'string') {
-    // TODO(HiDeoo)
-    throw new TypeError(`Documentation source '${docsPath}' must have a valid 'title' frontmatter property.`)
+    throw new TypeError(`Documentation file '${docsPath}' must have a valid 'title' frontmatter property.`)
   }
 
   return {
@@ -75,8 +76,7 @@ function parseFrontmatter(source: string, sourcePath: string) {
   try {
     return matter(normalizedSource, options)
   } catch (error) {
-    // TODO(HiDeoo)
-    throw new Error(`Failed to parse documentation source '${sourcePath}'.`, { cause: error })
+    throwError(`Failed to parse documentation file '${sourcePath}'.`, { cause: error })
   }
 }
 

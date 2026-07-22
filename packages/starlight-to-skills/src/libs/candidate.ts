@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
 
 import { validateCandidateFiles } from '../schemas/candidate'
 import type { StarlightToSkillsConfig } from '../schemas/config'
@@ -7,6 +8,7 @@ import { CandidateManifestSchema, makeSkillManifest } from '../schemas/manifest'
 
 import type { SkillFile } from './content'
 import { computeSkillFileDigest, type SkillFileDigest } from './digest'
+import { StarlightToSkillsError, throwError } from './error'
 import {
   ensureDirectory,
   getSkillManifestUrl,
@@ -17,6 +19,8 @@ import {
 } from './fs'
 import type { SkillConfiguration } from './loader'
 import { loadSkillManifest } from './skill'
+
+// TODO(HiDeoo) skill names in error should always be primary?
 
 export function createCandidate(inputHash: string, files: SkillFile[]): Candidate {
   validateCandidateFiles(files)
@@ -55,9 +59,9 @@ export async function loadCandidate(dataDir: URL, name: string, expectedInputHas
   } catch (error) {
     if (error instanceof SyntaxError) throwInvalidCandidateError(name)
     if (isFileNotFoundError(error)) {
-      throw new Error(`No candidate found for skill '${name}'. Run 'starlight-to-skills generate ${name}' first.`)
+      throwError(`No generated skill found for '${name}'.`, { hint: `Run 'starlight-to-skills generate ${name}'.` })
     }
-    throw error
+    throwError(`Failed to load generated skill '${name}'.`, { cause: error })
   }
 
   const result = CandidateManifestSchema.safeParse(manifestData)
@@ -66,7 +70,9 @@ export async function loadCandidate(dataDir: URL, name: string, expectedInputHas
   const manifest = result.data
 
   if (manifest.inputHash !== expectedInputHash) {
-    throw new Error(`Candidate for skill '${name}' is outdated. Run 'starlight-to-skills generate ${name}' again.`)
+    throwError(`Generated skill for '${name}' is out of date.`, {
+      hint: `Run 'starlight-to-skills generate ${name}' again.`,
+    })
   }
 
   const files: SkillFile[] = []
@@ -79,7 +85,7 @@ export async function loadCandidate(dataDir: URL, name: string, expectedInputHas
       })
     } catch (error) {
       if (isFileNotFoundError(error)) throwInvalidCandidateError(name)
-      throw error
+      throwError(`Failed to load generated skill '${name}'.`, { cause: error })
     }
   }
 
@@ -132,13 +138,24 @@ export async function approveCandidate(
   const skillDirUrl = resolveDirectoryUrl(skill.name, config.outputDir)
   const manifestUrl = getSkillManifestUrl(config.outputDir, skill.name)
 
-  await ensureDirectory(new URL('.', manifestUrl))
+  let isAlreadyApproved: boolean
+  let hasManifest: boolean
 
-  const isAlreadyApproved = await pathExists(skillDirUrl)
-  const hasManifest = await pathExists(manifestUrl)
+  try {
+    await ensureDirectory(new URL('.', manifestUrl))
+
+    isAlreadyApproved = await pathExists(skillDirUrl)
+    hasManifest = await pathExists(manifestUrl)
+  } catch (error) {
+    if (error instanceof StarlightToSkillsError) throw error
+    throwError(`Failed to approve '${skill.name}'.`, { cause: error })
+  }
 
   if (isAlreadyApproved && !hasManifest) {
-    throw new Error(`The existing '${skill.name}' skill is not managed by Starlight to Skills.`)
+    throwError(
+      `Cannot approve '${skill.name}' because a file or directory already exists at '${fileURLToPath(skillDirUrl)}'.`,
+      { hint: 'Move the existing file or directory and try again.' },
+    )
   }
 
   if (hasManifest) {
@@ -147,18 +164,20 @@ export async function approveCandidate(
 
   const manifest = makeSkillManifest(config, skill, digest, candidate.fileDigests)
 
-  await fs.rm(skillDirUrl, { force: true, recursive: true })
+  try {
+    await fs.rm(skillDirUrl, { force: true, recursive: true })
 
-  for (const file of candidate.files) {
-    const fileUrl = resolveRelativeFilePathUrl(file.path, skillDirUrl)
+    for (const file of candidate.files) {
+      const fileUrl = resolveRelativeFilePathUrl(file.path, skillDirUrl)
 
-    await fs.mkdir(new URL('.', fileUrl), { recursive: true })
-    await fs.writeFile(fileUrl, file.content)
+      await fs.mkdir(new URL('.', fileUrl), { recursive: true })
+      await fs.writeFile(fileUrl, file.content)
+    }
+
+    await fs.writeFile(manifestUrl, JSON.stringify(manifest, undefined, 2))
+  } catch (error) {
+    throwError(`Failed to approve '${skill.name}'.`, { cause: error })
   }
-
-  await fs.writeFile(manifestUrl, JSON.stringify(manifest, undefined, 2))
-
-  return skillDirUrl
 }
 
 function getCandidateDirUrl(dataDir: URL, name: string): URL {
@@ -166,7 +185,7 @@ function getCandidateDirUrl(dataDir: URL, name: string): URL {
 }
 
 function throwInvalidCandidateError(name: string): never {
-  throw new Error(`Candidate for skill '${name}' is invalid. Run 'starlight-to-skills generate ${name}' again.`)
+  throwError(`Generated skill for '${name}' is invalid.`, { hint: `Run 'starlight-to-skills generate ${name}' again.` })
 }
 
 export interface Candidate {

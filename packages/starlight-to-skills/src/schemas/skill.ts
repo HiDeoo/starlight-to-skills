@@ -28,7 +28,7 @@ export const SkillDefinitionSchema = z.strictObject({
     .array(
       z
         .string()
-        .regex(StarlightDocsExtensionsRegex, 'Documentation source must use a supported Markdown or MDX extension.'),
+        .regex(StarlightDocsExtensionsRegex, 'A documentation file must use a supported Markdown or MDX extension.'),
     )
     .min(1)
     .superRefine((sources, context) => {
@@ -38,7 +38,7 @@ export const SkillDefinitionSchema = z.strictObject({
         if (seen.has(source)) {
           context.addIssue({
             code: 'custom',
-            message: `Duplicate documentation source path '${source}'.`,
+            message: `Duplicate documentation file path '${source}'.`,
             path: [index],
           })
         }

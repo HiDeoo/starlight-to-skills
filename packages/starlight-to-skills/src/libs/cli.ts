@@ -123,7 +123,7 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
     return logError(
       content.issues
         .map((issue) => {
-          return `${ContentResultIssueLabels[issue.type]}: ${issue.details}\nDocumentation sources: ${issue.docsPaths.join(' - ')}`
+          return `${ContentResultIssueLabels[issue.type]}: ${issue.details}\nDocumentation files: ${issue.docsPaths.join(' - ')}`
         })
         .join('\n\n'),
     )
@@ -139,22 +139,21 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
   return 0
 }
 
+// TODO(HiDeoo) running multiple times without changes re-aprove indefinitely?
 async function runApproveSkill(name: string, rootDir: URL, existing: boolean): Promise<number> {
   const { config, definition, digest } = await loadSkillInputs(name, rootDir)
 
   if (existing) {
-    const approvedSkillUrl = await approveSkill(config, definition, digest)
+    await approveSkill(config, definition, digest)
 
-    // TODO(HiDeoo)
-    logMessage(`Approved existing skill at '${fileURLToPath(approvedSkillUrl)}'.`)
+    logMessage(`${success('Approved')} '${primary(definition.name)}'.`)
     return 0
   }
 
   const candidate = await loadCandidate(config.dataDir, definition.name, digest.inputHash)
-  const approvedSkillUrl = await approveCandidate(config, definition, digest, candidate)
+  await approveCandidate(config, definition, digest, candidate)
 
-  // TODO(HiDeoo)
-  logMessage(`Approved skill written to '${fileURLToPath(approvedSkillUrl)}'.`)
+  logMessage(`${success('Approved')} '${primary(definition.name)}'.`)
   return 0
 }
 

@@ -80,14 +80,14 @@ describe('generateSkillContent', () => {
     expect(result).toStrictEqual(content)
   })
 
-  test('returns source issues', async () => {
+  test('returns file issues', async () => {
     const content = {
       status: 'error',
       issues: [
         {
           type: 'source-incomplete',
           docsPaths: ['./guides/migrate-v2.md'],
-          details: 'The documentation source is missing required information.',
+          details: 'The documentation file is missing required information.',
         },
       ],
     }
