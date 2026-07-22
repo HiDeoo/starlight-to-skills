@@ -3,7 +3,7 @@ import { z } from 'astro/zod'
 import { GeneratorVersion, type SkillFileDigest } from '../libs/digest'
 import type { SkillConfiguration } from '../libs/loader'
 
-import { CandidateFilePathSchema, CandidateFilePathsSchema } from './candidate'
+import { CandidateFilePathsSchema } from './candidate'
 import type { StarlightToSkillsConfig } from './config'
 import { SkillDigestSchema, type SkillDigest } from './digest'
 import { SkillNameSchema } from './skill'
@@ -13,7 +13,7 @@ export const CandidateManifestSchema = z.strictObject({
   files: z
     .array(
       z.strictObject({
-        path: CandidateFilePathSchema,
+        path: z.string(),
         contentHash: z.string(),
       }),
     )

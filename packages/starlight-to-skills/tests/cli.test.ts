@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } 
 
 import packageJson from '../package.json' with { type: 'json' }
 import { runCli } from '../src/libs/cli'
+import type { SkillManifest } from '../src/schemas/manifest'
 
 const mastra = vi.hoisted(() => ({
   generate: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
@@ -297,7 +298,7 @@ Change foo to bar.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Could not generate 'test-skill'.
 
-         File incomplete 
+         File incomplete\u0020
 
         The migration steps are missing.
 
@@ -305,7 +306,7 @@ Change foo to bar.`,
 
          - ./guide.md
 
-         File conflict 
+         File conflict\u0020
 
         The migration guide is for v3.
 
@@ -473,11 +474,9 @@ Change foo to bar.`,
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Issues:
+        "Error: Skill 'test-skill' has not been approved.
 
-        - Never approved
-
-        Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate."
+        Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'."
       `)
     })
 
@@ -494,7 +493,7 @@ Change foo to bar.`,
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(0)
       expect(mastra.generate).not.toHaveBeenCalled()
 
-      expect(getLastLogMessage(logSpy)).toBe('Ok')
+      expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`"Check complete: 'test-skill' is up to date."`)
 
       expect(writeFileSpy).not.toHaveBeenCalled()
       expect(mkdirSpy).not.toHaveBeenCalled()
@@ -511,13 +510,54 @@ Change foo to bar.`,
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Issues:
+        "Error: Skill 'test-skill' is not up to date.
 
-        - Documentation file changed
-        - Approved skill changed: SKILL.md
+         Documentation content changed\u0020
 
-        Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate."
+         - ./guide.md
+
+         Approved skill changed\u0020
+
+         - SKILL.md
+
+        Hint: Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'."
       `)
+    })
+
+    test('reports definition, model, and generation version changes', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      const manifestPath = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
+      const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')) as SkillManifest
+
+      manifest.definitionHash = 'previous-definition-hash'
+      manifest.model = 'openai/gpt-5.6-terra'
+      manifest.generatorVersion = 0
+
+      await fs.writeFile(manifestPath, JSON.stringify(manifest, undefined, 2))
+
+      expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+      "Error: Skill 'test-skill' is not up to date.
+
+       Skill definition changed\u0020
+
+      The description, documentation file paths, or guidance changed since the skill was approved.
+
+       Model changed\u0020
+
+       - Before: openai/gpt-5.6-terra
+       - Now: openai/gpt-5.6-luna
+
+       Generation version changed\u0020
+
+       - Before: 0
+       - Now: 1
+
+      Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
+    `)
     })
 
     test('hints to approve an existing skill', async () => {
@@ -529,14 +569,23 @@ Change foo to bar.`,
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Issues:
+        "Error: Skill 'test-skill' is not up to date.
 
-        - Documentation file changed
+         Documentation content changed\u0020
 
-        Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate.
+         - ./guide.md
 
-        If the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
+        Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
       `)
+    })
+
+    test('checks a project with no skills', async () => {
+      await fs.rm(path.join(testDir, 'src/skills/test-skill.skill.ts'))
+
+      expect(await runCli(['check'], testDir)).toBe(0)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`"Check complete: no skills found."`)
     })
 
     test('checks all current skills', async () => {
@@ -554,11 +603,7 @@ Change foo to bar.`,
       expect(await runCli(['check'], testDir)).toBe(0)
       expect(mastra.generate).not.toHaveBeenCalled()
 
-      expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`
-        "other-skill: Ok
-
-        test-skill: Ok"
-      `)
+      expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`"Check complete: all skills are up to date."`)
 
       expect(writeFileSpy).not.toHaveBeenCalled()
       expect(mkdirSpy).not.toHaveBeenCalled()
@@ -574,19 +619,17 @@ Change foo to bar.`,
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: other-skill: Ok
+        "Error: Not all skills are up to date.
 
-        test-skill: Issue
+         test-skill\u0020
 
-        Issues:
+        Skill 'test-skill' has not been approved.
 
-        - Never approved
-
-        Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate."
+        Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'."
       `)
     })
 
-    test('reports all current skills with issues', async () => {
+    test('reports only skills with issues', async () => {
       await addApprovedSkill('other-skill')
 
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
@@ -600,17 +643,17 @@ Change foo to bar.`,
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: other-skill: Ok
+        "Error: Not all skills are up to date.
 
-        test-skill: Issue
+         test-skill\u0020
 
-        Issues:
+        Skill 'test-skill' is not up to date.
 
-        - Documentation file changed
+         Documentation content changed\u0020
 
-        Hint: Run 'starlight-to-skills generate test-skill' to generate a new candidate.
+         - ./guide.md
 
-        If the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
+        Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
       `)
     })
 
@@ -629,16 +672,16 @@ Change foo to bar.`,
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: invalid-skill: Issue
+        "Error: Not all skills are up to date.
+
+         invalid-skill\u0020
 
         Invalid skill definition 'invalid-skill.skill.ts'.
 
         ✖ Too small: expected string to have >=1 characters
           → at description
         ✖ Too small: expected array to have >=1 items
-          → at docs
-
-        test-skill: Ok"
+          → at docs"
       `)
     })
 
@@ -654,13 +697,13 @@ Change foo to bar.`,
       expect(await runCli(['check'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: invalid--skill: Issue
+        "Error: Not all skills are up to date.
+
+         invalid--skill\u0020
 
         Invalid skill name 'invalid--skill'.
 
-        Hint: Use 1-64 lowercase letters, numbers, or hyphens, without leading, trailing, or consecutive hyphens.
-
-        test-skill: Ok"
+        Hint: Use 1-64 lowercase letters, numbers, or hyphens, without leading, trailing, or consecutive hyphens."
       `)
     })
 
@@ -684,7 +727,9 @@ Change foo to bar.`,
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: duplicate: Issue
+        "Error: Not all skills are up to date.
+
+         duplicate\u0020
 
         Multiple skill definitions found for 'duplicate'.
 
@@ -693,12 +738,14 @@ Change foo to bar.`,
     })
 
     test('reports orphan skills', async () => {
-      await addApprovedSkill('other-skill')
+      await addApprovedSkill('first-orphan')
+      await addApprovedSkill('second-orphan')
 
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
 
-      await fs.rm(path.join(testDir, 'src/skills/other-skill.skill.ts'))
+      await fs.rm(path.join(testDir, 'src/skills/first-orphan.skill.ts'))
+      await fs.rm(path.join(testDir, 'src/skills/second-orphan.skill.ts'))
       mastra.generate.mockClear()
 
       const writeFileSpy = vi.spyOn(fs, 'writeFile')
@@ -709,11 +756,17 @@ Change foo to bar.`,
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: test-skill: Ok
+        "Error: Not all skills are up to date.
 
-        other-skill: Issue
+         first-orphan\u0020
 
-        Orphan approved skill."
+        Orphan approved skill.
+
+         second-orphan\u0020
+
+        Orphan approved skill.
+
+        Hint: Run 'starlight-to-skills prune' to review and remove orphan approved skills."
       `)
 
       expect(writeFileSpy).not.toHaveBeenCalled()
@@ -730,9 +783,9 @@ Change foo to bar.`,
       expect(await runCli(['check'], testDir)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: test-skill: Ok
+        "Error: Not all skills are up to date.
 
-        ..: Issue
+         ..\u0020
 
         Invalid skill name '..'.
 

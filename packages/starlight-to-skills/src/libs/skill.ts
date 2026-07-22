@@ -25,10 +25,9 @@ import type { SkillConfiguration } from './loader'
 const skillDefinitionSuffix = '.skill.ts'
 const skillManifestSuffix = '.json'
 
-// TODO(HiDeoo)
 export const SkillCheckIssueMessages = {
   'definition-change': 'Skill definition changed',
-  'source-change': 'Documentation file changed',
+  'source-change': 'Documentation content changed',
   'model-change': 'Model changed',
   'generator-change': 'Generation version changed',
   'approved-skill-change': 'Approved skill changed',
@@ -114,10 +113,12 @@ export async function loadSkillManifest(url: URL, name: string): Promise<SkillMa
   try {
     const data: unknown = JSON.parse(content)
     const manifest = SkillManifestSchema.parse(data)
-    if (manifest.name !== name) throw new Error(`Invalid manifest for skill '${name}': invalid name.`)
+    if (manifest.name !== name) {
+      throw new Error(`Expected approved skill name '${name}' but found '${manifest.name}'.`)
+    }
     return manifest
-  } catch {
-    throw new Error(`Failed to load approved skill '${name}'.`)
+  } catch (error) {
+    throwError(`Failed to load approved skill '${name}'.`, { cause: error })
   }
 }
 
@@ -170,16 +171,17 @@ export function checkSkill(
 
   if (manifest.definitionHash !== digest.definitionHash) issues.push({ type: 'definition-change' })
 
-  if (
-    manifest.sources.some((source) =>
+  const changedSourcePaths = manifest.sources
+    .filter((source) =>
       digest.sources.some(
         (currentSource) =>
           currentSource.docsPath === source.docsPath && currentSource.contentHash !== source.contentHash,
       ),
     )
-  ) {
-    // TODO(HiDeoo) Maybe we should provide updated source paths
-    issues.push({ type: 'source-change' })
+    .map((source) => source.docsPath)
+
+  if (changedSourcePaths.length > 0) {
+    issues.push({ type: 'source-change', paths: changedSourcePaths })
   }
 
   if (manifest.model !== model) issues.push({ type: 'model-change' })
@@ -264,7 +266,7 @@ function getSkillNameByUrl(url: URL, suffix: string): string {
 
 type SkillCheckIssue =
   | { type: 'definition-change' }
-  | { type: 'source-change' }
+  | { type: 'source-change'; paths: string[] }
   | { type: 'model-change' }
   | { type: 'generator-change' }
   | { type: 'approved-skill-change'; paths: string[] }

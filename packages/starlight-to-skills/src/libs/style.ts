@@ -25,5 +25,9 @@ export function bold(text: string) {
 }
 
 export function section(title: string) {
-  return styleText(['bgWhite', 'black'], ` ${title} `)
+  return styleText(['bold', 'bgWhite', 'black'], ` ${title} `)
+}
+
+export function primarySection(title: string) {
+  return styleText(['bold', 'bgCyan', 'black'], ` ${title} `)
 }

@@ -22,6 +22,8 @@ import type { SkillManifest } from '../src/schemas/manifest'
 
 const rootDir = new URL('fixtures/', import.meta.url)
 
+// TODO(HiDeoo) error custom snapshoter StarlightToSkillsError
+
 describe('discoverSkillDefinitions', () => {
   test('discovers skill definitions', async () => {
     const definitionUrls = await discoverSkillDefinitions({
@@ -128,6 +130,19 @@ describe('loadSkill', () => {
     await expect(loadSkill(outputDir, 'test-skill')).resolves.toStrictEqual({ manifest, fileMismatches: [] })
   })
 
+  test('rejects an approved skill with a mismatched name', async () => {
+    await fs.writeFile(
+      new URL('.starlight-to-skills/test-skill.json', outputDir),
+      JSON.stringify({ ...manifest, name: 'other-skill' }, undefined, 2),
+    )
+
+    await expect(loadSkill(outputDir, 'test-skill')).rejects.toThrowErrorMatchingInlineSnapshot(`
+      [StarlightToSkillsError: Failed to load approved skill 'test-skill'.
+
+      Expected approved skill name 'test-skill' but found 'other-skill'.]
+    `)
+  })
+
   test('normalizes line endings', async () => {
     await fs.writeFile(new URL('SKILL.md', skillUrl), 'Skill content.\r\n')
 
@@ -175,9 +190,12 @@ describe('loadSkill', () => {
       JSON.stringify(invalidManifest, undefined, 2),
     )
 
-    await expect(loadSkill(outputDir, 'test-skill')).rejects.toThrowErrorMatchingInlineSnapshot(
-      `[Error: Failed to load approved skill 'test-skill'.]`,
-    )
+    await expect(loadSkill(outputDir, 'test-skill')).rejects.toThrowErrorMatchingInlineSnapshot(`
+      [StarlightToSkillsError: Failed to load approved skill 'test-skill'.
+
+      ✖ Invalid candidate file path '../outside.md'.
+        → at files[2].path]
+    `)
   })
 })
 
@@ -234,20 +252,18 @@ describe('checkSkill', () => {
     expect(result).toStrictEqual({ current: false, issues: [{ type: 'definition-change' }] })
   })
 
-  test('reports a source content change', () => {
+  test('reports source content changes', () => {
     const result = checkSkill(
       manifest,
-      {
-        ...digest,
-        sources: digest.sources.map((source, index) =>
-          index === 0 ? { ...source, contentHash: 'changed-content-hash' } : source,
-        ),
-      },
+      { ...digest, sources: digest.sources.map((source) => ({ ...source, contentHash: 'changed-content-hash' })) },
       manifest.model,
       [],
     )
 
-    expect(result).toStrictEqual({ current: false, issues: [{ type: 'source-change' }] })
+    expect(result).toStrictEqual({
+      current: false,
+      issues: [{ type: 'source-change', paths: ['./guide.md', './reference.md'] }],
+    })
   })
 
   test('reports a model change', () => {
