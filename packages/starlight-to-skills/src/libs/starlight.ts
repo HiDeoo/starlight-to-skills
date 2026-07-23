@@ -31,7 +31,9 @@ async function loadSkillDoc(docsCollectionPath: string, docsPath: string): Promi
   const [firstSegment] = normalizedDocsPath.split(path.sep)
 
   if (path.parse(normalizedDocsPath).root !== '' || firstSegment === '..') {
-    throw new Error(`Documentation file '${docsPath}' must be inside '${docsCollectionDir}'.`)
+    throwError(`Documentation file '${docsPath}' must be inside '${docsCollectionDir}'.`, {
+      hint: `Use a path relative to '${docsCollectionDir}'.`,
+    })
   }
 
   const sourcePath = path.resolve(docsCollectionPath, docsPath)

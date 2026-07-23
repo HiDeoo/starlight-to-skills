@@ -44,7 +44,7 @@ describe('createCandidate', () => {
         { path: 'SKILL.md', content: 'Skill content.' },
         { path: 'README.md', content: 'Invalid content.' },
       ]),
-    ).toThrow("Invalid candidate file path 'README.md'.")
+    ).toThrow("Invalid generated skill file path 'README.md'.")
   })
 })
 
@@ -160,7 +160,7 @@ describe('persistence', () => {
       file.path = '../outside.md'
 
       await expect(writeCandidate(dataDir, 'test-skill', candidate)).rejects.toThrow(
-        "Invalid candidate file path '../outside.md'.",
+        "Invalid generated skill file path '../outside.md'.",
       )
 
       await expect(fs.readFile(new URL('SKILL.md', candidateUrl), 'utf8')).resolves.toBe('Old skill content.')
@@ -384,7 +384,7 @@ describe('persistence', () => {
       file.path = '../outside.md'
 
       await expect(approveCandidate(config, skill, digest, candidate)).rejects.toThrowErrorMatchingInlineSnapshot(
-        `[Error: Invalid candidate file path '../outside.md'.]`,
+        `[Error: Invalid generated skill file path '../outside.md'.]`,
       )
 
       await expect(fs.readFile(new URL(`${skill.name}/SKILL.md`, config.outputDir), 'utf8')).resolves.toBe(

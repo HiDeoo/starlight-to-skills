@@ -6,7 +6,7 @@ import { validateCandidateFiles } from '../../src/schemas/candidate'
 test('requires SKILL.md', () => {
   expect(() =>
     validateCandidateFiles([createCandidateFile('references/details.md')]),
-  ).toThrowErrorMatchingInlineSnapshot(`[Error: Candidate must contain exactly one 'SKILL.md' file.]`)
+  ).toThrowErrorMatchingInlineSnapshot(`[Error: Generated skill must contain exactly one 'SKILL.md' file.]`)
 })
 
 test('accepts valid candidate file paths', () => {
@@ -31,7 +31,7 @@ test.for([
   'references/nested//details.md',
 ])('rejects invalid candidate file path %j', (candidatePath) => {
   expect(() => validateCandidateFiles([createCandidateFile('SKILL.md'), createCandidateFile(candidatePath)])).toThrow(
-    `Invalid candidate file path '${candidatePath}'.`,
+    `Invalid generated skill file path '${candidatePath}'.`,
   )
 })
 

@@ -126,16 +126,19 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
 
     const issues = content.issues
       .map((issue) => {
-        const paths = issue.docsPaths.map((docsPath) => `${dim(' -')} ${docsPath}`).join('\n')
-
         // TODO(HiDeoo) pluralize
-        return `${section(ContentResultIssueLabels[issue.type])}
-
-${issue.details}
+        const documentationFiles =
+          issue.docsPaths.length === 0
+            ? ''
+            : `
 
 ${dim(`${issue.docsPaths.length === 1 ? 'Documentation file' : 'Documentation files'}:`)}
 
-${paths}`
+${issue.docsPaths.map((docsPath) => `${dim(' -')} ${docsPath}`).join('\n')}`
+
+        return `${section(ContentResultIssueLabels[issue.type])}
+
+${issue.details}${documentationFiles}`
       })
       .join('\n\n')
 
@@ -199,7 +202,7 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
   const config = await loadConfig(rootDir)
   const definitionUrls = await discoverSkillDefinitions(config)
   const reports: string[] = []
-  let allCurrent = true
+  let allUpToDate = true
   let hasOrphans = false
   const definitionNames = new Set<string>()
 
@@ -213,7 +216,7 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
     try {
       definitionNames.add(parseSkillName(name))
     } catch (error) {
-      allCurrent = false
+      allUpToDate = false
       addReport(name, error)
     }
   }
@@ -225,11 +228,11 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
       const issues = await getSkillIssues(config, definition, digest)
 
       if (issues) {
-        allCurrent = false
+        allUpToDate = false
         addReport(name, issues)
       }
     } catch (error) {
-      allCurrent = false
+      allUpToDate = false
       addReport(name, error)
     }
   }
@@ -241,21 +244,21 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
     try {
       skillName = parseSkillName(name)
     } catch (error) {
-      allCurrent = false
+      allUpToDate = false
       addReport(name, error)
       continue
     }
 
     if (definitionNames.has(skillName)) continue
 
-    allCurrent = false
+    allUpToDate = false
     hasOrphans = true
     addReport(skillName, 'Orphan approved skill.')
   }
 
   const report = reports.join('\n\n')
 
-  if (!allCurrent) {
+  if (!allUpToDate) {
     const message = `Not all skills are up to date.\n\n${report}`
     return logError(
       hasOrphans
@@ -354,7 +357,9 @@ async function getSkillIssues(
   definition: SkillConfiguration,
   digest: SkillDigest,
 ): Promise<StarlightToSkillsError | undefined> {
-  const generateHint = `Run 'starlight-to-skills generate ${definition.name}', review the generated skill, and then run 'starlight-to-skills approve ${definition.name}'.`
+  const approveCommand = `'starlight-to-skills approve ${definition.name}'`
+  const generateCommand = `'starlight-to-skills generate ${definition.name}'`
+  const generateHint = `Run ${generateCommand}, review the generated skill, and then run ${approveCommand}.`
 
   if (!(await pathExists(getSkillManifestUrl(config.outputDir, definition.name)))) {
     return createError(`Skill '${definition.name}' has not been approved.`, { hint: generateHint })
@@ -363,7 +368,7 @@ async function getSkillIssues(
   const { manifest, fileMismatches } = await loadSkill(config.outputDir, definition.name)
   const result = checkSkill(manifest, digest, config.model, fileMismatches)
 
-  if (result.current) return
+  if (result.upToDate) return
 
   const issues = result.issues.map((issue) => {
     switch (issue.type) {
@@ -404,7 +409,7 @@ ${dim(' - Now:')} ${GeneratorVersion}`
   const hints =
     fileMismatches.length > 0
       ? [
-          `Restore the listed files. To keep intended changes, update the skill definition or documentation, ${generateHint.toLocaleLowerCase()}`,
+          `Restore the listed files. To keep intended changes, update the skill definition or documentation, run ${generateCommand}, review the generated skill, and then run ${approveCommand}.`,
         ]
       : [generateHint]
 

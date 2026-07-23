@@ -16,7 +16,7 @@ export const CandidateFilePathSchema = z.string().superRefine((filePath, context
 
   context.addIssue({
     code: 'custom',
-    message: `Invalid candidate file path '${filePath}'.`,
+    message: `Invalid generated skill file path '${filePath}'.`,
   })
 })
 
@@ -40,7 +40,7 @@ export const CandidateFilePathsSchema = z.array(CandidateFilePathSchema).superRe
   if (skillFileCount !== 1) {
     context.addIssue({
       code: 'custom',
-      message: "Candidate must contain exactly one 'SKILL.md' file.",
+      message: "Generated skill must contain exactly one 'SKILL.md' file.",
     })
   }
 

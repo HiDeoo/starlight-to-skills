@@ -88,7 +88,7 @@ export async function discoverSkillManifests(outputDir: URL): Promise<URL[]> {
     entries = await fs.readdir(manifestDirUrl, { withFileTypes: true })
   } catch (error) {
     if (isFileNotFoundError(error)) return []
-    throw error
+    throwError('Failed to find approved skills.', { cause: error })
   }
 
   const manifestUrls: URL[] = []
@@ -174,8 +174,8 @@ export function checkSkill(
   const changedSourcePaths = manifest.sources
     .filter((source) =>
       digest.sources.some(
-        (currentSource) =>
-          currentSource.docsPath === source.docsPath && currentSource.contentHash !== source.contentHash,
+        (matchingSource) =>
+          matchingSource.docsPath === source.docsPath && matchingSource.contentHash !== source.contentHash,
       ),
     )
     .map((source) => source.docsPath)
@@ -188,7 +188,7 @@ export function checkSkill(
   if (manifest.generatorVersion !== GeneratorVersion) issues.push({ type: 'generator-change' })
   if (fileMismatches.length > 0) issues.push({ type: 'approved-skill-change', paths: fileMismatches })
 
-  return issues.length === 0 ? { current: true } : { current: false, issues }
+  return issues.length === 0 ? { upToDate: true } : { upToDate: false, issues }
 }
 
 export async function approveSkill(config: StarlightToSkillsConfig, skill: SkillConfiguration, digest: SkillDigest) {
@@ -218,7 +218,9 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
       `The following files in approved skill '${skill.name}' have changed:\n\n${fileMismatches
         .map((path) => ` - ${path}`)
         .join('\n')}`,
-      { hint: `Restore the listed files or run 'starlight-to-skills generate ${skill.name}'.` },
+      {
+        hint: `Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'starlight-to-skills generate ${skill.name}', review the generated skill, and then run 'starlight-to-skills approve ${skill.name}'.`,
+      },
     )
   }
 
@@ -271,4 +273,4 @@ type SkillCheckIssue =
   | { type: 'generator-change' }
   | { type: 'approved-skill-change'; paths: string[] }
 
-type SkillCheckResult = { current: true } | { current: false; issues: SkillCheckIssue[] }
+type SkillCheckResult = { upToDate: true } | { upToDate: false; issues: SkillCheckIssue[] }

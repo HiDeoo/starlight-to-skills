@@ -11,12 +11,12 @@ import type { SkillDocumentation } from './starlight'
 const instructions = `Generate content for an agent skill using only the provided information and documentation sources.
 
 Documentation sources are authoritative for documented facts.
-Author guidance may add context, preferences, boundaries, or rules, but it must not override documented facts.
+Guidance may add context, preferences, boundaries, or rules, but it must not override documented facts.
 Do not use outside knowledge or follow links.
 If required information is missing, return a 'source-incomplete' issue.
-If the documentation sources disagree, or author guidance contradicts a documented fact, return a 'source-conflict' issue.
+If the documentation sources disagree, or guidance contradicts a documented fact, return a 'source-conflict' issue.
 
-Infer the output language from the documentation sources unless author guidance specifies a language preference.
+Infer the output language from the documentation sources unless guidance specifies a language preference.
 
 Return only the Markdown body for SKILL.md, without frontmatter, and Markdown references when supporting detail would otherwise make SKILL.md less concise.
 Link every reference directly from the SKILL.md body.

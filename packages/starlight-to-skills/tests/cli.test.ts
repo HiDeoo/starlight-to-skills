@@ -298,7 +298,7 @@ Change foo to bar.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Could not generate 'test-skill'.
 
-         File incomplete\u0020
+         Missing information\u0020
 
         The migration steps are missing.
 
@@ -306,7 +306,7 @@ Change foo to bar.`,
 
          - ./guide.md
 
-         File conflict\u0020
+         Conflicting information\u0020
 
         The migration guide is for v3.
 
@@ -450,7 +450,7 @@ Change foo to bar.`,
 
            - SKILL.md
 
-          Hint: Restore the listed files or run 'starlight-to-skills generate test-skill'."
+          Hint: Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'."
         `)
 
         await expect(fs.readFile(skillPath, 'utf8')).resolves.toContain('Update.')
@@ -480,7 +480,7 @@ Change foo to bar.`,
       `)
     })
 
-    test('checks a current skill', async () => {
+    test('checks an up-to-date skill', async () => {
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
 
@@ -588,7 +588,7 @@ Change foo to bar.`,
       expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`"Check complete: no skills found."`)
     })
 
-    test('checks all current skills', async () => {
+    test('checks all up-to-date skills', async () => {
       await addApprovedSkill('other-skill')
 
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)

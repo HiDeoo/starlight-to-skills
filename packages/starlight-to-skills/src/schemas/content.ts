@@ -34,8 +34,8 @@ export const ContentResultSchema = z.strictObject({
 export const ContentResultJSONSchema = z.toJSONSchema(ContentResultSchema)
 
 export const ContentResultIssueLabels = {
-  'source-conflict': 'File conflict',
-  'source-incomplete': 'File incomplete',
+  'source-conflict': 'Conflicting information',
+  'source-incomplete': 'Missing information',
 } satisfies Record<z.output<typeof contentResultIssueTypeSchema>, string>
 
 export type SkillContentResult = z.output<typeof ContentResultSchema>['data']

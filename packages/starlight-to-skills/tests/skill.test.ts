@@ -13,6 +13,7 @@ import {
   approveSkill,
   checkSkill,
   discoverSkillDefinitions,
+  discoverSkillManifests,
   getSkillDefinitionUrlByName,
   loadSkill,
   pruneSkill,
@@ -84,6 +85,20 @@ describe('getSkillDefinitionUrlByName', () => {
         'duplicate',
       ),
     ).toThrowErrorMatchingInlineSnapshot(`[StarlightToSkillsError: Multiple skill definitions found for 'duplicate'.]`)
+  })
+})
+
+describe('discoverSkillManifests', () => {
+  test('rejects when skill manifests cannot be discovered', async ({ onTestFinished }) => {
+    const testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
+    onTestFinished(() => fs.rm(testDir, { force: true, recursive: true }))
+
+    const outputDir = pathToFileURL(path.join(testDir, 'skills', path.sep))
+
+    await fs.mkdir(outputDir, { recursive: true })
+    await fs.writeFile(new URL('.starlight-to-skills', outputDir), 'not a directory')
+
+    await expect(discoverSkillManifests(outputDir)).rejects.toThrow(/Failed to find approved skills./)
   })
 })
 
@@ -193,7 +208,7 @@ describe('loadSkill', () => {
     await expect(loadSkill(outputDir, 'test-skill')).rejects.toThrowErrorMatchingInlineSnapshot(`
       [StarlightToSkillsError: Failed to load approved skill 'test-skill'.
 
-      ✖ Invalid candidate file path '../outside.md'.
+      ✖ Invalid generated skill file path '../outside.md'.
         → at files[2].path]
     `)
   })
@@ -218,10 +233,10 @@ describe('checkSkill', () => {
     files: [{ path: 'SKILL.md', contentHash: 'skill-hash' }],
   } satisfies SkillManifest
 
-  test('checks a current skill', () => {
+  test('checks an up-to-date skill', () => {
     const result = checkSkill(manifest, digest, manifest.model, [])
 
-    expect(result).toStrictEqual({ current: true })
+    expect(result).toStrictEqual({ upToDate: true })
   })
 
   test.for([
@@ -249,7 +264,7 @@ describe('checkSkill', () => {
       [],
     )
 
-    expect(result).toStrictEqual({ current: false, issues: [{ type: 'definition-change' }] })
+    expect(result).toStrictEqual({ upToDate: false, issues: [{ type: 'definition-change' }] })
   })
 
   test('reports source content changes', () => {
@@ -261,7 +276,7 @@ describe('checkSkill', () => {
     )
 
     expect(result).toStrictEqual({
-      current: false,
+      upToDate: false,
       issues: [{ type: 'source-change', paths: ['./guide.md', './reference.md'] }],
     })
   })
@@ -269,20 +284,20 @@ describe('checkSkill', () => {
   test('reports a model change', () => {
     const result = checkSkill(manifest, digest, 'openai/gpt-5.6-terra', [])
 
-    expect(result).toStrictEqual({ current: false, issues: [{ type: 'model-change' }] })
+    expect(result).toStrictEqual({ upToDate: false, issues: [{ type: 'model-change' }] })
   })
 
   test('reports a generator version change', () => {
     const result = checkSkill({ ...manifest, generatorVersion: GeneratorVersion + 1 }, digest, manifest.model, [])
 
-    expect(result).toStrictEqual({ current: false, issues: [{ type: 'generator-change' }] })
+    expect(result).toStrictEqual({ upToDate: false, issues: [{ type: 'generator-change' }] })
   })
 
   test('reports approved skill changes', () => {
     const result = checkSkill(manifest, digest, manifest.model, ['SKILL.md', 'references/details.md'])
 
     expect(result).toStrictEqual({
-      current: false,
+      upToDate: false,
       issues: [{ type: 'approved-skill-change', paths: ['SKILL.md', 'references/details.md'] }],
     })
   })
@@ -291,7 +306,7 @@ describe('checkSkill', () => {
     const result = checkSkill(manifest, digest, 'openai/gpt-5.6-terra', ['SKILL.md'])
 
     expect(result).toStrictEqual({
-      current: false,
+      upToDate: false,
       issues: [{ type: 'model-change' }, { type: 'approved-skill-change', paths: ['SKILL.md'] }],
     })
   })
