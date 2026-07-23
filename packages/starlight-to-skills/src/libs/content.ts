@@ -20,6 +20,8 @@ Infer the output language from the documentation sources unless guidance specifi
 
 Return only the Markdown body for SKILL.md, without frontmatter, and Markdown references when supporting detail would otherwise make SKILL.md less concise.
 Link every reference directly from the SKILL.md body.
+Ensure every local link resolves to a generated file.
+Do not link from one reference to another.
 Do not generate or rewrite the skill name or description.`
 
 export async function generateSkillContent(
@@ -74,7 +76,6 @@ export function compileSkill(
   skill: SkillConfiguration,
   content: Extract<SkillContentResult, { status: 'success' }>,
 ): SkillFile[] {
-  // TODO(HiDeoo) validate content and references
   return [
     {
       path: 'SKILL.md',
