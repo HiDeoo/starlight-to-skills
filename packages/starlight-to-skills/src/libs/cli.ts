@@ -126,13 +126,12 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
 
     const issues = content.issues
       .map((issue) => {
-        // TODO(HiDeoo) pluralize
         const documentationFiles =
           issue.docsPaths.length === 0
             ? ''
             : `
 
-${dim(`${issue.docsPaths.length === 1 ? 'Documentation file' : 'Documentation files'}:`)}
+${dim(`${pluralize(issue.docsPaths.length, 'Documentation file')}:`)}
 
 ${issue.docsPaths.map((docsPath) => `${dim(' -')} ${docsPath}`).join('\n')}`
 
@@ -310,8 +309,9 @@ ${orphans.map((orphan) => `${dim(' -')} ${primary(orphan.name)}`).join('\n')}
     const readline = createInterface({ input: process.stdin, output: process.stdout })
 
     try {
-      // TODO(HiDeoo) plural
-      const answer = await readline.question(`Prune ${orphans.length} orphan approved skills? ${dim('[y/N]')} `)
+      const answer = await readline.question(
+        `Prune ${orphans.length} ${pluralize(orphans.length, 'orphan approved skill')}? ${dim('[y/N]')} `,
+      )
       logMessage('')
 
       if (!['y', 'yes'].includes(answer.trim().toLowerCase())) {
@@ -450,4 +450,8 @@ function formatError(error: unknown): string {
   }
 
   return `${message}\n\n${hint('Hint:')} ${error.hint}`
+}
+
+function pluralize(count: number, singular: string) {
+  return count === 1 ? singular : `${singular}s`
 }

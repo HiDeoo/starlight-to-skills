@@ -865,7 +865,7 @@ Change foo to bar.`,
 
       expect(await runCli(['prune'], testDir)).toBe(0)
 
-      expect(readline.question).toHaveBeenCalledWith('Prune 1 orphan approved skills? [y/N] ')
+      expect(readline.question).toHaveBeenCalledWith('Prune 1 orphan approved skill? [y/N] ')
       expect(readline.close).toHaveBeenCalledOnce()
 
       await expect(fs.stat(orphanSkill.skillDir)).resolves.toBeDefined()
