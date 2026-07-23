@@ -126,18 +126,16 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
 
     const issues = content.issues
       .map((issue) => {
-        const documentationFiles =
-          issue.docsPaths.length === 0
-            ? ''
-            : `
+        const paragraphs = [section(ContentResultIssueLabels[issue.type]), issue.details]
 
-${dim(`${pluralize(issue.docsPaths.length, 'Documentation file')}:`)}
+        if (issue.docsPaths.length > 0) {
+          paragraphs.push(
+            dim(`${pluralize(issue.docsPaths.length, 'Documentation file')}:`),
+            issue.docsPaths.map((docsPath) => `${dim(' -')} ${docsPath}`).join('\n'),
+          )
+        }
 
-${issue.docsPaths.map((docsPath) => `${dim(' -')} ${docsPath}`).join('\n')}`
-
-        return `${section(ContentResultIssueLabels[issue.type])}
-
-${issue.details}${documentationFiles}`
+        return paragraphs.join('\n\n')
       })
       .join('\n\n')
 
@@ -292,12 +290,9 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
     return 0
   }
 
-  logMessage(
-    `${bold('Orphan approved skills:')}
+  const orphanNames = orphans.map((orphan) => `${dim(' -')} ${primary(orphan.name)}`).join('\n')
 
-${orphans.map((orphan) => `${dim(' -')} ${primary(orphan.name)}`).join('\n')}
-`,
-  )
+  logMessage(`${bold('Orphan approved skills:')}\n\n${orphanNames}\n`)
 
   if (!yes) {
     if (process.stdin.isTTY !== true) {
@@ -371,29 +366,23 @@ async function getSkillIssues(
   if (result.upToDate) return
 
   const issues = result.issues.map((issue) => {
+    const heading = section(SkillCheckIssueMessages[issue.type])
+
     switch (issue.type) {
       case 'definition-change': {
-        return `${section(SkillCheckIssueMessages[issue.type])}
-
-The description, documentation file paths, or guidance changed since the skill was approved.`
+        return `${heading}\n\nThe description, documentation file paths, or guidance changed since the skill was approved.`
       }
       case 'approved-skill-change':
       case 'source-change': {
-        return `${section(SkillCheckIssueMessages[issue.type])}
+        const paths = issue.paths.map((path) => `${dim(' -')} ${path}`).join('\n')
 
-${issue.paths.map((path) => `${dim(' -')} ${path}`).join('\n')}`
+        return `${heading}\n\n${paths}`
       }
       case 'model-change': {
-        return `${section(SkillCheckIssueMessages[issue.type])}
-
-${dim(' - Before:')} ${manifest.model}
-${dim(' - Now:')} ${config.model}`
+        return `${heading}\n\n${dim(' - Before:')} ${manifest.model}\n${dim(' - Now:')} ${config.model}`
       }
       case 'generator-change': {
-        return `${section(SkillCheckIssueMessages[issue.type])}
-
-${dim(' - Before:')} ${manifest.generatorVersion}
-${dim(' - Now:')} ${GeneratorVersion}`
+        return `${heading}\n\n${dim(' - Before:')} ${manifest.generatorVersion}\n${dim(' - Now:')} ${GeneratorVersion}`
       }
       default: {
         throw new Error(`Unexpected issue: ${JSON.stringify(issue satisfies never)}`)

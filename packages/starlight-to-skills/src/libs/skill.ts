@@ -214,14 +214,11 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
   const { manifest, fileMismatches } = await loadSkill(config.outputDir, skill.name)
 
   if (fileMismatches.length > 0) {
-    throwError(
-      `The following files in approved skill '${skill.name}' have changed:\n\n${fileMismatches
-        .map((path) => ` - ${path}`)
-        .join('\n')}`,
-      {
-        hint: `Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'starlight-to-skills generate ${skill.name}', review the generated skill, and then run 'starlight-to-skills approve ${skill.name}'.`,
-      },
-    )
+    const changedFiles = fileMismatches.map((path) => ` - ${path}`).join('\n')
+
+    throwError(`The following files in approved skill '${skill.name}' have changed:\n\n${changedFiles}`, {
+      hint: `Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'starlight-to-skills generate ${skill.name}', review the generated skill, and then run 'starlight-to-skills approve ${skill.name}'.`,
+    })
   }
 
   if (

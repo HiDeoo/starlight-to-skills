@@ -79,7 +79,14 @@ export function compileSkill(
   return [
     {
       path: 'SKILL.md',
-      content: `---\nname: ${JSON.stringify(skill.name)}\ndescription: ${JSON.stringify(skill.description)}\n---\n\n${content.body}`,
+      content: [
+        '---',
+        `name: ${JSON.stringify(skill.name)}`,
+        `description: ${JSON.stringify(skill.description)}`,
+        '---',
+        '',
+        content.body,
+      ].join('\n'),
     },
     ...content.references.map((reference) => ({ path: reference.path, content: reference.body })),
   ]
