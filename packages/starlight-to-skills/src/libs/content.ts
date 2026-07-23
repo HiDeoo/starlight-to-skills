@@ -1,5 +1,3 @@
-import { Agent } from '@mastra/core/agent'
-
 import { ContentResultJSONSchema, ContentResultSchema, type SkillContentResult } from '../schemas/content'
 
 import { throwError } from './error'
@@ -39,6 +37,8 @@ export async function generateSkillContent(
       body: doc.body,
     })),
   }
+
+  const { Agent } = await import('@mastra/core/agent')
 
   const agent = new Agent({
     id: 'starlight-to-skills-agent',

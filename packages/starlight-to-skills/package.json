@@ -27,7 +27,8 @@
     "@mastra/core": "^1.50.0",
     "gray-matter": "^4.0.3",
     "jiti": "^2.7.0",
-    "smol-toml": "^1.7.0"
+    "smol-toml": "^1.7.0",
+    "yocto-spinner": "^1.2.2"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

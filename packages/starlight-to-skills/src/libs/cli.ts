@@ -31,10 +31,9 @@ import {
   SkillCheckIssueMessages,
 } from './skill'
 import { loadSkillDocs } from './starlight'
-import { bold, dim, error, hint, primary, primarySection, section, success } from './style'
+import { bold, dim, error, hint, primary, primarySection, section, success, withProgress } from './style'
 
 // TODO(HiDeoo) show generated file contents for new skills and a unified diff for updates. Then, show hint, e.g. edit/regenerate or approve
-// TODO(HiDeoo) Progress/logs
 
 export async function runCli(args: string[], cwd = process.cwd()): Promise<number> {
   let parsedArgs: ReturnType<typeof parseArgs>
@@ -115,7 +114,9 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 
 async function runGenerateCandidate(name: string, rootDir: URL): Promise<number> {
   const { config, definition, docs, digest } = await loadSkillInputs(name, rootDir)
-  const content = await generateSkillContent(config.model, definition, docs)
+  const content = await withProgress(`Generating '${definition.name}'...`, () =>
+    generateSkillContent(config.model, definition, docs),
+  )
 
   if (content.status === 'error') {
     try {

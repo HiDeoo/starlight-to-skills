@@ -21,6 +21,11 @@ const readline = vi.hoisted(() => {
   return { close, createInterface: vi.fn(() => ({ close, question })), question }
 })
 
+vi.mock('../src/libs/style', async (importOriginal) => {
+  const style = await importOriginal<typeof import('../src/libs/style')>()
+  return { ...style, withProgress: <T>(_text: string, task: () => Promise<T>) => task() }
+})
+
 vi.mock('@mastra/core/agent', () => ({
   Agent: class {
     generate(...args: unknown[]) {
