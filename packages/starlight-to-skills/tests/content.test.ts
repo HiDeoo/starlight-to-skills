@@ -101,9 +101,9 @@ describe('generateSkillContent', () => {
     mastra.generate.mockRejectedValue(new Error('Request failed.'))
 
     await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toThrowErrorMatchingInlineSnapshot(`
-      [StarlightToSkillsError: Model 'openai/gpt-5.6-luna' failed to generate 'migrate-to-v2'.
+      Model 'openai/gpt-5.6-luna' failed to generate 'migrate-to-v2'.
 
-      Request failed.]
+      Request failed.
     `)
   })
 

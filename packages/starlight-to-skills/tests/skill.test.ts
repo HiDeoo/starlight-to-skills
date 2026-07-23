@@ -23,8 +23,6 @@ import type { SkillManifest } from '../src/schemas/manifest'
 
 const rootDir = new URL('fixtures/', import.meta.url)
 
-// TODO(HiDeoo) error custom snapshoter StarlightToSkillsError
-
 describe('discoverSkillDefinitions', () => {
   test('discovers skill definitions', async () => {
     const definitionUrls = await discoverSkillDefinitions({
@@ -60,13 +58,21 @@ describe('getSkillDefinitionUrlByName', () => {
 
   test('rejects an unknown skill name', () => {
     expect(() => getSkillDefinitionUrlByName([], 'unknown')).toThrowErrorMatchingInlineSnapshot(
-      `[StarlightToSkillsError: No skill definition found for 'unknown'.]`,
+      `
+      No skill definition found for 'unknown'.
+
+      Hint: Check the skill name or create 'unknown.skill.ts'.
+    `,
     )
   })
 
   test('rejects an invalid requested skill name', () => {
     expect(() => getSkillDefinitionUrlByName([], 'invalid--name')).toThrowErrorMatchingInlineSnapshot(
-      `[StarlightToSkillsError: Invalid skill name 'invalid--name'.]`,
+      `
+      Invalid skill name 'invalid--name'.
+
+      Hint: Use 1-64 lowercase letters, numbers, or hyphens, without leading, trailing, or consecutive hyphens.
+    `,
     )
   })
 
@@ -84,7 +90,11 @@ describe('getSkillDefinitionUrlByName', () => {
         [new URL('a/duplicate.skill.ts', rootDir), new URL('b/duplicate.skill.ts', rootDir)],
         'duplicate',
       ),
-    ).toThrowErrorMatchingInlineSnapshot(`[StarlightToSkillsError: Multiple skill definitions found for 'duplicate'.]`)
+    ).toThrowErrorMatchingInlineSnapshot(`
+      Multiple skill definitions found for 'duplicate'.
+
+      Hint: Keep only one skill definition named 'duplicate.skill.ts'.
+    `)
   })
 })
 
@@ -150,9 +160,9 @@ describe('loadSkill', () => {
     )
 
     await expect(loadSkill(outputDir, 'test-skill')).rejects.toThrowErrorMatchingInlineSnapshot(`
-      [StarlightToSkillsError: Failed to load approved skill 'test-skill'.
+      Failed to load approved skill 'test-skill'.
 
-      Expected approved skill name 'test-skill' but found 'other-skill'.]
+      Expected approved skill name 'test-skill' but found 'other-skill'.
     `)
   })
 
@@ -204,10 +214,10 @@ describe('loadSkill', () => {
     )
 
     await expect(loadSkill(outputDir, 'test-skill')).rejects.toThrowErrorMatchingInlineSnapshot(`
-      [StarlightToSkillsError: Failed to load approved skill 'test-skill'.
+      Failed to load approved skill 'test-skill'.
 
       ✖ Invalid generated skill file path '../outside.md'.
-        → at files[2].path]
+        → at files[2].path
     `)
   })
 })

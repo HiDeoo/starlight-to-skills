@@ -15,6 +15,10 @@ export class StarlightToSkillsError extends Error {
     this.hint = options.hint
   }
 
+  static is(value: unknown): value is StarlightToSkillsError {
+    return value instanceof Error && value.name === 'StarlightToSkillsError'
+  }
+
   static #getCauseDetails(cause: unknown) {
     if (cause instanceof z.ZodError) return z.prettifyError(cause)
     if (cause instanceof Error) return cause.message
