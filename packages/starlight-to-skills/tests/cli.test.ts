@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { stripVTControlCharacters } from 'node:util'
 
-import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest'
+import { beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest'
 
 import packageJson from '../package.json' with { type: 'json' }
 import { runCli } from '../src/libs/cli'
@@ -41,10 +41,8 @@ beforeEach(() => {
   readline.close.mockClear()
   readline.createInterface.mockClear()
   readline.question.mockReset().mockResolvedValue('yes')
-})
 
-afterEach(() => {
-  vi.restoreAllMocks()
+  return () => vi.restoreAllMocks()
 })
 
 const mastraGenerateSuccessResponse = {
@@ -166,10 +164,8 @@ Then change baz to quux.`,
 
     mastra.generate.mockReset()
     mastra.generate.mockResolvedValue(mastraGenerateSuccessResponse)
-  })
 
-  afterEach(async () => {
-    await fs.rm(testDir, { force: true, recursive: true })
+    return () => fs.rm(testDir, { force: true, recursive: true })
   })
 
   async function addApprovedSkill(name: string) {

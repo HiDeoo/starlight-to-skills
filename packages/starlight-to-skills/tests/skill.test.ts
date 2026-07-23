@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test } from 'vitest'
 
 import type { StarlightToSkillsConfig } from '../src/config'
 import { approveCandidate, createCandidate } from '../src/libs/candidate'
@@ -135,10 +135,8 @@ describe('loadSkill', () => {
       ...files.map((file) => fs.writeFile(new URL(file.path, skillUrl), file.content)),
       fs.writeFile(new URL('.starlight-to-skills/test-skill.json', outputDir), JSON.stringify(manifest, undefined, 2)),
     ])
-  })
 
-  afterEach(async () => {
-    await fs.rm(testDir, { force: true, recursive: true })
+    return () => fs.rm(testDir, { force: true, recursive: true })
   })
 
   test('loads a skill', async () => {
@@ -349,10 +347,8 @@ describe('approveSkill', () => {
       description: 'Migrate a project to v2.',
       docs: ['./guide.md'],
     }
-  })
 
-  afterEach(async () => {
-    await fs.rm(testDir, { force: true, recursive: true })
+    return () => fs.rm(testDir, { force: true, recursive: true })
   })
 
   test('approves an existing skill', async () => {
@@ -421,10 +417,8 @@ describe('pruneSkill', () => {
   beforeEach(async () => {
     testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
     outputDir = pathToFileURL(path.join(testDir, 'skills', path.sep))
-  })
 
-  afterEach(async () => {
-    await fs.rm(testDir, { force: true, recursive: true })
+    return () => fs.rm(testDir, { force: true, recursive: true })
   })
 
   test('deletes a skill and its manifest', async () => {

@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test } from 'vitest'
 
 import {
   approveCandidate,
@@ -57,10 +57,8 @@ describe('persistence', () => {
     testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
     dataDir = pathToFileURL(path.join(testDir, '.starlight-to-skills', path.sep))
     candidateUrl = new URL('test-skill/', dataDir)
-  })
 
-  afterEach(async () => {
-    await fs.rm(testDir, { force: true, recursive: true })
+    return () => fs.rm(testDir, { force: true, recursive: true })
   })
 
   describe('writeCandidate', () => {
