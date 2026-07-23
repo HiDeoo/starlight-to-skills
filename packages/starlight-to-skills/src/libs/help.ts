@@ -1,47 +1,59 @@
 import { bold, dim, primary, section } from './style'
 
+const commands: Record<Command, { args: string; description: string; options?: Record<string, string> }> = {
+  approve: {
+    args: '<skill-name> [options]',
+    description: 'Approve a generated skill.',
+    options: {
+      '--existing': 'Confirm the approved skill remains valid.',
+    },
+  },
+  check: {
+    args: '[skill-name] [options]',
+    description: 'Check whether approved skills are up to date.',
+  },
+  generate: {
+    args: '<skill-name> [options]',
+    description: 'Generate a skill for review.',
+  },
+  prune: {
+    args: '[options]',
+    description: 'Remove orphan approved skills.',
+    options: {
+      '-y, --yes': 'Skip the confirmation prompt.',
+    },
+  },
+}
+
 const help = `
   ${bold(`${primary('starlight-to-skills')} <command> [options]`)}
 
   ${section('Commands')}
-          approve  ${dim('Approve a generated skill.')}
-            check  ${dim('Check whether approved skills are up to date.')}
-         generate  ${dim('Generate a skill for review.')}
-            prune  ${dim('Remove orphan approved skills.')}
+  ${Object.entries(commands)
+    .map(([command, { description }]) => `${command.padStart(15)}  ${dim(description)}`)
+    .join('\n  ')}
 
   ${section('Global options')}
        -h, --help  ${dim('Show this help message.')}
     -v, --version  ${dim('Show the version number.')}`
 
-// TODO(HiDeoo) Include command description
-// TODO(HiDeoo) typecheck everything based on commands using a union or somethjing.
-// TODO(HiDeoo) we should probably explain what's name
-const commandHelp: Record<string, string> = {
-  approve: `
-  ${bold(`${primary('starlight-to-skills approve')} <name> [options]`)}
-
-  ${section('Options')}
-       --existing  ${dim('Confirm the approved skill remains valid.')}
-       -h, --help  ${dim('Show this help message.')}`,
-  check: `
-  ${bold(`${primary('starlight-to-skills check')} [name] [options]`)}
-
-  ${section('Options')}
-       -h, --help  ${dim('Show this help message.')}`,
-  generate: `
-  ${bold(`${primary('starlight-to-skills generate')} <name> [options]`)}
-
-  ${section('Options')}
-       -h, --help  ${dim('Show this help message.')}`,
-  prune: `
-  ${bold(`${primary('starlight-to-skills prune')} [options]`)}
-
-  ${section('Options')}
-        -y, --yes  ${dim('Skip the confirmation prompt.')}
-       -h, --help  ${dim('Show this help message.')}`,
-}
-
 export function getHelp(command?: string): string {
-  if (!command || !Object.hasOwn(commandHelp, command)) return help
-  return commandHelp[command] ?? help
+  if (!command || !Object.hasOwn(commands, command)) return help
+
+  const { args, description, options = {} } = commands[command as Command]
+
+  return `
+  ${bold(`${primary(`starlight-to-skills ${command}`)} ${args}`)}
+
+  ${description}
+
+  ${section('Options')}
+  ${Object.entries({
+    ...options,
+    '-h, --help': 'Show this help message.',
+  })
+    .map(([option, description]) => `${option.padStart(15)}  ${dim(description)}`)
+    .join('\n  ')}`
 }
+
+type Command = 'approve' | 'check' | 'generate' | 'prune'
