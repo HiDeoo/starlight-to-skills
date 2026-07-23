@@ -44,7 +44,8 @@ import {
   withProgress,
 } from './style'
 
-// TODO(HiDeoo) show generated file contents for new skills and a unified diff for updates. Then, show hint, e.g. edit/regenerate or approve
+// TODO(HiDeoo) show a full-content diff against the approved skill for updates.
+// TODO(HiDeoo) when we show command in logs/hints/errors, should we style them so they can be identified more easily?
 
 export async function runCli(args: string[], cwd = process.cwd()): Promise<number> {
   let parsedArgs: ReturnType<typeof parseArgs>
@@ -171,9 +172,19 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
 
   await writeCandidate(config.dataDir, definition.name, candidate)
 
-  const paths = candidate.files.map((file) => `${dim(' -')} ${file.path}`).join('\n')
+  const files = candidate.files.map((file) => `${section(file.path)}\n\n${file.content}`).join('\n\n')
+  const generateCommand = `'starlight-to-skills generate ${definition.name}'`
+  const approveCommand = `'starlight-to-skills approve ${definition.name}'`
+  const nextSteps = [
+    primarySection('Next steps'),
+    '',
+    'Review the generated skill.',
+    '',
+    `${dim(' -')} To make changes, update the skill definition or documentation, then run ${generateCommand} again.`,
+    `${dim(' -')} To approve it, run ${approveCommand}.`,
+  ].join('\n')
 
-  logMessage(`${success('Generated')} ${formatSkillName(definition.name)}.\n\n${paths}`)
+  logMessage(`${success('Generated')} ${formatSkillName(definition.name)}.\n\n${files}\n\n${nextSteps}`)
   return 0
 }
 

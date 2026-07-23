@@ -263,8 +263,25 @@ Change foo to bar.`,
       expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`
         "Generated 'test-skill'.
 
-         - SKILL.md
-         - references/details.md"
+         SKILL.md\u0020
+
+        ---
+        name: "test-skill"
+        description: "Migrate a project to v2."
+        ---
+
+        Change foo to bar and then change baz to quux.
+
+         references/details.md\u0020
+
+        Additional details.
+
+         Next steps\u0020
+
+        Review the generated skill.
+
+         - To make changes, update the skill definition or documentation, then run 'starlight-to-skills generate test-skill' again.
+         - To approve it, run 'starlight-to-skills approve test-skill'."
       `)
     })
 
