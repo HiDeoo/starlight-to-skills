@@ -3,6 +3,7 @@ import { ContentResultJSONSchema, ContentResultSchema, type SkillContentResult }
 import { throwError } from './error'
 import type { SkillConfiguration } from './loader'
 import type { SkillDocumentation } from './starlight'
+import { formatSkillName } from './style'
 
 // TODO(HiDeoo) skill-generation skill
 // TODO(HiDeoo) reference seems to link to docs
@@ -56,7 +57,7 @@ export async function generateSkillContent(
       structuredOutput: { schema: ContentResultJSONSchema, errorStrategy: 'strict' },
     })
   } catch (error) {
-    throwError(`Model '${model}' failed to generate '${skill.name}'.`, { cause: error })
+    throwError(`Model '${model}' failed to generate ${formatSkillName(skill.name)}.`, { cause: error })
   }
 
   const result = ContentResultSchema.safeParse(output.object)

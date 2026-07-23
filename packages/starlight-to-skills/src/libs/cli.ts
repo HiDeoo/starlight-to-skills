@@ -31,7 +31,18 @@ import {
   SkillCheckIssueMessages,
 } from './skill'
 import { loadSkillDocs } from './starlight'
-import { bold, dim, error, hint, primary, primarySection, section, success, withProgress } from './style'
+import {
+  bold,
+  dim,
+  error,
+  formatSkillName,
+  hint,
+  primary,
+  primarySection,
+  section,
+  success,
+  withProgress,
+} from './style'
 
 // TODO(HiDeoo) show generated file contents for new skills and a unified diff for updates. Then, show hint, e.g. edit/regenerate or approve
 
@@ -114,7 +125,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 
 async function runGenerateCandidate(name: string, rootDir: URL): Promise<number> {
   const { config, definition, docs, digest } = await loadSkillInputs(name, rootDir)
-  const content = await withProgress(`Generating '${definition.name}'...`, () =>
+  const content = await withProgress(`Generating ${formatSkillName(definition.name)}...`, () =>
     generateSkillContent(config.model, definition, docs),
   )
 
@@ -122,7 +133,7 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
     try {
       await removeCandidateForInput(config.dataDir, definition.name, digest.inputHash)
     } catch (error) {
-      throwError(`Could not generate '${primary(definition.name)}'.`, { cause: error })
+      throwError(`Could not generate ${formatSkillName(definition.name)}.`, { cause: error })
     }
 
     const issues = content.issues
@@ -141,7 +152,7 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
       .join('\n\n')
 
     return logError(
-      createError(`Could not generate '${primary(definition.name)}'.\n\n${issues}`, {
+      createError(`Could not generate ${formatSkillName(definition.name)}.\n\n${issues}`, {
         hint: `Resolve these issues and run 'starlight-to-skills generate ${definition.name}' again.`,
       }),
     )
@@ -152,7 +163,7 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
   try {
     candidate = createCandidate(digest.inputHash, compileSkill(definition, content))
   } catch (error) {
-    throwError(`Could not generate '${primary(definition.name)}'.`, {
+    throwError(`Could not generate ${formatSkillName(definition.name)}.`, {
       cause: error,
       hint: `Run 'starlight-to-skills generate ${definition.name}' again.`,
     })
@@ -162,7 +173,7 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
 
   const paths = candidate.files.map((file) => `${dim(' -')} ${file.path}`).join('\n')
 
-  logMessage(`${success('Generated')} '${primary(definition.name)}'.\n\n${paths}`)
+  logMessage(`${success('Generated')} ${formatSkillName(definition.name)}.\n\n${paths}`)
   return 0
 }
 
@@ -172,14 +183,14 @@ async function runApproveSkill(name: string, rootDir: URL, existing: boolean): P
   if (existing) {
     await approveSkill(config, definition, digest)
 
-    logMessage(`${success('Approved')} '${primary(definition.name)}'.`)
+    logMessage(`${success('Approved')} ${formatSkillName(definition.name)}.`)
     return 0
   }
 
   const candidate = await loadCandidate(config.dataDir, definition.name, digest.inputHash)
   const result = await approveCandidate(config, definition, digest, candidate)
 
-  logMessage(`${success(result === 'approved' ? 'Approved' : 'Already approved')} '${primary(definition.name)}'.`)
+  logMessage(`${success(result === 'approved' ? 'Approved' : 'Already approved')} ${formatSkillName(definition.name)}.`)
   return 0
 }
 
@@ -188,7 +199,7 @@ async function runCheckSkill(name: string, rootDir: URL): Promise<number> {
   const issues = await getSkillIssues(config, definition, digest)
 
   if (!issues) {
-    logMessage(`${success('Check complete:')} '${primary(definition.name)}' is up to date.`)
+    logMessage(`${success('Check complete:')} ${formatSkillName(definition.name)} is up to date.`)
     return 0
   }
 
@@ -322,10 +333,10 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
     try {
       await pruneSkill(config.outputDir, orphan.name)
     } catch (error) {
-      throwError(`Failed to prune '${orphan.name}'.`, { cause: error })
+      throwError(`Failed to prune ${formatSkillName(orphan.name)}.`, { cause: error })
     }
 
-    logMessage(`${success('Pruned')} '${primary(orphan.name)}'.`)
+    logMessage(`${success('Pruned')} ${formatSkillName(orphan.name)}.`)
   }
 
   return 0
@@ -357,7 +368,7 @@ async function getSkillIssues(
   const generateHint = `Run ${generateCommand}, review the generated skill, and then run ${approveCommand}.`
 
   if (!(await pathExists(getSkillManifestUrl(config.outputDir, definition.name)))) {
-    return createError(`Skill '${definition.name}' has not been approved.`, { hint: generateHint })
+    return createError(`Skill ${formatSkillName(definition.name)} has not been approved.`, { hint: generateHint })
   }
 
   const { manifest, fileMismatches } = await loadSkill(config.outputDir, definition.name)
@@ -408,7 +419,7 @@ async function getSkillIssues(
     )
   }
 
-  return createError(`Skill '${definition.name}' is not up to date.\n\n${issues.join('\n\n')}`, {
+  return createError(`Skill ${formatSkillName(definition.name)} is not up to date.\n\n${issues.join('\n\n')}`, {
     hint: hints.join(' '),
   })
 }

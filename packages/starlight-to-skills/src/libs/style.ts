@@ -37,6 +37,10 @@ export function primarySection(title: string) {
   return styleText(['bold', 'bgCyan', 'black'], ` ${title} `)
 }
 
+export function formatSkillName(name: string) {
+  return `'${primary(name)}'`
+}
+
 export async function withProgress<T>(text: string, task: () => Promise<T>): Promise<T> {
   const spinner = yoctoSpinner({ text, spinner: { interval: 125, frames: ['∙∙∙', '●∙∙', '∙●∙', '∙∙●', '∙∙∙'] } })
   // https://github.com/sindresorhus/yocto-spinner/blob/4e51ab9b8cc6a87d3a8d42c10d2e016fe88cfe29/index.js#L10-L12
