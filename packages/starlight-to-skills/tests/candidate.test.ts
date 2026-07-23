@@ -315,7 +315,7 @@ describe('persistence', () => {
         { path: 'references/details.md', content: 'Reference content.' },
       ])
 
-      await approveCandidate(config, skill, digest, candidate)
+      await expect(approveCandidate(config, skill, digest, candidate)).resolves.toBe('approved')
 
       const approvedSkillUrl = new URL(`${skill.name}/`, config.outputDir)
 
@@ -337,6 +337,59 @@ describe('persistence', () => {
         sources: [{ docsPath: './guide.md', contentHash: 'source-hash' }],
         files: candidate.fileDigests,
       })
+    })
+
+    test('does not reapprove the current candidate', async () => {
+      const candidate = createCandidate('input-hash', [
+        { path: 'SKILL.md', content: 'Skill content.' },
+        { path: 'references/details.md', content: 'Reference content.' },
+      ])
+
+      await approveCandidate(config, skill, digest, candidate)
+
+      await expect(approveCandidate(config, skill, digest, candidate)).resolves.toBe('already-approved')
+    })
+
+    test('reapproves a candidate when the approved skill changed', async () => {
+      const candidate = createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }])
+
+      await approveCandidate(config, skill, digest, candidate)
+      await fs.writeFile(new URL(`${skill.name}/SKILL.md`, config.outputDir), 'Edited skill content.')
+
+      await expect(approveCandidate(config, skill, digest, candidate)).resolves.toBe('approved')
+
+      await expect(fs.readFile(new URL(`${skill.name}/SKILL.md`, config.outputDir), 'utf8')).resolves.toBe(
+        'Skill content.',
+      )
+    })
+
+    test('reapproves a candidate when the approved skill contains extra files', async () => {
+      const candidate = createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }])
+      const extraFileUrl = new URL(`${skill.name}/references/details.md`, config.outputDir)
+
+      await approveCandidate(config, skill, digest, candidate)
+
+      await fs.mkdir(new URL('.', extraFileUrl), { recursive: true })
+      await fs.writeFile(extraFileUrl, 'Reference content.')
+
+      await expect(approveCandidate(config, skill, digest, candidate)).resolves.toBe('approved')
+
+      await expect(fs.stat(extraFileUrl)).rejects.toMatchObject({ code: 'ENOENT' })
+    })
+
+    test('recreates an approved skill replaced by a file', async () => {
+      const candidate = createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }])
+      const skillEntryUrl = new URL(skill.name, config.outputDir)
+
+      await approveCandidate(config, skill, digest, candidate)
+      await fs.rm(skillEntryUrl, { recursive: true })
+      await fs.writeFile(skillEntryUrl, 'Corrupted skill.')
+
+      await expect(approveCandidate(config, skill, digest, candidate)).resolves.toBe('approved')
+
+      await expect(fs.readFile(new URL(`${skill.name}/SKILL.md`, config.outputDir), 'utf8')).resolves.toBe(
+        'Skill content.',
+      )
     })
 
     test('replaces previous approved skill with a new candidate', async () => {
@@ -404,7 +457,7 @@ describe('persistence', () => {
           createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Candidate content.' }]),
         ),
       ).rejects.toMatchObject({
-        message: `Cannot approve 'test-skill' because a file or directory already exists at '${fileURLToPath(approvedSkillUrl)}'.`,
+        message: `Cannot approve 'test-skill' because a file or directory already exists at '${fileURLToPath(new URL('test-skill', config.outputDir))}'.`,
         hint: 'Move the existing file or directory and try again.',
       })
 

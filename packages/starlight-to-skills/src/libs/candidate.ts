@@ -1,5 +1,7 @@
 import fs from 'node:fs/promises'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isDeepStrictEqual } from 'node:util'
 
 import { validateCandidateFiles } from '../schemas/candidate'
 import type { StarlightToSkillsConfig } from '../schemas/config'
@@ -134,51 +136,91 @@ export async function approveCandidate(
   skill: SkillConfiguration,
   digest: SkillDigest,
   candidate: Candidate,
-) {
+): Promise<'approved' | 'already-approved'> {
   validateCandidateFiles(candidate.files)
 
-  const skillDirUrl = resolveDirectoryUrl(skill.name, config.outputDir)
+  const skillPath = fileURLToPath(resolveRelativeFilePathUrl(skill.name, config.outputDir))
   const manifestUrl = getSkillManifestUrl(config.outputDir, skill.name)
 
-  let isAlreadyApproved: boolean
+  let hasSkill: boolean
   let hasManifest: boolean
 
   try {
     await ensureDirectory(new URL('.', manifestUrl))
 
-    isAlreadyApproved = await pathExists(skillDirUrl)
+    hasSkill = await pathExists(skillPath)
     hasManifest = await pathExists(manifestUrl)
   } catch (error) {
     if (error instanceof StarlightToSkillsError) throw error
     throwError(`Failed to approve '${skill.name}'.`, { cause: error })
   }
 
-  if (isAlreadyApproved && !hasManifest) {
-    throwError(
-      `Cannot approve '${skill.name}' because a file or directory already exists at '${fileURLToPath(skillDirUrl)}'.`,
-      { hint: 'Move the existing file or directory and try again.' },
-    )
-  }
-
-  if (hasManifest) {
-    await loadSkillManifest(manifestUrl, skill.name)
+  if (hasSkill && !hasManifest) {
+    throwError(`Cannot approve '${skill.name}' because a file or directory already exists at '${skillPath}'.`, {
+      hint: 'Move the existing file or directory and try again.',
+    })
   }
 
   const manifest = makeSkillManifest(config, skill, digest, candidate.fileDigests)
 
+  if (hasManifest) {
+    const approvedManifest = await loadSkillManifest(manifestUrl, skill.name)
+
+    if (isDeepStrictEqual(approvedManifest, manifest) && (await hasMatchingApprovedSkillFiles(skillPath, candidate))) {
+      return 'already-approved'
+    }
+  }
+
   try {
-    await fs.rm(skillDirUrl, { force: true, recursive: true })
+    await fs.rm(skillPath, { force: true, recursive: true })
 
     for (const file of candidate.files) {
-      const fileUrl = resolveRelativeFilePathUrl(file.path, skillDirUrl)
+      const filePath = path.join(skillPath, file.path)
 
-      await fs.mkdir(new URL('.', fileUrl), { recursive: true })
-      await fs.writeFile(fileUrl, file.content)
+      await fs.mkdir(path.dirname(filePath), { recursive: true })
+      await fs.writeFile(filePath, file.content)
     }
 
     await fs.writeFile(manifestUrl, JSON.stringify(manifest, undefined, 2))
   } catch (error) {
     throwError(`Failed to approve '${skill.name}'.`, { cause: error })
+  }
+
+  return 'approved'
+}
+
+async function hasMatchingApprovedSkillFiles(skillPath: string, candidate: Candidate): Promise<boolean> {
+  try {
+    const stats = await fs.lstat(skillPath)
+    if (!stats.isDirectory()) return false
+
+    const expectedPaths = new Set(candidate.files.map((file) => path.join(skillPath, file.path)))
+    const paths = new Set<string>()
+    const entries = await fs.readdir(skillPath, { recursive: true, withFileTypes: true })
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) continue
+      if (!entry.isFile()) return false
+
+      const filePath = path.join(entry.parentPath, entry.name)
+
+      if (!expectedPaths.has(filePath)) return false
+
+      paths.add(filePath)
+    }
+
+    if (paths.size !== expectedPaths.size) return false
+
+    const files = await Promise.all(
+      candidate.files.map(async (file) => ({
+        path: file.path,
+        content: await fs.readFile(path.join(skillPath, file.path), 'utf8'),
+      })),
+    )
+
+    return isDeepStrictEqual(computeSkillFileDigest(files), candidate.fileDigests)
+  } catch {
+    return false
   }
 }
 

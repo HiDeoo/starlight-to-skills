@@ -165,7 +165,6 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
   return 0
 }
 
-// TODO(HiDeoo) running multiple times without changes re-aprove indefinitely?
 async function runApproveSkill(name: string, rootDir: URL, existing: boolean): Promise<number> {
   const { config, definition, digest } = await loadSkillInputs(name, rootDir)
 
@@ -177,9 +176,9 @@ async function runApproveSkill(name: string, rootDir: URL, existing: boolean): P
   }
 
   const candidate = await loadCandidate(config.dataDir, definition.name, digest.inputHash)
-  await approveCandidate(config, definition, digest, candidate)
+  const result = await approveCandidate(config, definition, digest, candidate)
 
-  logMessage(`${success('Approved')} '${primary(definition.name)}'.`)
+  logMessage(`${success(result === 'approved' ? 'Approved' : 'Already approved')} '${primary(definition.name)}'.`)
   return 0
 }
 

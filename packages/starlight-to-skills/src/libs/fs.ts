@@ -1,3 +1,4 @@
+import type { PathLike } from 'node:fs'
 import fs from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 
@@ -47,9 +48,9 @@ export async function ensureDirectory(url: URL) {
   }
 }
 
-export async function pathExists(url: URL) {
+export async function pathExists(path: PathLike) {
   try {
-    await fs.stat(url)
+    await fs.stat(path)
     return true
   } catch (error) {
     if (isFileNotFoundError(error)) return false

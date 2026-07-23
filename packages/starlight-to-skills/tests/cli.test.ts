@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import type { ReadStream } from 'node:tty'
 import { stripVTControlCharacters } from 'node:util'
 
 import { beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest'
@@ -364,6 +365,9 @@ Change foo to bar.`,
       await expect(fs.stat(skillDir)).resolves.toBeDefined()
 
       expect(getLastLogMessage(logSpy)).toBe("Approved 'test-skill'.")
+
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+      expect(getLastLogMessage(logSpy)).toBe("Already approved 'test-skill'.")
     })
 
     test('rejects a missing candidate', async () => {
@@ -857,7 +861,7 @@ Change foo to bar.`,
     })
 
     test('does not delete orphan skills when cancelling', async () => {
-      vi.spyOn(process, 'stdin', 'get').mockReturnValue({ fd: 0, isTTY: true } as NodeJS.ReadStream & { fd: 0 })
+      vi.spyOn(process, 'stdin', 'get').mockReturnValue({ fd: 0, isTTY: true } as ReadStream & { fd: 0 })
 
       const orphanSkill = await writeSkill('orphan-skill')
 
