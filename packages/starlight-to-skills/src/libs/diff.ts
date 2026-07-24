@@ -2,9 +2,7 @@ import { diffLinesUnified, diffStringsUnified, type DiffOptions } from 'jest-dif
 
 import type { SkillFile } from './content'
 import { normalizeLineEndings } from './digest'
-import { style } from './terminal'
-
-// TODO(HiDeoo) non diff generate output should be indented like a diff
+import { prefixLines, style } from './terminal'
 
 // https://github.com/jestjs/jest/blob/f49721c78e195558b40913977c9230f5b7f559d8/packages/jest-diff/README.md?plain=1#L114
 const maxCharacterDiffLength = 20_000
@@ -55,8 +53,5 @@ function renderSkillFileDiff(approvedFile?: SkillFile, candidateFile?: SkillFile
 }
 
 function prefixDiffLines(content: string, indicator: '+' | '-', color: (text: string) => string) {
-  return content
-    .split('\n')
-    .map((line) => color(`${indicator} ${line}`))
-    .join('\n')
+  return color(prefixLines(content, `${indicator} `))
 }

@@ -32,7 +32,16 @@ import {
   SkillCheckIssueMessages,
 } from './skill'
 import { loadSkillDocs } from './starlight'
-import { formatError, logError, logMessage, logUsageError, pluralize, style, withProgress } from './terminal'
+import {
+  formatError,
+  logError,
+  logMessage,
+  logUsageError,
+  pluralize,
+  prefixLines,
+  style,
+  withProgress,
+} from './terminal'
 
 // TODO(HiDeoo) when we show command in logs/hints/errors, should we style them so they can be identified more easily?
 
@@ -161,7 +170,10 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
 
   await writeCandidate(config.dataDir, definition.name, candidate)
 
-  let files = candidate.files.map((file) => `${style.section(file.path)}\n\n${file.content}`).join('\n\n')
+  let files = candidate.files
+    .map((file) => `${style.section(file.path)}\n\n${prefixLines(file.content, '  ')}`)
+    .join('\n\n')
+
   let reviewMessage = 'Review the generated skill.'
 
   if (await pathExists(getSkillManifestUrl(config.outputDir, definition.name))) {

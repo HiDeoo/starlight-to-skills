@@ -265,16 +265,16 @@ Change foo to bar.`,
 
          SKILL.md\u0020
 
-        ---
-        name: "test-skill"
-        description: "Migrate a project to v2."
-        ---
-
-        Change foo to bar and then change baz to quux.
+          ---
+          name: "test-skill"
+          description: "Migrate a project to v2."
+          ---
+        \u0020\u0020
+          Change foo to bar and then change baz to quux.
 
          references/details.md\u0020
 
-        Additional details.
+          Additional details.
 
          Next steps\u0020
 

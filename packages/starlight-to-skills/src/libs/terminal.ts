@@ -2,7 +2,10 @@ import { styleText } from 'node:util'
 
 import yoctoSpinner from 'yocto-spinner'
 
+import { normalizeLineEndings } from './digest'
 import { createError, StarlightToSkillsError } from './error'
+
+const lineStartRegex = /^/gm
 
 const startTerminalProgressSequence = '\u001B]9;4;3;0\u001B\\'
 const stopTerminalProgressSequence = '\u001B]9;4;0;0\u001B\\'
@@ -54,6 +57,10 @@ export function formatError(maybeError: unknown): string {
   }
 
   return `${message}\n\n${style.hint('Hint:')} ${maybeError.hint}`
+}
+
+export function prefixLines(content: string, prefix: string) {
+  return normalizeLineEndings(content).replaceAll(lineStartRegex, () => prefix)
 }
 
 export async function withProgress<T>(text: string, task: () => Promise<T>): Promise<T> {
