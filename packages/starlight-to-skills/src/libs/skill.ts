@@ -10,6 +10,7 @@ import type { SkillDigest } from '../schemas/digest'
 import { makeSkillManifest, SkillManifestSchema, type SkillManifest } from '../schemas/manifest'
 import { parseSkillName } from '../schemas/skill'
 
+import type { SkillFile } from './content'
 import { computeSkillFileDigest, GeneratorVersion, normalizeLineEndings } from './digest'
 import { throwError } from './error'
 import {
@@ -21,7 +22,7 @@ import {
   resolveRelativeFilePathUrl,
 } from './fs'
 import type { SkillConfiguration } from './loader'
-import { formatSkillName } from './style'
+import { style } from './terminal'
 
 const skillDefinitionSuffix = '.skill.ts'
 const skillManifestSuffix = '.json'
@@ -69,11 +70,11 @@ export function getSkillDefinitionUrlByName(definitionUrls: URL[], name: string)
   const [matchingUrl] = matchingUrls
 
   if (!matchingUrl) {
-    throwError(`No skill definition found for ${formatSkillName(skillName)}.`, {
+    throwError(`No skill definition found for ${style.skillName(skillName)}.`, {
       hint: `Check the skill name or create '${filename}'.`,
     })
   } else if (matchingUrls.length > 1) {
-    throwError(`Multiple skill definitions found for ${formatSkillName(skillName)}.`, {
+    throwError(`Multiple skill definitions found for ${style.skillName(skillName)}.`, {
       hint: `Keep only one skill definition named '${filename}'.`,
     })
   }
@@ -108,7 +109,7 @@ export async function loadSkillManifest(url: URL, name: string): Promise<SkillMa
   try {
     content = await fs.readFile(url, 'utf8')
   } catch (error) {
-    throwError(`Failed to load approved skill ${formatSkillName(name)}.`, { cause: error })
+    throwError(`Failed to load approved skill ${style.skillName(name)}.`, { cause: error })
   }
 
   try {
@@ -116,18 +117,19 @@ export async function loadSkillManifest(url: URL, name: string): Promise<SkillMa
     const manifest = SkillManifestSchema.parse(data)
     if (manifest.name !== name) {
       throw new Error(
-        `Expected approved skill name ${formatSkillName(name)} but found ${formatSkillName(manifest.name)}.`,
+        `Expected approved skill name ${style.skillName(name)} but found ${style.skillName(manifest.name)}.`,
       )
     }
     return manifest
   } catch (error) {
-    throwError(`Failed to load approved skill ${formatSkillName(name)}.`, { cause: error })
+    throwError(`Failed to load approved skill ${style.skillName(name)}.`, { cause: error })
   }
 }
 
 export async function loadSkill(outputDir: URL, name: string) {
   const skillUrl = resolveDirectoryUrl(name, outputDir)
   const manifest = await loadSkillManifest(getSkillManifestUrl(outputDir, name), name)
+  const files: SkillFile[] = []
   const fileMismatches: string[] = []
 
   for (const file of manifest.files) {
@@ -148,15 +150,17 @@ export async function loadSkill(outputDir: URL, name: string) {
         fileMismatches.push(file.path)
         continue
       }
-      throwError(`Failed to load approved skill ${formatSkillName(name)}.`, { cause: error })
+      throwError(`Failed to load approved skill ${style.skillName(name)}.`, { cause: error })
     }
+
+    files.push({ path: file.path, content })
 
     const [digest] = computeSkillFileDigest([{ path: file.path, content }])
 
     if (digest?.contentHash !== file.contentHash) fileMismatches.push(file.path)
   }
 
-  return { manifest, fileMismatches }
+  return { manifest, files, fileMismatches }
 }
 
 export async function pruneSkill(outputDir: URL, name: string) {
@@ -205,11 +209,11 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
     hasSkill = await pathExists(skillDirUrl)
     hasManifest = await pathExists(manifestUrl)
   } catch (error) {
-    throwError(`Failed to approve ${formatSkillName(skill.name)}.`, { cause: error })
+    throwError(`Failed to approve ${style.skillName(skill.name)}.`, { cause: error })
   }
 
   if (!hasSkill || !hasManifest) {
-    throwError(`No approved skill found for ${formatSkillName(skill.name)}.`, {
+    throwError(`No approved skill found for ${style.skillName(skill.name)}.`, {
       hint: `If needed, run 'starlight-to-skills generate ${skill.name}', then run 'starlight-to-skills approve ${skill.name}' without '--existing'.`,
     })
   }
@@ -220,7 +224,7 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
     const changedFiles = fileMismatches.map((path) => ` - ${path}`).join('\n')
 
     throwError(
-      `The following files in approved skill ${formatSkillName(skill.name)} have changed:\n\n${changedFiles}`,
+      `The following files in approved skill ${style.skillName(skill.name)} have changed:\n\n${changedFiles}`,
       {
         hint: `Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'starlight-to-skills generate ${skill.name}', review the generated skill, and then run 'starlight-to-skills approve ${skill.name}'.`,
       },
@@ -231,7 +235,7 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
     manifest.definitionHash !== digest.definitionHash &&
     !(await hasMatchingSkillDescription(config.outputDir, skill.name, skill.description))
   ) {
-    throwError(`Description for ${formatSkillName(skill.name)} has changed.`, {
+    throwError(`Description for ${style.skillName(skill.name)} has changed.`, {
       hint: `Run 'starlight-to-skills generate ${skill.name}'.`,
     })
   }
@@ -242,7 +246,7 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
       JSON.stringify(makeSkillManifest(config, skill, digest, manifest.files), undefined, 2),
     )
   } catch (error) {
-    throwError(`Failed to approve ${formatSkillName(skill.name)}.`, { cause: error })
+    throwError(`Failed to approve ${style.skillName(skill.name)}.`, { cause: error })
   }
 }
 
@@ -252,7 +256,7 @@ export async function hasMatchingSkillDescription(outputDir: URL, name: string, 
   try {
     content = await fs.readFile(new URL('SKILL.md', resolveDirectoryUrl(name, outputDir)), 'utf8')
   } catch (error) {
-    throwError(`Failed to load approved skill ${formatSkillName(name)}.`, { cause: error })
+    throwError(`Failed to load approved skill ${style.skillName(name)}.`, { cause: error })
   }
 
   try {

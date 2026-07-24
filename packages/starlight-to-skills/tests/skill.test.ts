@@ -150,7 +150,7 @@ describe('loadSkill', () => {
   })
 
   test('loads a skill', async () => {
-    await expect(loadSkill(outputDir, 'test-skill')).resolves.toStrictEqual({ manifest, fileMismatches: [] })
+    await expect(loadSkill(outputDir, 'test-skill')).resolves.toStrictEqual({ manifest, files, fileMismatches: [] })
   })
 
   test('rejects an approved skill with a mismatched name', async () => {
@@ -169,7 +169,14 @@ describe('loadSkill', () => {
   test('normalizes line endings', async () => {
     await fs.writeFile(new URL('SKILL.md', skillUrl), 'Skill content.\r\n')
 
-    await expect(loadSkill(outputDir, 'test-skill')).resolves.toStrictEqual({ manifest, fileMismatches: [] })
+    await expect(loadSkill(outputDir, 'test-skill')).resolves.toStrictEqual({
+      manifest,
+      files: [
+        { path: 'SKILL.md', content: 'Skill content.\r\n' },
+        { path: 'references/details.md', content: 'Reference content.\n' },
+      ],
+      fileMismatches: [],
+    })
   })
 
   test('reports an updated file', async () => {
@@ -177,6 +184,10 @@ describe('loadSkill', () => {
 
     await expect(loadSkill(outputDir, 'test-skill')).resolves.toStrictEqual({
       manifest,
+      files: [
+        { path: 'SKILL.md', content: 'Skill content.\n' },
+        { path: 'references/details.md', content: 'Updated reference content.' },
+      ],
       fileMismatches: ['references/details.md'],
     })
   })
@@ -186,6 +197,7 @@ describe('loadSkill', () => {
 
     await expect(loadSkill(outputDir, 'test-skill')).resolves.toStrictEqual({
       manifest,
+      files: [{ path: 'SKILL.md', content: 'Skill content.\n' }],
       fileMismatches: ['references/details.md'],
     })
   })
@@ -198,6 +210,7 @@ describe('loadSkill', () => {
 
     await expect(loadSkill(outputDir, 'test-skill')).resolves.toStrictEqual({
       manifest,
+      files: [{ path: 'SKILL.md', content: 'Skill content.\n' }],
       fileMismatches: ['references/details.md'],
     })
   })

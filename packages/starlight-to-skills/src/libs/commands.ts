@@ -12,8 +12,9 @@ import { parseSkillName } from '../schemas/skill'
 
 import { approveCandidate, createCandidate, loadCandidate, removeCandidateForInput, writeCandidate } from './candidate'
 import { compileSkill, generateSkillContent } from './content'
+import { renderSkillDiff } from './diff'
 import { computeSkillDigest, GeneratorVersion } from './digest'
-import { createError, StarlightToSkillsError, throwError } from './error'
+import { createError, type StarlightToSkillsError, throwError } from './error'
 import { getSkillManifestUrl, pathExists } from './fs'
 import { getHelp } from './help'
 import { loadConfig, loadSkillDefinition, type SkillConfiguration } from './loader'
@@ -31,20 +32,8 @@ import {
   SkillCheckIssueMessages,
 } from './skill'
 import { loadSkillDocs } from './starlight'
-import {
-  bold,
-  dim,
-  error,
-  formatSkillName,
-  hint,
-  primary,
-  primarySection,
-  section,
-  success,
-  withProgress,
-} from './style'
+import { formatError, logError, logMessage, logUsageError, pluralize, style, withProgress } from './terminal'
 
-// TODO(HiDeoo) show a full-content diff against the approved skill for updates.
 // TODO(HiDeoo) when we show command in logs/hints/errors, should we style them so they can be identified more easily?
 
 export async function runCli(args: string[], cwd = process.cwd()): Promise<number> {
@@ -126,7 +115,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 
 async function runGenerateCandidate(name: string, rootDir: URL): Promise<number> {
   const { config, definition, docs, digest } = await loadSkillInputs(name, rootDir)
-  const content = await withProgress(`Generating ${formatSkillName(definition.name)}...`, () =>
+  const content = await withProgress(`Generating ${style.skillName(definition.name)}...`, () =>
     generateSkillContent(config.model, definition, docs),
   )
 
@@ -134,17 +123,17 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
     try {
       await removeCandidateForInput(config.dataDir, definition.name, digest.inputHash)
     } catch (error) {
-      throwError(`Could not generate ${formatSkillName(definition.name)}.`, { cause: error })
+      throwError(`Could not generate ${style.skillName(definition.name)}.`, { cause: error })
     }
 
     const issues = content.issues
       .map((issue) => {
-        const paragraphs = [section(ContentResultIssueLabels[issue.type]), issue.details]
+        const paragraphs = [style.section(ContentResultIssueLabels[issue.type]), issue.details]
 
         if (issue.docsPaths.length > 0) {
           paragraphs.push(
-            dim(`${pluralize(issue.docsPaths.length, 'Documentation file')}:`),
-            issue.docsPaths.map((docsPath) => `${dim(' -')} ${docsPath}`).join('\n'),
+            style.dim(`${pluralize(issue.docsPaths.length, 'Documentation file')}:`),
+            issue.docsPaths.map((docsPath) => `${style.dim(' -')} ${docsPath}`).join('\n'),
           )
         }
 
@@ -153,7 +142,7 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
       .join('\n\n')
 
     return logError(
-      createError(`Could not generate ${formatSkillName(definition.name)}.\n\n${issues}`, {
+      createError(`Could not generate ${style.skillName(definition.name)}.\n\n${issues}`, {
         hint: `Resolve these issues and run 'starlight-to-skills generate ${definition.name}' again.`,
       }),
     )
@@ -164,7 +153,7 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
   try {
     candidate = createCandidate(digest.inputHash, compileSkill(definition, content))
   } catch (error) {
-    throwError(`Could not generate ${formatSkillName(definition.name)}.`, {
+    throwError(`Could not generate ${style.skillName(definition.name)}.`, {
       cause: error,
       hint: `Run 'starlight-to-skills generate ${definition.name}' again.`,
     })
@@ -172,19 +161,28 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
 
   await writeCandidate(config.dataDir, definition.name, candidate)
 
-  const files = candidate.files.map((file) => `${section(file.path)}\n\n${file.content}`).join('\n\n')
-  const generateCommand = `'starlight-to-skills generate ${definition.name}'`
-  const approveCommand = `'starlight-to-skills approve ${definition.name}'`
+  let files = candidate.files.map((file) => `${style.section(file.path)}\n\n${file.content}`).join('\n\n')
+  let reviewMessage = 'Review the generated skill.'
+
+  if (await pathExists(getSkillManifestUrl(config.outputDir, definition.name))) {
+    const approvedSkill = await loadSkill(config.outputDir, definition.name)
+
+    if (approvedSkill.fileMismatches.length === 0) {
+      files = renderSkillDiff(approvedSkill.files, candidate.files)
+      reviewMessage = 'Review changes to the generated skill.'
+    }
+  }
+
   const nextSteps = [
-    primarySection('Next steps'),
+    style.primarySection('Next steps'),
     '',
-    'Review the generated skill.',
+    reviewMessage,
     '',
-    `${dim(' -')} To make changes, update the skill definition or documentation, then run ${generateCommand} again.`,
-    `${dim(' -')} To approve it, run ${approveCommand}.`,
+    `${style.dim(' -')} To make changes, update the skill definition or documentation, then run 'starlight-to-skills generate ${definition.name}' again.`,
+    `${style.dim(' -')} To approve it, run 'starlight-to-skills approve ${definition.name}'.`,
   ].join('\n')
 
-  logMessage(`${success('Generated')} ${formatSkillName(definition.name)}.\n\n${files}\n\n${nextSteps}`)
+  logMessage(`${style.success('Generated')} ${style.skillName(definition.name)}.\n\n${files}\n\n${nextSteps}`)
   return 0
 }
 
@@ -194,14 +192,16 @@ async function runApproveSkill(name: string, rootDir: URL, existing: boolean): P
   if (existing) {
     await approveSkill(config, definition, digest)
 
-    logMessage(`${success('Approved')} ${formatSkillName(definition.name)}.`)
+    logMessage(`${style.success('Approved')} ${style.skillName(definition.name)}.`)
     return 0
   }
 
   const candidate = await loadCandidate(config.dataDir, definition.name, digest.inputHash)
   const result = await approveCandidate(config, definition, digest, candidate)
 
-  logMessage(`${success(result === 'approved' ? 'Approved' : 'Already approved')} ${formatSkillName(definition.name)}.`)
+  logMessage(
+    `${style.success(result === 'approved' ? 'Approved' : 'Already approved')} ${style.skillName(definition.name)}.`,
+  )
   return 0
 }
 
@@ -210,7 +210,7 @@ async function runCheckSkill(name: string, rootDir: URL): Promise<number> {
   const issues = await getSkillIssues(config, definition, digest)
 
   if (!issues) {
-    logMessage(`${success('Check complete:')} ${formatSkillName(definition.name)} is up to date.`)
+    logMessage(`${style.success('Check complete:')} ${style.skillName(definition.name)} is up to date.`)
     return 0
   }
 
@@ -226,7 +226,7 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
   const definitionNames = new Set<string>()
 
   function addReport(name: string, details: unknown) {
-    reports.push(`${primarySection(name)}\n\n${formatError(details)}`)
+    reports.push(`${style.primarySection(name)}\n\n${formatError(details)}`)
   }
 
   for (const definitionUrl of definitionUrls) {
@@ -287,7 +287,7 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
   }
 
   logMessage(
-    `${success('Check complete:')} ${definitionNames.size === 0 ? 'no skills found.' : 'all skills are up to date.'}`,
+    `${style.success('Check complete:')} ${definitionNames.size === 0 ? 'no skills found.' : 'all skills are up to date.'}`,
   )
   return 0
 }
@@ -312,9 +312,9 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
     return 0
   }
 
-  const orphanNames = orphans.map((orphan) => `${dim(' -')} ${primary(orphan.name)}`).join('\n')
+  const orphanNames = orphans.map((orphan) => `${style.dim(' -')} ${style.primary(orphan.name)}`).join('\n')
 
-  logMessage(`${bold('Orphan approved skills:')}\n\n${orphanNames}\n`)
+  logMessage(`${style.bold('Orphan approved skills:')}\n\n${orphanNames}\n`)
 
   if (!yes) {
     if (process.stdin.isTTY !== true) {
@@ -327,7 +327,7 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
 
     try {
       const answer = await readline.question(
-        `Prune ${orphans.length} ${pluralize(orphans.length, 'orphan approved skill')}? ${dim('[y/N]')} `,
+        `Prune ${orphans.length} ${pluralize(orphans.length, 'orphan approved skill')}? ${style.dim('[y/N]')} `,
       )
       logMessage('')
 
@@ -344,10 +344,10 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
     try {
       await pruneSkill(config.outputDir, orphan.name)
     } catch (error) {
-      throwError(`Failed to prune ${formatSkillName(orphan.name)}.`, { cause: error })
+      throwError(`Failed to prune ${style.skillName(orphan.name)}.`, { cause: error })
     }
 
-    logMessage(`${success('Pruned')} ${formatSkillName(orphan.name)}.`)
+    logMessage(`${style.success('Pruned')} ${style.skillName(orphan.name)}.`)
   }
 
   return 0
@@ -379,7 +379,7 @@ async function getSkillIssues(
   const generateHint = `Run ${generateCommand}, review the generated skill, and then run ${approveCommand}.`
 
   if (!(await pathExists(getSkillManifestUrl(config.outputDir, definition.name)))) {
-    return createError(`Skill ${formatSkillName(definition.name)} has not been approved.`, { hint: generateHint })
+    return createError(`Skill ${style.skillName(definition.name)} has not been approved.`, { hint: generateHint })
   }
 
   const { manifest, fileMismatches } = await loadSkill(config.outputDir, definition.name)
@@ -388,7 +388,7 @@ async function getSkillIssues(
   if (result.upToDate) return
 
   const issues = result.issues.map((issue) => {
-    const heading = section(SkillCheckIssueMessages[issue.type])
+    const heading = style.section(SkillCheckIssueMessages[issue.type])
 
     switch (issue.type) {
       case 'definition-change': {
@@ -396,15 +396,15 @@ async function getSkillIssues(
       }
       case 'approved-skill-change':
       case 'source-change': {
-        const paths = issue.paths.map((path) => `${dim(' -')} ${path}`).join('\n')
+        const paths = issue.paths.map((path) => `${style.dim(' -')} ${path}`).join('\n')
 
         return `${heading}\n\n${paths}`
       }
       case 'model-change': {
-        return `${heading}\n\n${dim(' - Before:')} ${manifest.model}\n${dim(' - Now:')} ${config.model}`
+        return `${heading}\n\n${style.dim(' - Before:')} ${manifest.model}\n${style.dim(' - Now:')} ${config.model}`
       }
       case 'generator-change': {
-        return `${heading}\n\n${dim(' - Before:')} ${manifest.generatorVersion}\n${dim(' - Now:')} ${GeneratorVersion}`
+        return `${heading}\n\n${style.dim(' - Before:')} ${manifest.generatorVersion}\n${style.dim(' - Now:')} ${GeneratorVersion}`
       }
       default: {
         throw new Error(`Unexpected issue: ${JSON.stringify(issue satisfies never)}`)
@@ -430,39 +430,7 @@ async function getSkillIssues(
     )
   }
 
-  return createError(`Skill ${formatSkillName(definition.name)} is not up to date.\n\n${issues.join('\n\n')}`, {
+  return createError(`Skill ${style.skillName(definition.name)} is not up to date.\n\n${issues.join('\n\n')}`, {
     hint: hints.join(' '),
   })
-}
-
-function logMessage(message: string) {
-  // eslint-disable-next-line no-console
-  console.log(message)
-}
-
-function logUsageError(error: unknown, command?: string): number {
-  const helpCommand = command ? ` ${command}` : ''
-  return logError(
-    createError(formatError(error), { hint: `Run 'starlight-to-skills${helpCommand} --help' for more information.` }),
-  )
-}
-
-function logError(maybeError: unknown): number {
-  console.error(`${error('Error:')} ${formatError(maybeError)}`)
-  return 1
-}
-
-function formatError(error: unknown): string {
-  const message =
-    error instanceof Error ? error.message : typeof error === 'string' ? error : 'An unknown error occurred.'
-
-  if (!(error instanceof StarlightToSkillsError) || !error.hint) {
-    return message
-  }
-
-  return `${message}\n\n${hint('Hint:')} ${error.hint}`
-}
-
-function pluralize(count: number, singular: string) {
-  return count === 1 ? singular : `${singular}s`
 }

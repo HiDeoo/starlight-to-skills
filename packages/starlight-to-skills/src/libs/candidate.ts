@@ -21,7 +21,7 @@ import {
 } from './fs'
 import type { SkillConfiguration } from './loader'
 import { loadSkillManifest } from './skill'
-import { formatSkillName } from './style'
+import { style } from './terminal'
 
 export function createCandidate(inputHash: string, files: SkillFile[]): Candidate {
   validateCandidateFiles(files)
@@ -48,7 +48,7 @@ export async function writeCandidate(dataDir: URL, name: string, candidate: Cand
 
     await fs.writeFile(new URL('manifest.json', candidateUrl), JSON.stringify(manifest, undefined, 2))
   } catch (error) {
-    throwError(`Failed to save generated skill ${formatSkillName(name)}.`, { cause: error })
+    throwError(`Failed to save generated skill ${style.skillName(name)}.`, { cause: error })
   }
 }
 
@@ -62,11 +62,11 @@ export async function loadCandidate(dataDir: URL, name: string, expectedInputHas
   } catch (error) {
     if (error instanceof SyntaxError) throwInvalidCandidateError(name)
     if (isFileNotFoundError(error)) {
-      throwError(`No generated skill found for ${formatSkillName(name)}.`, {
+      throwError(`No generated skill found for ${style.skillName(name)}.`, {
         hint: `Run 'starlight-to-skills generate ${name}'.`,
       })
     }
-    throwError(`Failed to load generated skill ${formatSkillName(name)}.`, { cause: error })
+    throwError(`Failed to load generated skill ${style.skillName(name)}.`, { cause: error })
   }
 
   const result = CandidateManifestSchema.safeParse(manifestData)
@@ -75,7 +75,7 @@ export async function loadCandidate(dataDir: URL, name: string, expectedInputHas
   const manifest = result.data
 
   if (manifest.inputHash !== expectedInputHash) {
-    throwError(`Generated skill for ${formatSkillName(name)} is out of date.`, {
+    throwError(`Generated skill for ${style.skillName(name)} is out of date.`, {
       hint: `Run 'starlight-to-skills generate ${name}' again.`,
     })
   }
@@ -90,7 +90,7 @@ export async function loadCandidate(dataDir: URL, name: string, expectedInputHas
       })
     } catch (error) {
       if (isFileNotFoundError(error)) throwInvalidCandidateError(name)
-      throwError(`Failed to load generated skill ${formatSkillName(name)}.`, { cause: error })
+      throwError(`Failed to load generated skill ${style.skillName(name)}.`, { cause: error })
     }
   }
 
@@ -153,12 +153,12 @@ export async function approveCandidate(
     hasManifest = await pathExists(manifestUrl)
   } catch (error) {
     if (error instanceof StarlightToSkillsError) throw error
-    throwError(`Failed to approve ${formatSkillName(skill.name)}.`, { cause: error })
+    throwError(`Failed to approve ${style.skillName(skill.name)}.`, { cause: error })
   }
 
   if (hasSkill && !hasManifest) {
     throwError(
-      `Cannot approve ${formatSkillName(skill.name)} because a file or directory already exists at '${skillPath}'.`,
+      `Cannot approve ${style.skillName(skill.name)} because a file or directory already exists at '${skillPath}'.`,
       {
         hint: 'Move the existing file or directory and try again.',
       },
@@ -187,7 +187,7 @@ export async function approveCandidate(
 
     await fs.writeFile(manifestUrl, JSON.stringify(manifest, undefined, 2))
   } catch (error) {
-    throwError(`Failed to approve ${formatSkillName(skill.name)}.`, { cause: error })
+    throwError(`Failed to approve ${style.skillName(skill.name)}.`, { cause: error })
   }
 
   return 'approved'
@@ -233,7 +233,7 @@ function getCandidateDirUrl(dataDir: URL, name: string): URL {
 }
 
 function throwInvalidCandidateError(name: string): never {
-  throwError(`Generated skill for ${formatSkillName(name)} is invalid.`, {
+  throwError(`Generated skill for ${style.skillName(name)} is invalid.`, {
     hint: `Run 'starlight-to-skills generate ${name}' again.`,
   })
 }

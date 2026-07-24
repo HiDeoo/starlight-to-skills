@@ -7,7 +7,7 @@ import { stripVTControlCharacters } from 'node:util'
 import { beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest'
 
 import packageJson from '../package.json' with { type: 'json' }
-import { runCli } from '../src/libs/cli'
+import { runCli } from '../src/libs/commands'
 import type { SkillManifest } from '../src/schemas/manifest'
 
 const mastra = vi.hoisted(() => ({
@@ -21,9 +21,9 @@ const readline = vi.hoisted(() => {
   return { close, createInterface: vi.fn(() => ({ close, question })), question }
 })
 
-vi.mock('../src/libs/style', async (importOriginal) => {
-  const style = await importOriginal<typeof import('../src/libs/style')>()
-  return { ...style, withProgress: <T>(_text: string, task: () => Promise<T>) => task() }
+vi.mock('../src/libs/terminal', async (importOriginal) => {
+  const terminal = await importOriginal<typeof import('../src/libs/terminal')>()
+  return { ...terminal, withProgress: <T>(_text: string, task: () => Promise<T>) => task() }
 })
 
 vi.mock('@mastra/core/agent', () => ({
@@ -282,6 +282,58 @@ Change foo to bar.`,
 
          - To make changes, update the skill definition or documentation, then run 'starlight-to-skills generate test-skill' again.
          - To approve it, run 'starlight-to-skills approve test-skill'."
+      `)
+    })
+
+    test('shows a diff against a verified approved skill', async () => {
+      mastra.generate.mockResolvedValueOnce({
+        object: { data: { status: 'success', body: 'Before.', references: [] } },
+      })
+
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      mastra.generate.mockResolvedValueOnce({
+        object: { data: { status: 'success', body: 'After.', references: [] } },
+      })
+
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+
+      const output = getLastLogMessage(logSpy)
+
+      expect(output).toContain('- Before.')
+      expect(output).toContain('+ After.')
+
+      expect(output).toContain('Review changes to the generated skill.')
+    })
+
+    test('shows the full candidate when the approved skill changed directly', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      await fs.appendFile(path.join(testDir, 'skills/test-skill/SKILL.md'), '\nDirect change.')
+
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+
+      const output = getLastLogMessage(logSpy)
+
+      expect(output).not.toContain('Direct change.')
+
+      expect(output).toContain('Review the generated skill.')
+    })
+
+    test('reports an invalid approved skill', async () => {
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      await fs.writeFile(path.join(testDir, 'skills/.starlight-to-skills/test-skill.json'), '{')
+
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Failed to load approved skill 'test-skill'.
+
+        Expected property name or '}' in JSON at position 1 (line 1 column 2)"
       `)
     })
 

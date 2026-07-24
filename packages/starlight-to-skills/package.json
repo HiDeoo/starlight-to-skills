@@ -26,6 +26,7 @@
   "dependencies": {
     "@mastra/core": "^1.50.0",
     "gray-matter": "^4.0.3",
+    "jest-diff": "^30.4.1",
     "jiti": "^2.7.0",
     "smol-toml": "^1.7.0",
     "yocto-spinner": "^1.2.2"

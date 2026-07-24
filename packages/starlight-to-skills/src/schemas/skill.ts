@@ -2,7 +2,7 @@ import { z } from 'astro/zod'
 
 import { throwError } from '../libs/error'
 import { StarlightDocsExtensionsRegex } from '../libs/starlight'
-import { formatSkillName } from '../libs/style'
+import { style } from '../libs/terminal'
 
 // https://agentskills.io/specification#name-field
 export const SkillNameSchema = z
@@ -15,7 +15,7 @@ export function parseSkillName(name: string): string {
   const result = SkillNameSchema.safeParse(name)
 
   if (!result.success) {
-    throwError(`Invalid skill name ${formatSkillName(name)}.`, {
+    throwError(`Invalid skill name ${style.skillName(name)}.`, {
       hint: 'Use 1-64 lowercase letters, numbers, or hyphens, without leading, trailing, or consecutive hyphens.',
     })
   }
