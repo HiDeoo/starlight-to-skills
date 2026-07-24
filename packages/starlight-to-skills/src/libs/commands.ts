@@ -43,8 +43,6 @@ import {
   withProgress,
 } from './terminal'
 
-// TODO(HiDeoo) when we show command in logs/hints/errors, should we style them so they can be identified more easily?
-
 export async function runCli(args: string[], cwd = process.cwd()): Promise<number> {
   let parsedArgs: ReturnType<typeof parseArgs>
 
@@ -152,7 +150,7 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
 
     return logError(
       createError(`Could not generate ${style.skillName(definition.name)}.\n\n${issues}`, {
-        hint: `Resolve these issues and run 'starlight-to-skills generate ${definition.name}' again.`,
+        hint: `Resolve these issues and run ${style.command(`starlight-to-skills generate ${definition.name}`)} again.`,
       }),
     )
   }
@@ -164,7 +162,7 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
   } catch (error) {
     throwError(`Could not generate ${style.skillName(definition.name)}.`, {
       cause: error,
-      hint: `Run 'starlight-to-skills generate ${definition.name}' again.`,
+      hint: `Run ${style.command(`starlight-to-skills generate ${definition.name}`)} again.`,
     })
   }
 
@@ -190,8 +188,8 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
     '',
     reviewMessage,
     '',
-    `${style.dim(' -')} To make changes, update the skill definition or documentation, then run 'starlight-to-skills generate ${definition.name}' again.`,
-    `${style.dim(' -')} To approve it, run 'starlight-to-skills approve ${definition.name}'.`,
+    `${style.dim(' -')} To make changes, update the skill definition or documentation, then run ${style.command(`starlight-to-skills generate ${definition.name}`)} again.`,
+    `${style.dim(' -')} To approve it, run ${style.command(`starlight-to-skills approve ${definition.name}`)}.`,
   ].join('\n')
 
   logMessage(`${style.success('Generated')} ${style.skillName(definition.name)}.\n\n${files}\n\n${nextSteps}`)
@@ -293,7 +291,9 @@ async function runCheckSkills(rootDir: URL): Promise<number> {
     const message = `Not all skills are up to date.\n\n${report}`
     return logError(
       hasOrphans
-        ? createError(message, { hint: "Run 'starlight-to-skills prune' to review and remove orphan approved skills." })
+        ? createError(message, {
+            hint: `Run ${style.command('starlight-to-skills prune')} to review and remove orphan approved skills.`,
+          })
         : message,
     )
   }
@@ -331,7 +331,7 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
   if (!yes) {
     if (process.stdin.isTTY !== true) {
       throwError('Pruning requires confirmation but no interactive terminal is available.', {
-        hint: "Run 'starlight-to-skills prune --yes'.",
+        hint: `Run ${style.command('starlight-to-skills prune --yes')}.`,
       })
     }
 
@@ -386,8 +386,8 @@ async function getSkillIssues(
   definition: SkillConfiguration,
   digest: SkillDigest,
 ): Promise<StarlightToSkillsError | undefined> {
-  const approveCommand = `'starlight-to-skills approve ${definition.name}'`
-  const generateCommand = `'starlight-to-skills generate ${definition.name}'`
+  const approveCommand = style.command(`starlight-to-skills approve ${definition.name}`)
+  const generateCommand = style.command(`starlight-to-skills generate ${definition.name}`)
   const generateHint = `Run ${generateCommand}, review the generated skill, and then run ${approveCommand}.`
 
   if (!(await pathExists(getSkillManifestUrl(config.outputDir, definition.name)))) {
@@ -438,7 +438,7 @@ async function getSkillIssues(
 
   if (canApproveExistingSkill) {
     hints.push(
-      `Alternatively, if the existing approved skill is still valid, run 'starlight-to-skills approve ${definition.name} --existing'.`,
+      `Alternatively, if the existing approved skill is still valid, run ${style.command(`starlight-to-skills approve ${definition.name} --existing`)}.`,
     )
   }
 

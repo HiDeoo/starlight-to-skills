@@ -22,6 +22,7 @@ export const style = {
   diffAdded: (text: string) => styleText('green', text),
   diffRemoved: (text: string) => styleText('red', text),
   diffChanged: (text: string) => styleText('inverse', text),
+  command: (command: string) => `'${styleText('magenta', command)}'`,
   skillName(name: string) {
     return `'${this.primary(name)}'`
   },
@@ -35,7 +36,9 @@ export function logMessage(message: string) {
 export function logUsageError(error: unknown, command?: string): number {
   const helpCommand = command ? ` ${command}` : ''
   return logError(
-    createError(formatError(error), { hint: `Run 'starlight-to-skills${helpCommand} --help' for more information.` }),
+    createError(formatError(error), {
+      hint: `Run ${style.command(`starlight-to-skills${helpCommand} --help`)} for more information.`,
+    }),
   )
 }
 

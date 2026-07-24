@@ -63,7 +63,7 @@ export async function loadCandidate(dataDir: URL, name: string, expectedInputHas
     if (error instanceof SyntaxError) throwInvalidCandidateError(name)
     if (isFileNotFoundError(error)) {
       throwError(`No generated skill found for ${style.skillName(name)}.`, {
-        hint: `Run 'starlight-to-skills generate ${name}'.`,
+        hint: `Run ${style.command(`starlight-to-skills generate ${name}`)}.`,
       })
     }
     throwError(`Failed to load generated skill ${style.skillName(name)}.`, { cause: error })
@@ -76,7 +76,7 @@ export async function loadCandidate(dataDir: URL, name: string, expectedInputHas
 
   if (manifest.inputHash !== expectedInputHash) {
     throwError(`Generated skill for ${style.skillName(name)} is out of date.`, {
-      hint: `Run 'starlight-to-skills generate ${name}' again.`,
+      hint: `Run ${style.command(`starlight-to-skills generate ${name}`)} again.`,
     })
   }
 
@@ -234,7 +234,7 @@ function getCandidateDirUrl(dataDir: URL, name: string): URL {
 
 function throwInvalidCandidateError(name: string): never {
   throwError(`Generated skill for ${style.skillName(name)} is invalid.`, {
-    hint: `Run 'starlight-to-skills generate ${name}' again.`,
+    hint: `Run ${style.command(`starlight-to-skills generate ${name}`)} again.`,
   })
 }
 

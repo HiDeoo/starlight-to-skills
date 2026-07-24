@@ -214,7 +214,7 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
 
   if (!hasSkill || !hasManifest) {
     throwError(`No approved skill found for ${style.skillName(skill.name)}.`, {
-      hint: `If needed, run 'starlight-to-skills generate ${skill.name}', then run 'starlight-to-skills approve ${skill.name}' without '--existing'.`,
+      hint: `If needed, run ${style.command(`starlight-to-skills generate ${skill.name}`)}, then run ${style.command(`starlight-to-skills approve ${skill.name}`)} without '--existing'.`,
     })
   }
 
@@ -226,7 +226,7 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
     throwError(
       `The following files in approved skill ${style.skillName(skill.name)} have changed:\n\n${changedFiles}`,
       {
-        hint: `Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'starlight-to-skills generate ${skill.name}', review the generated skill, and then run 'starlight-to-skills approve ${skill.name}'.`,
+        hint: `Restore the listed files. To keep intended changes, update the skill definition or documentation, run ${style.command(`starlight-to-skills generate ${skill.name}`)}, review the generated skill, and then run ${style.command(`starlight-to-skills approve ${skill.name}`)}.`,
       },
     )
   }
@@ -236,7 +236,7 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
     !(await hasMatchingSkillDescription(config.outputDir, skill.name, skill.description))
   ) {
     throwError(`Description for ${style.skillName(skill.name)} has changed.`, {
-      hint: `Run 'starlight-to-skills generate ${skill.name}'.`,
+      hint: `Run ${style.command(`starlight-to-skills generate ${skill.name}`)}.`,
     })
   }
 

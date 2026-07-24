@@ -65,7 +65,7 @@ export async function generateSkillContent(
   if (!result.success) {
     throwError(`Model '${model}' returned an invalid response.`, {
       cause: result.error,
-      hint: `Run 'starlight-to-skills generate ${skill.name}' again.`,
+      hint: `Run ${style.command(`starlight-to-skills generate ${skill.name}`)} again.`,
       withCause: false,
     })
   }
