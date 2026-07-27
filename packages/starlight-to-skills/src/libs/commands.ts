@@ -11,7 +11,7 @@ import type { SkillDigest } from '../schemas/digest'
 import { parseSkillName } from '../schemas/skill'
 
 import { approveCandidate, createCandidate, loadCandidate, removeCandidateForInput, writeCandidate } from './candidate'
-import { compileSkill, generateSkillContent } from './content'
+import { compileSkill, generateSkillContent, type SkillUpdate } from './content'
 import { renderSkillDiff } from './diff'
 import { computeSkillDigest, GeneratorVersion } from './digest'
 import { createError, type StarlightToSkillsError, throwError } from './error'
@@ -30,6 +30,7 @@ import {
   loadSkill,
   pruneSkill,
   SkillCheckIssueMessages,
+  type LoadedSkill,
 } from './skill'
 import { loadSkillDocs } from './starlight'
 import {
@@ -122,8 +123,31 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 
 async function runGenerateCandidate(name: string, rootDir: URL): Promise<number> {
   const { config, definition, docs, digest } = await loadSkillInputs(name, rootDir)
+  let approvedSkill: LoadedSkill | undefined
+  let update: SkillUpdate | undefined
+
+  if (await pathExists(getSkillManifestUrl(config.outputDir, definition.name))) {
+    approvedSkill = await loadSkill(config.outputDir, definition.name)
+
+    if (approvedSkill.fileMismatches.length === 0) {
+      const approvedSourceHashes = new Map(
+        approvedSkill.manifest.sources.map(({ docsPath, contentHash }) => [docsPath, contentHash]),
+      )
+      const changedDocsPaths: string[] = []
+
+      for (const { docsPath, contentHash } of digest.sources) {
+        if (approvedSourceHashes.get(docsPath) !== contentHash) changedDocsPaths.push(docsPath)
+        approvedSourceHashes.delete(docsPath)
+      }
+
+      changedDocsPaths.push(...approvedSourceHashes.keys())
+
+      update = { approvedFiles: approvedSkill.files, changedDocsPaths }
+    }
+  }
+
   const content = await withProgress(`Generating ${style.skillName(definition.name)}...`, () =>
-    generateSkillContent(config.model, definition, docs),
+    generateSkillContent(config.model, definition, docs, update),
   )
 
   if (content.status === 'error') {
@@ -174,13 +198,9 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
 
   let reviewMessage = 'Review the generated skill.'
 
-  if (await pathExists(getSkillManifestUrl(config.outputDir, definition.name))) {
-    const approvedSkill = await loadSkill(config.outputDir, definition.name)
-
-    if (approvedSkill.fileMismatches.length === 0) {
-      files = renderSkillDiff(approvedSkill.files, candidate.files)
-      reviewMessage = 'Review changes to the generated skill.'
-    }
+  if (approvedSkill?.fileMismatches.length === 0) {
+    files = renderSkillDiff(approvedSkill.files, candidate.files)
+    reviewMessage = 'Review changes to the generated skill.'
   }
 
   const nextSteps = [

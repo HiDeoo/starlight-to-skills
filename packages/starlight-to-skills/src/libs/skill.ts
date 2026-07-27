@@ -126,7 +126,7 @@ export async function loadSkillManifest(url: URL, name: string): Promise<SkillMa
   }
 }
 
-export async function loadSkill(outputDir: URL, name: string) {
+export async function loadSkill(outputDir: URL, name: string): Promise<LoadedSkill> {
   const skillUrl = resolveDirectoryUrl(name, outputDir)
   const manifest = await loadSkillManifest(getSkillManifestUrl(outputDir, name), name)
   const files: SkillFile[] = []
@@ -178,7 +178,7 @@ export function checkSkill(
 
   if (manifest.definitionHash !== digest.definitionHash) issues.push({ type: 'definition-change' })
 
-  const changedSourcePaths = manifest.sources
+  const changedDocsPaths = manifest.sources
     .filter((source) =>
       digest.sources.some(
         (matchingSource) =>
@@ -187,8 +187,8 @@ export function checkSkill(
     )
     .map((source) => source.docsPath)
 
-  if (changedSourcePaths.length > 0) {
-    issues.push({ type: 'source-change', paths: changedSourcePaths })
+  if (changedDocsPaths.length > 0) {
+    issues.push({ type: 'source-change', paths: changedDocsPaths })
   }
 
   if (manifest.model !== model) issues.push({ type: 'model-change' })
@@ -271,6 +271,12 @@ export async function hasMatchingSkillDescription(outputDir: URL, name: string, 
 
 function getSkillNameByUrl(url: URL, suffix: string): string {
   return path.basename(fileURLToPath(url), suffix)
+}
+
+export interface LoadedSkill {
+  manifest: SkillManifest
+  files: SkillFile[]
+  fileMismatches: string[]
 }
 
 type SkillCheckIssue =

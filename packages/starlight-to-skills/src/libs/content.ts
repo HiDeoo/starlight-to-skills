@@ -23,10 +23,21 @@ Ensure every local link resolves to a generated file.
 Do not link from one reference to another.
 Do not generate or rewrite the skill name or description.`
 
+const updateInstructions = `Use the approved files only as a wording and structure baseline.
+The approved files are not documentation sources or factual authority.
+If they disagree with the current description, guidance, or documentation sources, update them to match the current inputs instead of reporting a source conflict.
+Ignore approved frontmatter and do not return frontmatter in the body.
+The changed documentation paths are hints about where updates may be needed, but you must consider every current input.
+Preserve all unaffected wording, formatting, ordering, reference paths, and reference content exactly.
+Do not clean up, reformat, reorganize, or rephrase unaffected content.
+Add, update, or remove body content and references when the current inputs require it.
+Return the complete updated body and references, including unchanged content.`
+
 export async function generateSkillContent(
   model: string,
   skill: SkillConfiguration,
   docs: SkillDocumentation[],
+  update?: SkillUpdate,
 ): Promise<SkillContentResult> {
   const input = {
     name: skill.name,
@@ -37,6 +48,7 @@ export async function generateSkillContent(
       title: doc.title,
       body: doc.body,
     })),
+    update,
   }
 
   const { Agent } = await import('@mastra/core/agent')
@@ -44,7 +56,7 @@ export async function generateSkillContent(
   const agent = new Agent({
     id: 'starlight-to-skills-agent',
     name: 'Starlight to Skills',
-    instructions: instructions,
+    instructions: update ? `${instructions}\n\n${updateInstructions}` : instructions,
     model,
   })
 
@@ -96,4 +108,9 @@ export function compileSkill(
 export interface SkillFile {
   path: string
   content: string
+}
+
+export interface SkillUpdate {
+  approvedFiles: SkillFile[]
+  changedDocsPaths: string[]
 }

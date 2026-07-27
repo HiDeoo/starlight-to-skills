@@ -307,6 +307,74 @@ Change foo to bar.`,
       expect(output).toContain('Review changes to the generated skill.')
     })
 
+    test('uses approved skill and changed documentation paths for updates', async () => {
+      await fs.writeFile(
+        path.join(testDir, 'src/skills/test-skill.skill.ts'),
+        `export default { description: 'Migrate a project to v2.', docs: ['./guide.md', './added.md'] }`,
+      )
+      await fs.writeFile(
+        path.join(testDir, 'src/content/docs/added.md'),
+        `---
+title: Added
+---
+
+New content.`,
+      )
+
+      mastra.generate.mockResolvedValueOnce({
+        object: {
+          data: {
+            status: 'success',
+            body: 'Before.',
+            references: [{ path: 'references/details.md', body: 'Approved reference.' }],
+          },
+        },
+      })
+
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+
+      const manifestPath = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
+      const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')) as SkillManifest
+      const guideSource = manifest.sources.find((source) => source.docsPath === './guide.md')
+
+      expect.assert(guideSource)
+
+      await fs.writeFile(
+        manifestPath,
+        JSON.stringify({
+          ...manifest,
+          sources: [guideSource, { docsPath: './removed.md', contentHash: 'removed-content-hash' }],
+        }),
+      )
+      await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\n\nA new option.')
+
+      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+
+      const [prompt] = mastra.generate.mock.calls[1] as [string]
+      const input = JSON.parse(prompt) as { update: Record<string, unknown> }
+
+      expect(input.update['changedDocsPaths']).toStrictEqual(['./guide.md', './added.md', './removed.md'])
+
+      expect(input.update['approvedFiles']).toMatchInlineSnapshot(`
+        [
+          {
+            "content": "---
+        name: "test-skill"
+        description: "Migrate a project to v2."
+        ---
+
+        Before.",
+            "path": "SKILL.md",
+          },
+          {
+            "content": "Approved reference.",
+            "path": "references/details.md",
+          },
+        ]
+      `)
+    })
+
     test('shows the full candidate when the approved skill changed directly', async () => {
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
@@ -320,6 +388,10 @@ Change foo to bar.`,
       expect(output).not.toContain('Direct change.')
 
       expect(output).toContain('Review the generated skill.')
+
+      const [prompt] = mastra.generate.mock.calls[1] as [string]
+
+      expect(JSON.parse(prompt)).not.toHaveProperty('update')
     })
 
     test('reports an invalid approved skill', async () => {
@@ -327,8 +399,10 @@ Change foo to bar.`,
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
 
       await fs.writeFile(path.join(testDir, 'skills/.starlight-to-skills/test-skill.json'), '{')
+      mastra.generate.mockClear()
 
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(1)
+      expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Failed to load approved skill 'test-skill'.

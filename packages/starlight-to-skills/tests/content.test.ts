@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { compileSkill, generateSkillContent } from '../src/libs/content'
+import { compileSkill, generateSkillContent, type SkillUpdate } from '../src/libs/content'
 import type { SkillConfiguration } from '../src/libs/loader'
 import type { SkillDocumentation } from '../src/libs/starlight'
 
@@ -61,13 +61,16 @@ describe('generateSkillContent', () => {
 
     expect(mastra.constructAgent).toHaveBeenCalledOnce()
     expect(instructions).toMatch(/^Generate content for an agent skill/)
+    expect(instructions).not.toContain('Use the approved files')
     expect(model).toBe('openai/gpt-5.6-luna')
 
     expect(mastra.generate).toHaveBeenCalledOnce()
 
     const [prompt] = mastra.generate.mock.calls[0] as [string]
 
-    expect(JSON.parse(prompt)).toMatchObject({
+    const input = JSON.parse(prompt) as Record<string, unknown>
+
+    expect(input).toMatchObject({
       name: skill.name,
       description: skill.description,
       guidance: skill.guidance,
@@ -76,8 +79,36 @@ describe('generateSkillContent', () => {
         { docsPath: skill.docs[1], title: docs[1]?.title, body: docs[1]?.body },
       ],
     })
+    expect(input).not.toHaveProperty('update')
 
     expect(result).toStrictEqual(content)
+  })
+
+  test('uses an approved skill for updates', async () => {
+    const content = {
+      status: 'success',
+      body: 'Change foo to bar, then change bar to baz.',
+      references: [{ path: 'references/migration-details.md', body: 'Change foo to bar.' }],
+    }
+    const update: SkillUpdate = {
+      approvedFiles: [
+        { path: 'SKILL.md', content: '---\nname: "migrate-to-v2"\n---\n\nChange foo to bar.' },
+        { path: 'references/migration-details.md', content: 'Change foo to bar.' },
+      ],
+      changedDocsPaths: ['./guides/migrate-v2.md'],
+    }
+
+    mastra.generate.mockResolvedValue({ object: { data: content } })
+
+    await generateSkillContent('openai/gpt-5.6-luna', skill, docs, update)
+
+    const [{ instructions }] = mastra.constructAgent.mock.calls[0] as [{ instructions: string }]
+
+    expect(instructions).toContain('Use the approved files')
+
+    const [prompt] = mastra.generate.mock.calls[0] as [string]
+
+    expect(JSON.parse(prompt)).toMatchObject({ update })
   })
 
   test('returns file issues', async () => {
