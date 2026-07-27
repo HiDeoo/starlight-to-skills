@@ -58,7 +58,7 @@ export function makeSkillManifest(
     name: skill.name,
     inputHash: digest.inputHash,
     definitionHash: digest.definitionHash,
-    sources: digest.sources,
+    docs: digest.docs,
     files,
   }
 }

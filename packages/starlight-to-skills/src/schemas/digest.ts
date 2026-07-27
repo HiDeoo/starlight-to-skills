@@ -3,10 +3,10 @@ import { z } from 'astro/zod'
 export const SkillDigestSchema = z.strictObject({
   inputHash: z.string(),
   definitionHash: z.string(),
-  sources: z
+  docs: z
     .array(
       z.strictObject({
-        docsPath: z.string(),
+        path: z.string(),
         contentHash: z.string(),
       }),
     )

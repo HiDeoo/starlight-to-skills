@@ -13,27 +13,27 @@ const NonLfLineEndingRegex = /\r\n?/g
 
 export function computeSkillDigest(model: string, skill: SkillConfiguration, docs: SkillDocumentation[]): SkillDigest {
   const definition = {
-    description: normalizeLineEndings(skill.description),
-    docs: skill.docs.map(normalizeLineEndings),
+    description: skill.description,
+    docs: skill.docs,
     guidance: skill.guidance === undefined ? undefined : normalizeLineEndings(skill.guidance),
   }
 
-  const sources = docs.map((doc, index) => ({
-    docsPath: normalizeLineEndings(skill.docs[index] as string),
+  const normalizedDocs = docs.map((doc) => ({
+    path: doc.path,
     title: normalizeLineEndings(doc.title),
     body: normalizeLineEndings(doc.body),
   }))
 
   return {
     inputHash: hash({
-      name: normalizeLineEndings(skill.name),
+      name: skill.name,
       definition,
-      sources,
-      model: normalizeLineEndings(model),
+      docs: normalizedDocs,
+      model,
       generatorVersion: GeneratorVersion,
     }),
     definitionHash: hash(definition),
-    sources: sources.map(({ docsPath, title, body }) => ({ docsPath, contentHash: hash({ title, body }) })),
+    docs: normalizedDocs.map(({ path, title, body }) => ({ path, contentHash: hash({ title, body }) })),
   }
 }
 

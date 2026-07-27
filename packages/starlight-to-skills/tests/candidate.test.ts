@@ -286,7 +286,7 @@ describe('persistence', () => {
     const digest = {
       inputHash: 'input-hash',
       definitionHash: 'definition-hash',
-      sources: [{ docsPath: './guide.md', contentHash: 'source-hash' }],
+      docs: [{ path: './guide.md', contentHash: 'doc-hash' }],
     } satisfies SkillDigest
 
     beforeEach(() => {
@@ -334,7 +334,7 @@ describe('persistence', () => {
         name: 'test-skill',
         inputHash: 'input-hash',
         definitionHash: 'definition-hash',
-        sources: [{ docsPath: './guide.md', contentHash: 'source-hash' }],
+        docs: [{ path: './guide.md', contentHash: 'doc-hash' }],
         files: candidate.fileDigests,
       })
     })

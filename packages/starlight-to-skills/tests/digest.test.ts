@@ -14,12 +14,12 @@ const skill = {
 
 const docs = [
   {
-    url: new URL('file:///project/src/content/docs/guides/migrate-v2.md'),
+    path: './guides/migrate-v2.md',
     title: 'V2 Migration Guide',
     body: 'Change foo to bar.\n\nThen change baz to quux.',
   },
   {
-    url: new URL('file:///project/src/content/docs/changelog.md'),
+    path: './changelog.md',
     title: 'Changelog',
     body: '# Changelog\n\n## v2.0.0\n\n- Added new features.',
   },
@@ -31,11 +31,11 @@ describe('computeSkillDigest', () => {
 
     expect(digest.inputHash).toBeSha256()
 
-    expect(digest.sources).toHaveLength(2)
-    expect(digest.sources[0]?.docsPath).toBe(skill.docs[0])
-    expect(digest.sources[0]?.contentHash).toBeSha256()
-    expect(digest.sources[1]?.docsPath).toBe(skill.docs[1])
-    expect(digest.sources[1]?.contentHash).toBeSha256()
+    expect(digest.docs).toHaveLength(2)
+    expect(digest.docs[0]?.path).toBe(skill.docs[0])
+    expect(digest.docs[0]?.contentHash).toBeSha256()
+    expect(digest.docs[1]?.path).toBe(skill.docs[1])
+    expect(digest.docs[1]?.contentHash).toBeSha256()
 
     expect(digest.definitionHash).toBeSha256()
   })

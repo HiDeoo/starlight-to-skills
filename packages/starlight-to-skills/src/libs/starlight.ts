@@ -1,7 +1,7 @@
 import type { Stats } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 
 import matter from 'gray-matter'
 import { parse as parseToml } from 'smol-toml'
@@ -23,27 +23,27 @@ export async function loadSkillDocs(
 ): Promise<SkillDocumentation[]> {
   const docsCollectionPath = fileURLToPath(new URL(docsCollectionDir, config.rootDir))
 
-  return Promise.all(skill.docs.map((docsPath) => loadSkillDoc(docsCollectionPath, docsPath)))
+  return Promise.all(skill.docs.map((docPath) => loadSkillDoc(docsCollectionPath, docPath)))
 }
 
-async function loadSkillDoc(docsCollectionPath: string, docsPath: string): Promise<SkillDocumentation> {
-  const normalizedDocsPath = path.normalize(docsPath)
-  const [firstSegment] = normalizedDocsPath.split(path.sep)
+async function loadSkillDoc(docsCollectionPath: string, docPath: string): Promise<SkillDocumentation> {
+  const normalizedDocPath = path.normalize(docPath)
+  const [firstSegment] = normalizedDocPath.split(path.sep)
 
-  if (path.parse(normalizedDocsPath).root !== '' || firstSegment === '..') {
-    throwError(`Documentation file '${docsPath}' must be inside '${docsCollectionDir}'.`, {
+  if (path.parse(normalizedDocPath).root !== '' || firstSegment === '..') {
+    throwError(`Documentation file '${docPath}' must be inside '${docsCollectionDir}'.`, {
       hint: `Use a path relative to '${docsCollectionDir}'.`,
     })
   }
 
-  const sourcePath = path.resolve(docsCollectionPath, docsPath)
+  const filePath = path.resolve(docsCollectionPath, docPath)
 
-  let sourceStats: Stats
+  let fileStats: Stats
 
   try {
-    sourceStats = await fs.stat(sourcePath)
+    fileStats = await fs.stat(filePath)
   } catch (error) {
-    const message = `Failed to load documentation file '${docsPath}'.`
+    const message = `Failed to load documentation file '${docPath}'.`
 
     if (isFileNotFoundError(error)) {
       throwError(message, { hint: 'Check the path in the skill definition and try again.' })
@@ -52,51 +52,51 @@ async function loadSkillDoc(docsCollectionPath: string, docsPath: string): Promi
     throwError(message, { cause: error })
   }
 
-  if (!sourceStats.isFile()) {
-    throwError(`Documentation path '${docsPath}' is not a file.`, {
+  if (!fileStats.isFile()) {
+    throwError(`Documentation path '${docPath}' is not a file.`, {
       hint: 'Specify a Markdown or MDX file in the skill definition and try again.',
     })
   }
 
-  let source: string
+  let content: string
 
   try {
-    source = await fs.readFile(sourcePath, 'utf8')
+    content = await fs.readFile(filePath, 'utf8')
   } catch (error) {
-    throwError(`Failed to read documentation file '${docsPath}'.`, { cause: error })
+    throwError(`Failed to read documentation file '${docPath}'.`, { cause: error })
   }
 
-  const frontmatter = parseFrontmatter(source, docsPath)
+  const frontmatter = parseFrontmatter(content, docPath)
 
   if (typeof frontmatter.data['title'] !== 'string') {
-    throwError(`Documentation file '${docsPath}' has an invalid title.`, {
+    throwError(`Documentation file '${docPath}' has an invalid title.`, {
       hint: `Fix 'title' in the file's frontmatter and try again.`,
     })
   }
 
   return {
-    url: pathToFileURL(sourcePath),
+    path: docPath,
     title: frontmatter.data['title'],
     body: frontmatter.content,
   }
 }
 
-function parseFrontmatter(source: string, sourcePath: string) {
-  const normalizedSource = source.trimStart()
+function parseFrontmatter(content: string, docPath: string) {
+  const normalizedContent = content.trimStart()
 
-  const options = normalizedSource.startsWith('+++')
+  const options = normalizedContent.startsWith('+++')
     ? { delimiters: '+++', engines: { toml: parseToml }, language: 'toml' }
     : undefined
 
   try {
-    return matter(normalizedSource, options)
+    return matter(normalizedContent, options)
   } catch (error) {
-    throwError(`Failed to parse documentation file '${sourcePath}'.`, { cause: error })
+    throwError(`Failed to parse documentation file '${docPath}'.`, { cause: error })
   }
 }
 
 export interface SkillDocumentation {
-  url: URL
+  path: string
   title: string
   body: string
 }

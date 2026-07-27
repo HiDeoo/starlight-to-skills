@@ -129,7 +129,7 @@ describe('loadSkill', () => {
     name: 'test-skill',
     inputHash: 'input-hash',
     definitionHash: 'definition-hash',
-    sources: [{ docsPath: './guide.md', contentHash: 'source-hash' }],
+    docs: [{ path: './guide.md', contentHash: 'doc-hash' }],
     files: computeSkillFileDigest(files),
   } satisfies SkillManifest
 
@@ -239,9 +239,9 @@ describe('checkSkill', () => {
   const digest = {
     inputHash: 'input-hash',
     definitionHash: 'definition-hash',
-    sources: [
-      { docsPath: './guide.md', contentHash: 'guide-hash' },
-      { docsPath: './reference.md', contentHash: 'reference-hash' },
+    docs: [
+      { path: './guide.md', contentHash: 'guide-hash' },
+      { path: './reference.md', contentHash: 'reference-hash' },
     ],
   } satisfies SkillDigest
 
@@ -262,43 +262,38 @@ describe('checkSkill', () => {
 
   test.for([
     {
-      change: 'added source',
-      sources: [...digest.sources, { docsPath: './new.md', contentHash: 'new-hash' }],
+      change: 'added documentation file',
+      docs: [...digest.docs, { path: './new.md', contentHash: 'new-hash' }],
     },
     {
-      change: 'removed source',
-      sources: digest.sources.slice(0, 1),
+      change: 'removed documentation file',
+      docs: digest.docs.slice(0, 1),
     },
     {
-      change: 'renamed source',
-      sources: digest.sources.map((source, index) => (index === 0 ? { ...source, docsPath: './renamed.md' } : source)),
+      change: 'renamed documentation file',
+      docs: digest.docs.map((doc, index) => (index === 0 ? { ...doc, path: './renamed.md' } : doc)),
     },
     {
-      change: 'reordered sources',
-      sources: digest.sources.toReversed(),
+      change: 'reordered documentation files',
+      docs: digest.docs.toReversed(),
     },
-  ])('reports a definition change - $change', ({ sources }) => {
-    const result = checkSkill(
-      manifest,
-      { ...digest, definitionHash: 'new-definition-hash', sources },
-      manifest.model,
-      [],
-    )
+  ])('reports a definition change - $change', ({ docs }) => {
+    const result = checkSkill(manifest, { ...digest, definitionHash: 'new-definition-hash', docs }, manifest.model, [])
 
     expect(result).toStrictEqual({ upToDate: false, issues: [{ type: 'definition-change' }] })
   })
 
-  test('reports source content changes', () => {
+  test('reports documentation content changes', () => {
     const result = checkSkill(
       manifest,
-      { ...digest, sources: digest.sources.map((source) => ({ ...source, contentHash: 'changed-content-hash' })) },
+      { ...digest, docs: digest.docs.map((doc) => ({ ...doc, contentHash: 'changed-content-hash' })) },
       manifest.model,
       [],
     )
 
     expect(result).toStrictEqual({
       upToDate: false,
-      issues: [{ type: 'source-change', paths: ['./guide.md', './reference.md'] }],
+      issues: [{ type: 'docs-change', paths: ['./guide.md', './reference.md'] }],
     })
   })
 
@@ -348,7 +343,7 @@ describe('approveSkill', () => {
   const digest = {
     inputHash: 'input-hash',
     definitionHash: 'definition-hash',
-    sources: [{ docsPath: './guide.md', contentHash: 'source-hash' }],
+    docs: [{ path: './guide.md', contentHash: 'doc-hash' }],
   } satisfies SkillDigest
 
   beforeEach(async () => {
@@ -388,7 +383,7 @@ describe('approveSkill', () => {
     const updatedDigest = {
       inputHash: 'updated-input-hash',
       definitionHash: 'updated-definition-hash',
-      sources: [{ docsPath: './guide.md', contentHash: 'updated-source-hash' }],
+      docs: [{ path: './guide.md', contentHash: 'updated-doc-hash' }],
     }
 
     await approveSkill(updatedConfig, updatedSkill, updatedDigest)

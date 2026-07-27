@@ -30,12 +30,12 @@ const skill = {
 
 const docs = [
   {
-    url: new URL('file:///project/src/content/docs/guides/migrate-v2.md'),
+    path: './guides/migrate-v2.md',
     title: 'V2 Migration Guide',
     body: 'Change foo to bar.\n\nThen change baz to quux.',
   },
   {
-    url: new URL('file:///project/src/content/docs/changelog.md'),
+    path: './changelog.md',
     title: 'Changelog',
     body: '# Changelog\n\n## v2.0.0\n\n- Added new features.',
   },
@@ -74,10 +74,7 @@ describe('generateSkillContent', () => {
       name: skill.name,
       description: skill.description,
       guidance: skill.guidance,
-      docs: [
-        { docsPath: skill.docs[0], title: docs[0]?.title, body: docs[0]?.body },
-        { docsPath: skill.docs[1], title: docs[1]?.title, body: docs[1]?.body },
-      ],
+      docs,
     })
     expect(input).not.toHaveProperty('update')
 
@@ -95,7 +92,7 @@ describe('generateSkillContent', () => {
         { path: 'SKILL.md', content: '---\nname: "migrate-to-v2"\n---\n\nChange foo to bar.' },
         { path: 'references/migration-details.md', content: 'Change foo to bar.' },
       ],
-      changedDocsPaths: ['./guides/migrate-v2.md'],
+      changedDocPaths: ['./guides/migrate-v2.md'],
     }
 
     mastra.generate.mockResolvedValue({ object: { data: content } })
@@ -116,8 +113,8 @@ describe('generateSkillContent', () => {
       status: 'error',
       issues: [
         {
-          type: 'source-incomplete',
-          docsPaths: ['./guides/migrate-v2.md'],
+          type: 'missing-information',
+          docPaths: ['./guides/migrate-v2.md'],
           details: 'The documentation file is missing required information.',
         },
       ],

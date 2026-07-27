@@ -32,19 +32,19 @@ export const SkillDefinitionSchema = z.strictObject({
         .regex(StarlightDocsExtensionsRegex, 'A documentation file must use a supported Markdown or MDX extension.'),
     )
     .min(1)
-    .superRefine((sources, context) => {
+    .superRefine((docs, context) => {
       const seen = new Set<string>()
 
-      for (const [index, source] of sources.entries()) {
-        if (seen.has(source)) {
+      for (const [index, docPath] of docs.entries()) {
+        if (seen.has(docPath)) {
           context.addIssue({
             code: 'custom',
-            message: `Duplicate documentation file path '${source}'.`,
+            message: `Duplicate documentation file path '${docPath}'.`,
             path: [index],
           })
         }
 
-        seen.add(source)
+        seen.add(docPath)
       }
     }),
   guidance: z.string().optional(),

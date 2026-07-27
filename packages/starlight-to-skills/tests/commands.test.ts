@@ -336,15 +336,15 @@ New content.`,
 
       const manifestPath = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
       const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')) as SkillManifest
-      const guideSource = manifest.sources.find((source) => source.docsPath === './guide.md')
+      const guideDoc = manifest.docs.find((doc) => doc.path === './guide.md')
 
-      expect.assert(guideSource)
+      expect.assert(guideDoc)
 
       await fs.writeFile(
         manifestPath,
         JSON.stringify({
           ...manifest,
-          sources: [guideSource, { docsPath: './removed.md', contentHash: 'removed-content-hash' }],
+          docs: [guideDoc, { path: './removed.md', contentHash: 'removed-content-hash' }],
         }),
       )
       await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\n\nA new option.')
@@ -354,7 +354,7 @@ New content.`,
       const [prompt] = mastra.generate.mock.calls[1] as [string]
       const input = JSON.parse(prompt) as { update: Record<string, unknown> }
 
-      expect(input.update['changedDocsPaths']).toStrictEqual(['./guide.md', './added.md', './removed.md'])
+      expect(input.update['changedDocPaths']).toStrictEqual(['./guide.md', './added.md', './removed.md'])
 
       expect(input.update['approvedFiles']).toMatchInlineSnapshot(`
         [
@@ -418,13 +418,13 @@ New content.`,
             status: 'error',
             issues: [
               {
-                type: 'source-incomplete',
-                docsPaths: ['./guide.md'],
+                type: 'missing-information',
+                docPaths: ['./guide.md'],
                 details: 'The migration steps are missing.',
               },
               {
-                type: 'source-conflict',
-                docsPaths: ['./guide.md', './changelog.md'],
+                type: 'conflicting-information',
+                docPaths: ['./guide.md', './changelog.md'],
                 details: 'The migration guide is for v3.',
               },
             ],

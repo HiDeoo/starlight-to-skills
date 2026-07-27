@@ -11,7 +11,7 @@ import { makeSkillManifest, SkillManifestSchema, type SkillManifest } from '../s
 import { parseSkillName } from '../schemas/skill'
 
 import type { SkillFile } from './content'
-import { computeSkillFileDigest, GeneratorVersion, normalizeLineEndings } from './digest'
+import { computeSkillFileDigest, GeneratorVersion } from './digest'
 import { throwError } from './error'
 import {
   getSkillManifestDirUrl,
@@ -29,7 +29,7 @@ const skillManifestSuffix = '.json'
 
 export const SkillCheckIssueMessages = {
   'definition-change': 'Skill definition changed',
-  'source-change': 'Documentation content changed',
+  'docs-change': 'Documentation content changed',
   'model-change': 'Model changed',
   'generator-change': 'Generation version changed',
   'approved-skill-change': 'Approved skill changed',
@@ -178,17 +178,14 @@ export function checkSkill(
 
   if (manifest.definitionHash !== digest.definitionHash) issues.push({ type: 'definition-change' })
 
-  const changedDocsPaths = manifest.sources
-    .filter((source) =>
-      digest.sources.some(
-        (matchingSource) =>
-          matchingSource.docsPath === source.docsPath && matchingSource.contentHash !== source.contentHash,
-      ),
+  const changedDocPaths = manifest.docs
+    .filter((doc) =>
+      digest.docs.some((matchingDoc) => matchingDoc.path === doc.path && matchingDoc.contentHash !== doc.contentHash),
     )
-    .map((source) => source.docsPath)
+    .map((doc) => doc.path)
 
-  if (changedDocsPaths.length > 0) {
-    issues.push({ type: 'source-change', paths: changedDocsPaths })
+  if (changedDocPaths.length > 0) {
+    issues.push({ type: 'docs-change', paths: changedDocPaths })
   }
 
   if (manifest.model !== model) issues.push({ type: 'model-change' })
@@ -261,9 +258,7 @@ export async function hasMatchingSkillDescription(outputDir: URL, name: string, 
 
   try {
     const description: unknown = matter(content).data['description']
-    return (
-      typeof description === 'string' && normalizeLineEndings(description) === normalizeLineEndings(expectedDescription)
-    )
+    return description === expectedDescription
   } catch {
     return false
   }
@@ -281,7 +276,7 @@ export interface LoadedSkill {
 
 type SkillCheckIssue =
   | { type: 'definition-change' }
-  | { type: 'source-change'; paths: string[] }
+  | { type: 'docs-change'; paths: string[] }
   | { type: 'model-change' }
   | { type: 'generator-change' }
   | { type: 'approved-skill-change'; paths: string[] }

@@ -130,19 +130,17 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
     approvedSkill = await loadSkill(config.outputDir, definition.name)
 
     if (approvedSkill.fileMismatches.length === 0) {
-      const approvedSourceHashes = new Map(
-        approvedSkill.manifest.sources.map(({ docsPath, contentHash }) => [docsPath, contentHash]),
-      )
-      const changedDocsPaths: string[] = []
+      const approvedDocHashes = new Map(approvedSkill.manifest.docs.map(({ path, contentHash }) => [path, contentHash]))
+      const changedDocPaths: string[] = []
 
-      for (const { docsPath, contentHash } of digest.sources) {
-        if (approvedSourceHashes.get(docsPath) !== contentHash) changedDocsPaths.push(docsPath)
-        approvedSourceHashes.delete(docsPath)
+      for (const { path, contentHash } of digest.docs) {
+        if (approvedDocHashes.get(path) !== contentHash) changedDocPaths.push(path)
+        approvedDocHashes.delete(path)
       }
 
-      changedDocsPaths.push(...approvedSourceHashes.keys())
+      changedDocPaths.push(...approvedDocHashes.keys())
 
-      update = { approvedFiles: approvedSkill.files, changedDocsPaths }
+      update = { approvedFiles: approvedSkill.files, changedDocPaths }
     }
   }
 
@@ -161,10 +159,10 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
       .map((issue) => {
         const paragraphs = [style.section(ContentResultIssueLabels[issue.type]), issue.details]
 
-        if (issue.docsPaths.length > 0) {
+        if (issue.docPaths.length > 0) {
           paragraphs.push(
-            style.dim(`${pluralize(issue.docsPaths.length, 'Documentation file')}:`),
-            issue.docsPaths.map((docsPath) => `${style.dim(' -')} ${docsPath}`).join('\n'),
+            style.dim(`${pluralize(issue.docPaths.length, 'Documentation file')}:`),
+            issue.docPaths.map((docPath) => `${style.dim(' -')} ${docPath}`).join('\n'),
           )
         }
 
@@ -427,7 +425,7 @@ async function getSkillIssues(
         return `${heading}\n\nThe description, documentation file paths, or guidance changed since the skill was approved.`
       }
       case 'approved-skill-change':
-      case 'source-change': {
+      case 'docs-change': {
         const paths = issue.paths.map((path) => `${style.dim(' -')} ${path}`).join('\n')
 
         return `${heading}\n\n${paths}`

@@ -7,15 +7,15 @@ import { style } from './terminal'
 
 // TODO(HiDeoo) skill-generation skill
 // TODO(HiDeoo) reference seems to link to docs
-const instructions = `Generate content for an agent skill using only the provided information and documentation sources.
+const instructions = `Generate content for an agent skill using only the provided information and selected documentation.
 
-Documentation sources are authoritative for documented facts.
+Selected documentation is authoritative for documented facts.
 Guidance may add context, preferences, boundaries, or rules, but it must not override documented facts.
 Do not use outside knowledge or follow links.
-If required information is missing, return a 'source-incomplete' issue.
-If the documentation sources disagree, or guidance contradicts a documented fact, return a 'source-conflict' issue.
+If required information is missing, return a 'missing-information' issue.
+If the selected documentation disagrees, or guidance contradicts a documented fact, return a 'conflicting-information' issue.
 
-Infer the output language from the documentation sources unless guidance specifies a language preference.
+Infer the output language from the selected documentation unless guidance specifies a language preference.
 
 Return only the Markdown body for SKILL.md, without frontmatter, and Markdown references when supporting detail would otherwise make SKILL.md less concise.
 Link every reference directly from the SKILL.md body.
@@ -24,8 +24,8 @@ Do not link from one reference to another.
 Do not generate or rewrite the skill name or description.`
 
 const updateInstructions = `Use the approved files only as a wording and structure baseline.
-The approved files are not documentation sources or factual authority.
-If they disagree with the current description, guidance, or documentation sources, update them to match the current inputs instead of reporting a source conflict.
+The approved files are not selected documentation or factual authority.
+If they disagree with the current description, guidance, or selected documentation, update them to match the current inputs instead of reporting conflicting information.
 Ignore approved frontmatter and do not return frontmatter in the body.
 The changed documentation paths are hints about where updates may be needed, but you must consider every current input.
 Preserve all unaffected wording, formatting, ordering, reference paths, and reference content exactly.
@@ -43,11 +43,7 @@ export async function generateSkillContent(
     name: skill.name,
     description: skill.description,
     guidance: skill.guidance,
-    docs: docs.map((doc, index) => ({
-      docsPath: skill.docs[index],
-      title: doc.title,
-      body: doc.body,
-    })),
+    docs,
     update,
   }
 
@@ -112,5 +108,5 @@ export interface SkillFile {
 
 export interface SkillUpdate {
   approvedFiles: SkillFile[]
-  changedDocsPaths: string[]
+  changedDocPaths: string[]
 }

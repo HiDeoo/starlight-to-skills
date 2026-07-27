@@ -53,11 +53,11 @@ describe('loadSkillDocs', () => {
 
   test.for(['../outside.md', '/outside.md'])(
     'rejects documentation file path %j outside of Starlight docs collection',
-    async (docsPath) => {
-      const skill = { docs: [docsPath] } as SkillDefinition
+    async (docPath) => {
+      const skill = { docs: [docPath] } as SkillDefinition
 
       await expect(loadSkillDocs(config, skill)).rejects.toMatchObject({
-        message: `Documentation file '${docsPath}' must be inside 'src/content/docs/'.`,
+        message: `Documentation file '${docPath}' must be inside 'src/content/docs/'.`,
         hint: "Use a path relative to 'src/content/docs/'.",
       })
     },
