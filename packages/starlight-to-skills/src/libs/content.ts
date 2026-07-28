@@ -1,37 +1,10 @@
 import { ContentResultJSONSchema, ContentResultSchema, type SkillContentResult } from '../schemas/content'
 
 import { throwError } from './error'
+import { Instructions, UpdateInstructions } from './instructions'
 import type { SkillConfiguration } from './loader'
 import type { SkillDocumentation } from './starlight'
 import { style } from './terminal'
-
-// TODO(HiDeoo) skill-generation skill
-// TODO(HiDeoo) reference seems to link to docs
-const instructions = `Generate content for an agent skill using only the provided information and selected documentation.
-
-Selected documentation is authoritative for documented facts.
-Guidance may add context, preferences, boundaries, or rules, but it must not override documented facts.
-Do not use outside knowledge or follow links.
-If required information is missing, return a 'missing-information' issue.
-If the selected documentation disagrees, or guidance contradicts a documented fact, return a 'conflicting-information' issue.
-
-Infer the output language from the selected documentation unless guidance specifies a language preference.
-
-Return only the Markdown body for SKILL.md, without frontmatter, and Markdown references when supporting detail would otherwise make SKILL.md less concise.
-Link every reference directly from the SKILL.md body.
-Ensure every local link resolves to a generated file.
-Do not link from one reference to another.
-Do not generate or rewrite the skill name or description.`
-
-const updateInstructions = `Use the approved files only as a wording and structure baseline.
-The approved files are not selected documentation or factual authority.
-If they disagree with the current description, guidance, or selected documentation, update them to match the current inputs instead of reporting conflicting information.
-Ignore approved frontmatter and do not return frontmatter in the body.
-The changed documentation paths are hints about where updates may be needed, but you must consider every current input.
-Preserve all unaffected wording, formatting, ordering, reference paths, and reference content exactly.
-Do not clean up, reformat, reorganize, or rephrase unaffected content.
-Add, update, or remove body content and references when the current inputs require it.
-Return the complete updated body and references, including unchanged content.`
 
 export async function generateSkillContent(
   model: string,
@@ -52,7 +25,7 @@ export async function generateSkillContent(
   const agent = new Agent({
     id: 'starlight-to-skills-agent',
     name: 'Starlight to Skills',
-    instructions: update ? `${instructions}\n\n${updateInstructions}` : instructions,
+    instructions: update ? `${Instructions}\n\n${UpdateInstructions}` : Instructions,
     model,
   })
 

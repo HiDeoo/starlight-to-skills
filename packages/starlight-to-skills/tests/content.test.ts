@@ -61,7 +61,7 @@ describe('generateSkillContent', () => {
 
     expect(mastra.constructAgent).toHaveBeenCalledOnce()
     expect(instructions).toMatch(/^Generate content for an agent skill/)
-    expect(instructions).not.toContain('Use the approved files')
+    expect(instructions).not.toContain('# Updating an approved skill')
     expect(model).toBe('openai/gpt-5.6-luna')
 
     expect(mastra.generate).toHaveBeenCalledOnce()
@@ -101,7 +101,7 @@ describe('generateSkillContent', () => {
 
     const [{ instructions }] = mastra.constructAgent.mock.calls[0] as [{ instructions: string }]
 
-    expect(instructions).toContain('Use the approved files')
+    expect(instructions).toContain('# Updating an approved skill')
 
     const [prompt] = mastra.generate.mock.calls[0] as [string]
 
