@@ -1,3 +1,5 @@
+import { stripVTControlCharacters } from 'node:util'
+
 import type { SnapshotSerializer } from 'vitest'
 
 import { StarlightToSkillsError } from '../src/libs/error'
@@ -7,6 +9,6 @@ export default {
     return !!val && StarlightToSkillsError.is(val)
   },
   serialize({ message, hint }: StarlightToSkillsError) {
-    return `${message}${hint ? `\n\nHint: ${hint}` : ''}`
+    return stripVTControlCharacters(`${message}${hint ? `\n\nHint: ${hint}` : ''}`)
   },
 } satisfies SnapshotSerializer

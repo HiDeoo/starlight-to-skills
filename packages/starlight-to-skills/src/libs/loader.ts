@@ -6,9 +6,11 @@ import { createJiti } from 'jiti'
 import { ConfigSchema, type StarlightToSkillsConfig } from '../schemas/config'
 import { parseSkillName, SkillDefinitionSchema, type SkillDefinition } from '../schemas/skill'
 
+import { computeSkillDigest } from './digest'
 import { throwError } from './error'
 import { getDataDirUrl, resolveDirectoryUrl } from './fs'
-import { getSkillNameByDefinitionUrl } from './skill'
+import { discoverSkillDefinitions, getSkillDefinitionUrlByName, getSkillNameByDefinitionUrl } from './skill'
+import { loadSkillDocs } from './starlight'
 
 const configFilename = 'starlight-to-skills.config.ts'
 
@@ -45,7 +47,26 @@ export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig>
   }
 }
 
-export async function loadSkillDefinition(url: URL): Promise<SkillConfiguration> {
+export async function loadSkillInputs(name: string, rootDir: URL) {
+  const config = await loadConfig(rootDir)
+  const definitionUrls = await discoverSkillDefinitions(config)
+  const inputs = await loadSkillDefinitionInputs(config, getSkillDefinitionUrlByName(definitionUrls, name))
+
+  return { config, ...inputs }
+}
+
+export async function loadSkillDefinitionInputs(
+  config: Pick<StarlightToSkillsConfig, 'model' | 'rootDir'>,
+  definitionUrl: URL,
+) {
+  const definition = await loadSkillDefinition(definitionUrl)
+  const docs = await loadSkillDocs(config, definition)
+  const digest = computeSkillDigest(config.model, definition, docs)
+
+  return { definition, docs, digest }
+}
+
+async function loadSkillDefinition(url: URL): Promise<SkillConfiguration> {
   const definitionPath = fileURLToPath(url)
   const filename = path.basename(definitionPath)
   const name = parseSkillName(getSkillNameByDefinitionUrl(url))

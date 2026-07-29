@@ -1,15 +1,12 @@
 import { describe, expect, test } from 'vitest'
 
-import type { StarlightToSkillsConfig } from '../src/config'
 import { loadSkillDocs } from '../src/libs/starlight'
-import type { SkillDefinition } from '../src/skill'
 
-const rootDir = new URL('fixtures/project/', import.meta.url)
-const config = { rootDir } as StarlightToSkillsConfig
+const config = { rootDir: new URL('fixtures/project/', import.meta.url) }
 
 describe('loadSkillDocs', () => {
   test('loads selected documentation in authored order', async () => {
-    const skill = { docs: ['getting-started.mdx', './guides/custom-thing.md', './guides/toml.md'] } as SkillDefinition
+    const skill = { docs: ['getting-started.mdx', './guides/custom-thing.md', './guides/toml.md'] }
 
     const docs = await loadSkillDocs(config, skill)
 
@@ -43,7 +40,7 @@ describe('loadSkillDocs', () => {
   })
 
   test('rejects an unknown documentation file', async () => {
-    const skill = { docs: ['./unknown.md'] } as SkillDefinition
+    const skill = { docs: ['./unknown.md'] }
 
     await expect(loadSkillDocs(config, skill)).rejects.toMatchObject({
       message: "Failed to load documentation file './unknown.md'.",
@@ -54,7 +51,7 @@ describe('loadSkillDocs', () => {
   test.for(['../outside.md', '/outside.md'])(
     'rejects documentation file path %j outside of Starlight docs collection',
     async (docPath) => {
-      const skill = { docs: [docPath] } as SkillDefinition
+      const skill = { docs: [docPath] }
 
       await expect(loadSkillDocs(config, skill)).rejects.toMatchObject({
         message: `Documentation file '${docPath}' must be inside 'src/content/docs/'.`,
@@ -64,7 +61,7 @@ describe('loadSkillDocs', () => {
   )
 
   test('rejects a documentation file that is not a file', async () => {
-    const skill = { docs: ['./directory.md'] } as SkillDefinition
+    const skill = { docs: ['./directory.md'] }
 
     await expect(loadSkillDocs(config, skill)).rejects.toMatchObject({
       message: "Documentation path './directory.md' is not a file.",
@@ -73,7 +70,7 @@ describe('loadSkillDocs', () => {
   })
 
   test('rejects a documentation file with an invalid frontmatter', async () => {
-    const skill = { docs: ['./invalid-frontmatter.md'] } as SkillDefinition
+    const skill = { docs: ['./invalid-frontmatter.md'] }
 
     await expect(loadSkillDocs(config, skill)).rejects.toMatchObject({
       message: "Documentation file './invalid-frontmatter.md' has an invalid title.",

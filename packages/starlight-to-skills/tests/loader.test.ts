@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { loadConfig, loadSkillDefinition } from '../src/libs/loader'
+import { loadConfig, loadSkillDefinitionInputs } from '../src/libs/loader'
 
 describe('loadConfig', () => {
   test('loads and resolves valid configuration', async () => {
@@ -39,25 +39,33 @@ describe('loadConfig', () => {
   })
 })
 
-describe('loadSkillDefinition', () => {
-  test('loads a skill definition and resolves its configuration', async () => {
+describe('loadSkillDefinitionInputs', () => {
+  const config = { model: 'openai/gpt-5.6-luna', rootDir: new URL('fixtures/project/', import.meta.url) }
+
+  test('loads a skill definition, documentation, and digest', async () => {
     const definitionUrl = new URL('fixtures/skill-valid.skill.ts', import.meta.url)
 
-    const configuration = await loadSkillDefinition(definitionUrl)
+    const { definition, docs, digest } = await loadSkillDefinitionInputs(config, definitionUrl)
 
-    expect(configuration).toStrictEqual({
+    expect(definition).toStrictEqual({
       name: 'skill-valid',
       url: definitionUrl,
       description: 'Do the thing.',
       docs: ['./getting-started.mdx', './guides/custom-thing.md'],
       guidance: 'Add a usage example to the generated skill.',
     })
+
+    expect(docs.map((doc) => doc.path)).toStrictEqual(definition.docs)
+
+    expect(digest.inputHash).toBeSha256()
+    expect(digest.definitionHash).toBeSha256()
+    expect(digest.docs.map((doc) => doc.path)).toStrictEqual(definition.docs)
   })
 
   test('rejects definition without a default export', async () => {
     const definitionUrl = new URL('fixtures/skill-no-default.skill.ts', import.meta.url)
 
-    await expect(loadSkillDefinition(definitionUrl)).rejects.toThrow(
+    await expect(loadSkillDefinitionInputs(config, definitionUrl)).rejects.toThrow(
       "Invalid skill definition 'skill-no-default.skill.ts'.",
     )
   })
@@ -65,7 +73,7 @@ describe('loadSkillDefinition', () => {
   test('rejects invalid definition', async () => {
     const definitionUrl = new URL('fixtures/skill-invalid.skill.ts', import.meta.url)
 
-    await expect(loadSkillDefinition(definitionUrl)).rejects.toThrow(
+    await expect(loadSkillDefinitionInputs(config, definitionUrl)).rejects.toThrow(
       "Invalid skill definition 'skill-invalid.skill.ts'.",
     )
   })

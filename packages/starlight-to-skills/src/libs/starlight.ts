@@ -18,8 +18,8 @@ export const StarlightDocsExtensionsRegex = /\.(?:markdown|mdown|mkdn|mkd|mdwn|m
 const docsCollectionDir = 'src/content/docs/'
 
 export async function loadSkillDocs(
-  config: StarlightToSkillsConfig,
-  skill: SkillDefinition,
+  config: Pick<StarlightToSkillsConfig, 'rootDir'>,
+  skill: Pick<SkillDefinition, 'docs'>,
 ): Promise<SkillDocumentation[]> {
   const docsCollectionPath = fileURLToPath(new URL(docsCollectionDir, config.rootDir))
 

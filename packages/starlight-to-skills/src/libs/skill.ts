@@ -11,7 +11,7 @@ import { makeSkillManifest, SkillManifestSchema, type SkillManifest } from '../s
 import { parseSkillName } from '../schemas/skill'
 
 import type { SkillFile } from './content'
-import { computeSkillFileDigest, GeneratorVersion } from './digest'
+import { computeSkillFileDigest } from './digest'
 import { throwError } from './error'
 import {
   getSkillManifestDirUrl,
@@ -27,14 +27,6 @@ import { style } from './terminal'
 const skillDefinitionSuffix = '.skill.ts'
 const skillManifestSuffix = '.json'
 
-export const SkillCheckIssueMessages = {
-  'definition-change': 'Skill definition changed',
-  'docs-change': 'Documentation content changed',
-  'model-change': 'Model changed',
-  'generator-change': 'Generation version changed',
-  'approved-skill-change': 'Approved skill changed',
-} satisfies Record<SkillCheckIssue['type'], string>
-
 export function getSkillNameByDefinitionUrl(url: URL): string {
   return getSkillNameByUrl(url, skillDefinitionSuffix)
 }
@@ -43,7 +35,9 @@ export function getSkillNameByManifestUrl(url: URL): string {
   return getSkillNameByUrl(url, skillManifestSuffix)
 }
 
-export async function discoverSkillDefinitions(config: StarlightToSkillsConfig): Promise<URL[]> {
+export async function discoverSkillDefinitions(
+  config: Pick<StarlightToSkillsConfig, 'definitions' | 'rootDir'>,
+): Promise<URL[]> {
   const definitionUrls: URL[] = []
 
   try {
@@ -168,33 +162,6 @@ export async function pruneSkill(outputDir: URL, name: string) {
   await fs.rm(getSkillManifestUrl(outputDir, name), { force: true })
 }
 
-export function checkSkill(
-  manifest: SkillManifest,
-  digest: SkillDigest,
-  model: string,
-  fileMismatches: string[],
-): SkillCheckResult {
-  const issues: SkillCheckIssue[] = []
-
-  if (manifest.definitionHash !== digest.definitionHash) issues.push({ type: 'definition-change' })
-
-  const changedDocPaths = manifest.docs
-    .filter((doc) =>
-      digest.docs.some((matchingDoc) => matchingDoc.path === doc.path && matchingDoc.contentHash !== doc.contentHash),
-    )
-    .map((doc) => doc.path)
-
-  if (changedDocPaths.length > 0) {
-    issues.push({ type: 'docs-change', paths: changedDocPaths })
-  }
-
-  if (manifest.model !== model) issues.push({ type: 'model-change' })
-  if (manifest.generatorVersion !== GeneratorVersion) issues.push({ type: 'generator-change' })
-  if (fileMismatches.length > 0) issues.push({ type: 'approved-skill-change', paths: fileMismatches })
-
-  return issues.length === 0 ? { upToDate: true } : { upToDate: false, issues }
-}
-
 export async function approveSkill(config: StarlightToSkillsConfig, skill: SkillConfiguration, digest: SkillDigest) {
   const skillDirUrl = resolveDirectoryUrl(skill.name, config.outputDir)
   const manifestUrl = getSkillManifestUrl(config.outputDir, skill.name)
@@ -273,12 +240,3 @@ export interface LoadedSkill {
   files: SkillFile[]
   fileMismatches: string[]
 }
-
-type SkillCheckIssue =
-  | { type: 'definition-change' }
-  | { type: 'docs-change'; paths: string[] }
-  | { type: 'model-change' }
-  | { type: 'generator-change' }
-  | { type: 'approved-skill-change'; paths: string[] }
-
-type SkillCheckResult = { upToDate: true } | { upToDate: false; issues: SkillCheckIssue[] }

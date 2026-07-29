@@ -20,15 +20,15 @@ vi.mock('@mastra/core/agent', () => ({
   },
 }))
 
-const skill = {
+const skill: SkillConfiguration = {
   name: 'migrate-to-v2',
   description: 'Migrate a project to v2.',
   docs: ['./guides/migrate-v2.md', './changelog.md'],
   guidance: 'Write the generated skill in French.',
   url: new URL('file:///project/src/skills/migrate-to-v2.skill.ts'),
-} satisfies SkillConfiguration
+}
 
-const docs = [
+const docs: SkillDocumentation[] = [
   {
     path: './guides/migrate-v2.md',
     title: 'V2 Migration Guide',
@@ -39,7 +39,7 @@ const docs = [
     title: 'Changelog',
     body: '# Changelog\n\n## v2.0.0\n\n- Added new features.',
   },
-] satisfies SkillDocumentation[]
+]
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -108,7 +108,7 @@ describe('generateSkillContent', () => {
     expect(JSON.parse(prompt)).toMatchObject({ update })
   })
 
-  test('returns file issues', async () => {
+  test('returns generation issues', async () => {
     const content = {
       status: 'error',
       issues: [
@@ -155,7 +155,11 @@ describe('generateSkillContent', () => {
       },
     })
 
-    await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toThrow()
+    await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toMatchInlineSnapshot(`
+      Model 'openai/gpt-5.6-luna' returned an invalid response.
+
+      Hint: Run 'starlight-to-skills generate migrate-to-v2' again.
+    `)
   })
 })
 

@@ -21,10 +21,10 @@ import type { SkillManifest } from '../src/schemas/manifest'
 
 describe('createCandidate', () => {
   test('creates a candidate', () => {
-    const files = [
+    const files: SkillFile[] = [
       { path: 'SKILL.md', content: 'Skill content.' },
       { path: 'references/details.md', content: 'Reference content.' },
-    ] satisfies SkillFile[]
+    ]
 
     const candidate = createCandidate('input-hash', files)
 
@@ -283,11 +283,11 @@ describe('persistence', () => {
     let config: StarlightToSkillsConfig
     let skill: SkillConfiguration
 
-    const digest = {
+    const digest: SkillDigest = {
       inputHash: 'input-hash',
       definitionHash: 'definition-hash',
       docs: [{ path: './guide.md', contentHash: 'doc-hash' }],
-    } satisfies SkillDigest
+    }
 
     beforeEach(() => {
       rootDir = pathToFileURL(`${testDir}${path.sep}`)

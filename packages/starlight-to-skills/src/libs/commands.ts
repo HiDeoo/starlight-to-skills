@@ -5,44 +5,28 @@ import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 
 import packageJson from '../../package.json' with { type: 'json' }
-import type { StarlightToSkillsConfig } from '../schemas/config'
 import { ContentResultIssueLabels } from '../schemas/content'
-import type { SkillDigest } from '../schemas/digest'
 import { parseSkillName } from '../schemas/skill'
 
 import { approveCandidate, createCandidate, loadCandidate, removeCandidateForInput, writeCandidate } from './candidate'
+import { checkSkills, getSkillIssues } from './check'
 import { compileSkill, generateSkillContent, type SkillUpdate } from './content'
 import { renderSkillDiff } from './diff'
-import { computeSkillDigest, GeneratorVersion } from './digest'
-import { createError, type StarlightToSkillsError, throwError } from './error'
+import { createError, throwError } from './error'
 import { getSkillManifestUrl, pathExists } from './fs'
 import { getHelp } from './help'
-import { loadConfig, loadSkillDefinition, type SkillConfiguration } from './loader'
+import { loadConfig, loadSkillInputs } from './loader'
 import {
   approveSkill,
-  checkSkill,
   discoverSkillDefinitions,
   discoverSkillManifests,
-  getSkillDefinitionUrlByName,
   getSkillNameByDefinitionUrl,
   getSkillNameByManifestUrl,
-  hasMatchingSkillDescription,
   loadSkill,
   pruneSkill,
-  SkillCheckIssueMessages,
   type LoadedSkill,
 } from './skill'
-import { loadSkillDocs } from './starlight'
-import {
-  formatError,
-  logError,
-  logMessage,
-  logUsageError,
-  pluralize,
-  prefixLines,
-  style,
-  withProgress,
-} from './terminal'
+import { logError, logMessage, logUsageError, pluralize, prefixLines, style, withProgress } from './terminal'
 
 export async function runCli(args: string[], cwd = process.cwd()): Promise<number> {
   let parsedArgs: ReturnType<typeof parseArgs>
@@ -246,79 +230,7 @@ async function runCheckSkill(name: string, rootDir: URL): Promise<number> {
 }
 
 async function runCheckSkills(rootDir: URL): Promise<number> {
-  const config = await loadConfig(rootDir)
-  const definitionUrls = await discoverSkillDefinitions(config)
-  const reports: string[] = []
-  let allUpToDate = true
-  let hasOrphans = false
-  const definitionNames = new Set<string>()
-
-  function addReport(name: string, details: unknown) {
-    reports.push(`${style.primarySection(name)}\n\n${formatError(details)}`)
-  }
-
-  for (const definitionUrl of definitionUrls) {
-    const name = getSkillNameByDefinitionUrl(definitionUrl)
-
-    try {
-      definitionNames.add(parseSkillName(name))
-    } catch (error) {
-      allUpToDate = false
-      addReport(name, error)
-    }
-  }
-
-  for (const name of definitionNames) {
-    try {
-      const definitionUrl = getSkillDefinitionUrlByName(definitionUrls, name)
-      const { definition, digest } = await loadSkillDefinitionInputs(config, definitionUrl)
-      const issues = await getSkillIssues(config, definition, digest)
-
-      if (issues) {
-        allUpToDate = false
-        addReport(name, issues)
-      }
-    } catch (error) {
-      allUpToDate = false
-      addReport(name, error)
-    }
-  }
-
-  for (const skillManifestUrl of await discoverSkillManifests(config.outputDir)) {
-    const name = getSkillNameByManifestUrl(skillManifestUrl)
-    let skillName: string
-
-    try {
-      skillName = parseSkillName(name)
-    } catch (error) {
-      allUpToDate = false
-      addReport(name, error)
-      continue
-    }
-
-    if (definitionNames.has(skillName)) continue
-
-    allUpToDate = false
-    hasOrphans = true
-    addReport(skillName, 'Orphan approved skill.')
-  }
-
-  const report = reports.join('\n\n')
-
-  if (!allUpToDate) {
-    const message = `Not all skills are up to date.\n\n${report}`
-    return logError(
-      hasOrphans
-        ? createError(message, {
-            hint: `Run ${style.command('starlight-to-skills prune')} to review and remove orphan approved skills.`,
-          })
-        : message,
-    )
-  }
-
-  logMessage(
-    `${style.success('Check complete:')} ${definitionNames.size === 0 ? 'no skills found.' : 'all skills are up to date.'}`,
-  )
+  logMessage(await checkSkills(rootDir))
   return 0
 }
 
@@ -381,86 +293,4 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
   }
 
   return 0
-}
-
-async function loadSkillInputs(name: string, rootDir: URL) {
-  const config = await loadConfig(rootDir)
-  const definitionUrls = await discoverSkillDefinitions(config)
-  const inputs = await loadSkillDefinitionInputs(config, getSkillDefinitionUrlByName(definitionUrls, name))
-
-  return { config, ...inputs }
-}
-
-async function loadSkillDefinitionInputs(config: StarlightToSkillsConfig, definitionUrl: URL) {
-  const definition = await loadSkillDefinition(definitionUrl)
-  const docs = await loadSkillDocs(config, definition)
-  const digest = computeSkillDigest(config.model, definition, docs)
-
-  return { definition, docs, digest }
-}
-
-async function getSkillIssues(
-  config: StarlightToSkillsConfig,
-  definition: SkillConfiguration,
-  digest: SkillDigest,
-): Promise<StarlightToSkillsError | undefined> {
-  const approveCommand = style.command(`starlight-to-skills approve ${definition.name}`)
-  const generateCommand = style.command(`starlight-to-skills generate ${definition.name}`)
-  const generateHint = `Run ${generateCommand}, review the generated skill, and then run ${approveCommand}.`
-
-  if (!(await pathExists(getSkillManifestUrl(config.outputDir, definition.name)))) {
-    return createError(`Skill ${style.skillName(definition.name)} has not been approved.`, { hint: generateHint })
-  }
-
-  const { manifest, fileMismatches } = await loadSkill(config.outputDir, definition.name)
-  const result = checkSkill(manifest, digest, config.model, fileMismatches)
-
-  if (result.upToDate) return
-
-  const issues = result.issues.map((issue) => {
-    const heading = style.section(SkillCheckIssueMessages[issue.type])
-
-    switch (issue.type) {
-      case 'definition-change': {
-        return `${heading}\n\nThe description, documentation file paths, or guidance changed since the skill was approved.`
-      }
-      case 'approved-skill-change':
-      case 'docs-change': {
-        const paths = issue.paths.map((path) => `${style.dim(' -')} ${path}`).join('\n')
-
-        return `${heading}\n\n${paths}`
-      }
-      case 'model-change': {
-        return `${heading}\n\n${style.dim(' - Before:')} ${manifest.model}\n${style.dim(' - Now:')} ${config.model}`
-      }
-      case 'generator-change': {
-        return `${heading}\n\n${style.dim(' - Before:')} ${manifest.generatorVersion}\n${style.dim(' - Now:')} ${GeneratorVersion}`
-      }
-      default: {
-        throw new Error(`Unexpected issue: ${JSON.stringify(issue satisfies never)}`)
-      }
-    }
-  })
-
-  const canApproveExistingSkill =
-    fileMismatches.length === 0 &&
-    (manifest.definitionHash === digest.definitionHash ||
-      (await hasMatchingSkillDescription(config.outputDir, definition.name, definition.description)))
-
-  const hints =
-    fileMismatches.length > 0
-      ? [
-          `Restore the listed files. To keep intended changes, update the skill definition or documentation, run ${generateCommand}, review the generated skill, and then run ${approveCommand}.`,
-        ]
-      : [generateHint]
-
-  if (canApproveExistingSkill) {
-    hints.push(
-      `Alternatively, if the existing approved skill is still valid, run ${style.command(`starlight-to-skills approve ${definition.name} --existing`)}.`,
-    )
-  }
-
-  return createError(`Skill ${style.skillName(definition.name)} is not up to date.\n\n${issues.join('\n\n')}`, {
-    hint: hints.join(' '),
-  })
 }

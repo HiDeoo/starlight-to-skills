@@ -11,7 +11,6 @@ import { computeSkillFileDigest, GeneratorVersion } from '../src/libs/digest'
 import type { SkillConfiguration } from '../src/libs/loader'
 import {
   approveSkill,
-  checkSkill,
   discoverSkillDefinitions,
   discoverSkillManifests,
   getSkillDefinitionUrlByName,
@@ -25,10 +24,7 @@ const rootDir = new URL('fixtures/', import.meta.url)
 
 describe('discoverSkillDefinitions', () => {
   test('discovers skill definitions', async () => {
-    const definitionUrls = await discoverSkillDefinitions({
-      rootDir,
-      definitions: '*.skill.ts',
-    } as StarlightToSkillsConfig)
+    const definitionUrls = await discoverSkillDefinitions({ rootDir, definitions: '*.skill.ts' })
 
     expect(definitionUrls).toStrictEqual([
       new URL('skill-invalid.skill.ts', rootDir),
@@ -38,10 +34,7 @@ describe('discoverSkillDefinitions', () => {
   })
 
   test('returns an empty list of definitions when no matches are found', async () => {
-    const definitionUrls = await discoverSkillDefinitions({
-      rootDir,
-      definitions: './unknown/*.skill.ts',
-    } as StarlightToSkillsConfig)
+    const definitionUrls = await discoverSkillDefinitions({ rootDir, definitions: './unknown/*.skill.ts' })
 
     expect(definitionUrls).toStrictEqual([])
   })
@@ -122,7 +115,7 @@ describe('loadSkill', () => {
     { path: 'references/details.md', content: 'Reference content.\n' },
   ]
 
-  const manifest = {
+  const manifest: SkillManifest = {
     schemaVersion: 1,
     generatorVersion: GeneratorVersion,
     model: 'openai/gpt-5.6-luna',
@@ -131,7 +124,7 @@ describe('loadSkill', () => {
     definitionHash: 'definition-hash',
     docs: [{ path: './guide.md', contentHash: 'doc-hash' }],
     files: computeSkillFileDigest(files),
-  } satisfies SkillManifest
+  }
 
   beforeEach(async () => {
     testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
@@ -235,99 +228,6 @@ describe('loadSkill', () => {
   })
 })
 
-describe('checkSkill', () => {
-  const digest = {
-    inputHash: 'input-hash',
-    definitionHash: 'definition-hash',
-    docs: [
-      { path: './guide.md', contentHash: 'guide-hash' },
-      { path: './reference.md', contentHash: 'reference-hash' },
-    ],
-  } satisfies SkillDigest
-
-  const manifest = {
-    schemaVersion: 1,
-    generatorVersion: GeneratorVersion,
-    model: 'openai/gpt-5.6-luna',
-    name: 'test-skill',
-    ...digest,
-    files: [{ path: 'SKILL.md', contentHash: 'skill-hash' }],
-  } satisfies SkillManifest
-
-  test('checks an up-to-date skill', () => {
-    const result = checkSkill(manifest, digest, manifest.model, [])
-
-    expect(result).toStrictEqual({ upToDate: true })
-  })
-
-  test.for([
-    {
-      change: 'added documentation file',
-      docs: [...digest.docs, { path: './new.md', contentHash: 'new-hash' }],
-    },
-    {
-      change: 'removed documentation file',
-      docs: digest.docs.slice(0, 1),
-    },
-    {
-      change: 'renamed documentation file',
-      docs: digest.docs.map((doc, index) => (index === 0 ? { ...doc, path: './renamed.md' } : doc)),
-    },
-    {
-      change: 'reordered documentation files',
-      docs: digest.docs.toReversed(),
-    },
-  ])('reports a definition change - $change', ({ docs }) => {
-    const result = checkSkill(manifest, { ...digest, definitionHash: 'new-definition-hash', docs }, manifest.model, [])
-
-    expect(result).toStrictEqual({ upToDate: false, issues: [{ type: 'definition-change' }] })
-  })
-
-  test('reports documentation content changes', () => {
-    const result = checkSkill(
-      manifest,
-      { ...digest, docs: digest.docs.map((doc) => ({ ...doc, contentHash: 'changed-content-hash' })) },
-      manifest.model,
-      [],
-    )
-
-    expect(result).toStrictEqual({
-      upToDate: false,
-      issues: [{ type: 'docs-change', paths: ['./guide.md', './reference.md'] }],
-    })
-  })
-
-  test('reports a model change', () => {
-    const result = checkSkill(manifest, digest, 'openai/gpt-5.6-terra', [])
-
-    expect(result).toStrictEqual({ upToDate: false, issues: [{ type: 'model-change' }] })
-  })
-
-  test('reports a generator version change', () => {
-    const result = checkSkill({ ...manifest, generatorVersion: GeneratorVersion + 1 }, digest, manifest.model, [])
-
-    expect(result).toStrictEqual({ upToDate: false, issues: [{ type: 'generator-change' }] })
-  })
-
-  test('reports approved skill changes', () => {
-    const result = checkSkill(manifest, digest, manifest.model, ['SKILL.md', 'references/details.md'])
-
-    expect(result).toStrictEqual({
-      upToDate: false,
-      issues: [{ type: 'approved-skill-change', paths: ['SKILL.md', 'references/details.md'] }],
-    })
-  })
-
-  test('reports multiple issues', () => {
-    const result = checkSkill(manifest, digest, 'openai/gpt-5.6-terra', ['SKILL.md'])
-
-    expect(result).toStrictEqual({
-      upToDate: false,
-      issues: [{ type: 'model-change' }, { type: 'approved-skill-change', paths: ['SKILL.md'] }],
-    })
-  })
-})
-
 describe('approveSkill', () => {
   let config: StarlightToSkillsConfig
   let skill: SkillConfiguration
@@ -340,11 +240,11 @@ describe('approveSkill', () => {
     },
   ])
 
-  const digest = {
+  const digest: SkillDigest = {
     inputHash: 'input-hash',
     definitionHash: 'definition-hash',
     docs: [{ path: './guide.md', contentHash: 'doc-hash' }],
-  } satisfies SkillDigest
+  }
 
   beforeEach(async () => {
     testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))

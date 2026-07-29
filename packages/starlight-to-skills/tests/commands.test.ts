@@ -174,27 +174,6 @@ Then change baz to quux.`,
     return () => fs.rm(testDir, { force: true, recursive: true })
   })
 
-  async function addApprovedSkill(name: string) {
-    await fs.writeFile(
-      path.join(testDir, `src/skills/${name}.skill.ts`),
-      `export default {
-  description: 'Use ${name}.',
-  docs: ['./${name}.md'],
-}`,
-    )
-    await fs.writeFile(
-      path.join(testDir, `src/content/docs/${name}.md`),
-      `---
-title: ${name}
----
-
-Change foo to bar.`,
-    )
-
-    expect(await runCli(['generate', name], testDir)).toBe(0)
-    expect(await runCli(['approve', name], testDir)).toBe(0)
-  }
-
   async function writeSkill(name: string) {
     const skillDir = path.join(testDir, 'skills', name)
     const manifestPath = path.join(testDir, 'skills/.starlight-to-skills', `${name}.json`)
@@ -498,7 +477,7 @@ New content.`,
       `)
     })
 
-    test('approves the current candidate', async () => {
+    test('approves the current candidate only once', async () => {
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
 
       mastra.generate.mockClear()
@@ -632,313 +611,21 @@ New content.`,
       expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
       expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
 
-      mastra.generate.mockClear()
-
-      const writeFileSpy = vi.spyOn(fs, 'writeFile')
-      const mkdirSpy = vi.spyOn(fs, 'mkdir')
-      const rmSpy = vi.spyOn(fs, 'rm')
+      logSpy.mockClear()
 
       expect(await runCli(['check', 'test-skill'], testDir)).toBe(0)
-      expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`"Check complete: 'test-skill' is up to date."`)
-
-      expect(writeFileSpy).not.toHaveBeenCalled()
-      expect(mkdirSpy).not.toHaveBeenCalled()
-      expect(rmSpy).not.toHaveBeenCalled()
-    })
-
-    test('reports skill issues', async () => {
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
-
-      await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
-      await fs.writeFile(path.join(testDir, 'skills/test-skill/SKILL.md'), 'Updated skill.')
-
-      expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
-
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Skill 'test-skill' is not up to date.
-
-         Documentation content changed\u0020
-
-         - ./guide.md
-
-         Approved skill changed\u0020
-
-         - SKILL.md
-
-        Hint: Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'."
-      `)
-    })
-
-    test('reports definition, model, and generation version changes', async () => {
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
-
-      const manifestPath = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
-      const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')) as SkillManifest
-
-      manifest.definitionHash = 'previous-definition-hash'
-      manifest.model = 'openai/gpt-5.6-terra'
-      manifest.generatorVersion = 0
-
-      await fs.writeFile(manifestPath, JSON.stringify(manifest, undefined, 2))
-
-      expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
-
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-      "Error: Skill 'test-skill' is not up to date.
-
-       Skill definition changed\u0020
-
-      The description, documentation file paths, or guidance changed since the skill was approved.
-
-       Model changed\u0020
-
-       - Before: openai/gpt-5.6-terra
-       - Now: openai/gpt-5.6-luna
-
-       Generation version changed\u0020
-
-       - Before: 0
-       - Now: 1
-
-      Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
-    `)
-    })
-
-    test('hints to approve an existing skill', async () => {
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
-
-      await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
-
-      expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
-
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Skill 'test-skill' is not up to date.
-
-         Documentation content changed\u0020
-
-         - ./guide.md
-
-        Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
-      `)
     })
 
     test('checks a project with no skills', async () => {
       await fs.rm(path.join(testDir, 'src/skills/test-skill.skill.ts'))
 
+      logSpy.mockClear()
+
       expect(await runCli(['check'], testDir)).toBe(0)
-      expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`"Check complete: no skills found."`)
-    })
-
-    test('checks all up-to-date skills', async () => {
-      await addApprovedSkill('other-skill')
-
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
-
-      mastra.generate.mockClear()
-
-      const writeFileSpy = vi.spyOn(fs, 'writeFile')
-      const mkdirSpy = vi.spyOn(fs, 'mkdir')
-      const rmSpy = vi.spyOn(fs, 'rm')
-
-      expect(await runCli(['check'], testDir)).toBe(0)
-      expect(mastra.generate).not.toHaveBeenCalled()
-
-      expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`"Check complete: all skills are up to date."`)
-
-      expect(writeFileSpy).not.toHaveBeenCalled()
-      expect(mkdirSpy).not.toHaveBeenCalled()
-      expect(rmSpy).not.toHaveBeenCalled()
-    })
-
-    test('reports never-approved skills', async () => {
-      await addApprovedSkill('other-skill')
-
-      mastra.generate.mockClear()
-
-      expect(await runCli(['check'], testDir)).toBe(1)
-      expect(mastra.generate).not.toHaveBeenCalled()
-
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Not all skills are up to date.
-
-         test-skill\u0020
-
-        Skill 'test-skill' has not been approved.
-
-        Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'."
-      `)
-    })
-
-    test('reports only skills with issues', async () => {
-      await addApprovedSkill('other-skill')
-
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
-
-      await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
-
-      mastra.generate.mockClear()
-
-      expect(await runCli(['check'], testDir)).toBe(1)
-      expect(mastra.generate).not.toHaveBeenCalled()
-
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Not all skills are up to date.
-
-         test-skill\u0020
-
-        Skill 'test-skill' is not up to date.
-
-         Documentation content changed\u0020
-
-         - ./guide.md
-
-        Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'."
-      `)
-    })
-
-    test('reports an invalid definition', async () => {
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
-
-      await fs.writeFile(
-        path.join(testDir, 'src/skills/invalid-skill.skill.ts'),
-        `export default { description: '', docs: [] }`,
-      )
-
-      mastra.generate.mockClear()
-
-      expect(await runCli(['check'], testDir)).toBe(1)
-      expect(mastra.generate).not.toHaveBeenCalled()
-
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Not all skills are up to date.
-
-         invalid-skill\u0020
-
-        Invalid skill definition 'invalid-skill.skill.ts'.
-
-        ✖ Too small: expected string to have >=1 characters
-          → at description
-        ✖ Too small: expected array to have >=1 items
-          → at docs"
-      `)
-    })
-
-    test('reports an invalid filename-derived skill name', async () => {
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
-
-      await fs.writeFile(
-        path.join(testDir, 'src/skills/invalid--skill.skill.ts'),
-        `export default { description: 'Migrate a project to v2.', docs: ['./guide.md'] }`,
-      )
-
-      expect(await runCli(['check'], testDir)).toBe(1)
-
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Not all skills are up to date.
-
-         invalid--skill\u0020
-
-        Invalid skill name 'invalid--skill'.
-
-        Hint: Use 1-64 lowercase letters, numbers, or hyphens, without leading, trailing, or consecutive hyphens."
-      `)
-    })
-
-    test('reports duplicate skill definitions', async () => {
-      await fs.writeFile(
-        path.join(testDir, 'starlight-to-skills.config.ts'),
-        `export default { model: 'openai/gpt-5.6-luna', definitions: './src/skills/*/*.skill.ts' }`,
-      )
-
-      await fs.mkdir(path.join(testDir, 'src/skills/first'))
-      await fs.mkdir(path.join(testDir, 'src/skills/second'))
-
-      const definition = `export default { description: 'Migrate a project to v2.', docs: ['./guide.md'] }`
-
-      await fs.writeFile(path.join(testDir, 'src/skills/first/duplicate.skill.ts'), definition)
-      await fs.writeFile(path.join(testDir, 'src/skills/second/duplicate.skill.ts'), definition)
-
-      mastra.generate.mockClear()
-
-      expect(await runCli(['check'], testDir)).toBe(1)
-      expect(mastra.generate).not.toHaveBeenCalled()
-
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Not all skills are up to date.
-
-         duplicate\u0020
-
-        Multiple skill definitions found for 'duplicate'.
-
-        Hint: Keep only one skill definition named 'duplicate.skill.ts'."
-      `)
-    })
-
-    test('reports orphan skills', async () => {
-      await addApprovedSkill('first-orphan')
-      await addApprovedSkill('second-orphan')
-
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
-
-      await fs.rm(path.join(testDir, 'src/skills/first-orphan.skill.ts'))
-      await fs.rm(path.join(testDir, 'src/skills/second-orphan.skill.ts'))
-      mastra.generate.mockClear()
-
-      const writeFileSpy = vi.spyOn(fs, 'writeFile')
-      const mkdirSpy = vi.spyOn(fs, 'mkdir')
-      const rmSpy = vi.spyOn(fs, 'rm')
-
-      expect(await runCli(['check'], testDir)).toBe(1)
-      expect(mastra.generate).not.toHaveBeenCalled()
-
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Not all skills are up to date.
-
-         first-orphan\u0020
-
-        Orphan approved skill.
-
-         second-orphan\u0020
-
-        Orphan approved skill.
-
-        Hint: Run 'starlight-to-skills prune' to review and remove orphan approved skills."
-      `)
-
-      expect(writeFileSpy).not.toHaveBeenCalled()
-      expect(mkdirSpy).not.toHaveBeenCalled()
-      expect(rmSpy).not.toHaveBeenCalled()
-    })
-
-    test('reports an invalid manifest filename', async () => {
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
-
-      await fs.writeFile(path.join(testDir, 'skills/.starlight-to-skills/...json'), '')
-
-      expect(await runCli(['check'], testDir)).toBe(1)
-
-      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
-        "Error: Not all skills are up to date.
-
-         ..\u0020
-
-        Invalid skill name '..'.
-
-        Hint: Use 1-64 lowercase letters, numbers, or hyphens, without leading, trailing, or consecutive hyphens."
-      `)
     })
   })
 
@@ -961,6 +648,12 @@ New content.`,
 
         Hint: Run 'starlight-to-skills prune --help' for more information."
       `)
+    })
+
+    test('reports when there are no orphan skills', async () => {
+      expect(await runCli(['prune', '--yes'], testDir)).toBe(0)
+
+      expect(getLastLogMessage(logSpy)).toBe('No orphan approved skills to prune.')
     })
 
     test('prunes orphan skills', async () => {

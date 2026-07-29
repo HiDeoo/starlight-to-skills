@@ -4,15 +4,15 @@ import { computeSkillDigest, computeSkillFileDigest } from '../src/libs/digest'
 import type { SkillConfiguration } from '../src/libs/loader'
 import type { SkillDocumentation } from '../src/libs/starlight'
 
-const skill = {
+const skill: SkillConfiguration = {
   name: 'migrate-to-v2',
   description: 'Migrate to v2 with this skill.',
   docs: ['./guides/migrate-v2.md', './changelog.md'],
   guidance: 'Include refactoring steps in the generated skill.',
   url: new URL('file:///project/src/skills/migrate-to-v2.skill.ts'),
-} satisfies SkillConfiguration
+}
 
-const docs = [
+const docs: SkillDocumentation[] = [
   {
     path: './guides/migrate-v2.md',
     title: 'V2 Migration Guide',
@@ -23,7 +23,7 @@ const docs = [
     title: 'Changelog',
     body: '# Changelog\n\n## v2.0.0\n\n- Added new features.',
   },
-] satisfies SkillDocumentation[]
+]
 
 describe('computeSkillDigest', () => {
   test('computes a skill digest', () => {
@@ -82,7 +82,7 @@ describe('computeSkillDigest', () => {
   })
 })
 
-describe('computeSkillFileDigests', () => {
+describe('computeSkillFileDigest', () => {
   test('computes a skill file digest', () => {
     const digests = computeSkillFileDigest([
       { path: 'SKILL.md', content: 'Skill content.' },
@@ -97,7 +97,7 @@ describe('computeSkillFileDigests', () => {
 
   test('normalizes content line endings', () => {
     const [lfDigest] = computeSkillFileDigest([{ path: 'SKILL.md', content: 'Foo\nBar' }])
-    const [crlfDigest] = computeSkillFileDigest([{ path: 'test.md', content: 'Foo\r\nBar' }])
+    const [crlfDigest] = computeSkillFileDigest([{ path: 'SKILL.md', content: 'Foo\r\nBar' }])
 
     expect(lfDigest?.contentHash).toBe(crlfDigest?.contentHash)
   })
