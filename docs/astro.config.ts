@@ -1,5 +1,6 @@
 import starlight from '@astrojs/starlight'
 import { defineConfig } from 'astro/config'
+import starlightToSkills from 'starlight-to-skills'
 
 const site =
   (process.env['CONTEXT'] === 'production' ? process.env['URL'] : process.env['DEPLOY_PRIME_URL']) ??
@@ -28,6 +29,7 @@ export default defineConfig({
           },
         },
       ],
+      plugins: [starlightToSkills()],
       sidebar: [
         {
           label: 'Start Here',

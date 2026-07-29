@@ -7,6 +7,10 @@
   "type": "module",
   "bin": "./dist/cli.mjs",
   "exports": {
+    ".": {
+      "types": "./dist/plugin.d.mts",
+      "import": "./dist/plugin.mjs"
+    },
     "./config": {
       "types": "./dist/config.d.mts",
       "import": "./dist/config.mjs"
