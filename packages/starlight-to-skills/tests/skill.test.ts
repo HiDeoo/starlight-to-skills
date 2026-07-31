@@ -304,7 +304,7 @@ describe('approveSkill', () => {
       ),
     ).rejects.toMatchObject({
       message: "Description for 'test-skill' has changed.",
-      hint: "Run 'starlight-to-skills generate test-skill'.",
+      hint: "Run 'pnpm exec starlight-to-skills generate test-skill'.",
     })
 
     await expect(project.read('skills/test-skill/SKILL.md')).resolves.toBe(contentBefore)

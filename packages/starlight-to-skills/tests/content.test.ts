@@ -140,7 +140,7 @@ describe('generateSkillContent', () => {
 
     await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toMatchObject({
       message: "Model 'openai/gpt-5.6-luna' returned an invalid response.",
-      hint: "Run 'starlight-to-skills generate migrate-to-v2' again.",
+      hint: "Run 'pnpm exec starlight-to-skills generate migrate-to-v2' again.",
     })
   })
 
@@ -158,7 +158,7 @@ describe('generateSkillContent', () => {
     await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toMatchInlineSnapshot(`
       Model 'openai/gpt-5.6-luna' returned an invalid response.
 
-      Hint: Run 'starlight-to-skills generate migrate-to-v2' again.
+      Hint: Run 'pnpm exec starlight-to-skills generate migrate-to-v2' again.
     `)
   })
 })

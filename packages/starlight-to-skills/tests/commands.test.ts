@@ -112,7 +112,7 @@ describe('usage', () => {
     expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
       "Error: Missing command.
 
-      Hint: Run 'starlight-to-skills --help' for more information."
+      Hint: Run 'pnpm exec starlight-to-skills --help' for more information."
     `)
   })
 
@@ -122,7 +122,7 @@ describe('usage', () => {
     expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
       "Error: Unknown command 'test'.
 
-      Hint: Run 'starlight-to-skills --help' for more information."
+      Hint: Run 'pnpm exec starlight-to-skills --help' for more information."
     `)
   })
 
@@ -132,7 +132,7 @@ describe('usage', () => {
     expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
       "Error: Unknown option '--test'. To specify a positional argument starting with a '-', place it at the end of the command after '--', as in '-- "--test"
 
-      Hint: Run 'starlight-to-skills --help' for more information."
+      Hint: Run 'pnpm exec starlight-to-skills --help' for more information."
     `)
   })
 })
@@ -182,7 +182,7 @@ Then change baz to quux.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Command 'generate' requires a skill name.
 
-        Hint: Run 'starlight-to-skills generate --help' for more information."
+        Hint: Run 'pnpm exec starlight-to-skills generate --help' for more information."
       `)
     })
 
@@ -192,7 +192,7 @@ Then change baz to quux.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Command 'generate' accepts only one skill name.
 
-        Hint: Run 'starlight-to-skills generate --help' for more information."
+        Hint: Run 'pnpm exec starlight-to-skills generate --help' for more information."
       `)
     })
 
@@ -247,8 +247,8 @@ Then change baz to quux.`,
 
         Review the generated skill.
 
-         - To make changes, update the skill definition or documentation, then run 'starlight-to-skills generate test-skill' again.
-         - To approve it, run 'starlight-to-skills approve test-skill'."
+         - To make changes, update the skill definition or documentation, then run 'pnpm exec starlight-to-skills generate test-skill' again.
+         - To approve it, run 'pnpm exec starlight-to-skills approve test-skill'."
       `)
     })
 
@@ -427,7 +427,7 @@ New content.`,
          - ./guide.md
          - ./changelog.md
 
-        Hint: Resolve these issues and run 'starlight-to-skills generate test-skill' again."
+        Hint: Resolve these issues and run 'pnpm exec starlight-to-skills generate test-skill' again."
       `)
 
       await expect(project.exists(candidateDir)).resolves.toBe(false)
@@ -441,7 +441,7 @@ New content.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Command 'approve' requires a skill name.
 
-        Hint: Run 'starlight-to-skills approve --help' for more information."
+        Hint: Run 'pnpm exec starlight-to-skills approve --help' for more information."
       `)
     })
 
@@ -451,7 +451,7 @@ New content.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Command 'approve' accepts only one skill name.
 
-        Hint: Run 'starlight-to-skills approve --help' for more information."
+        Hint: Run 'pnpm exec starlight-to-skills approve --help' for more information."
       `)
     })
 
@@ -461,7 +461,7 @@ New content.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Option '--existing' is only valid for command 'approve'.
 
-        Hint: Run 'starlight-to-skills approve --help' for more information."
+        Hint: Run 'pnpm exec starlight-to-skills approve --help' for more information."
       `)
     })
 
@@ -488,7 +488,7 @@ New content.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: No generated skill found for 'test-skill'.
 
-        Hint: Run 'starlight-to-skills generate test-skill'."
+        Hint: Run 'pnpm exec starlight-to-skills generate test-skill'."
       `)
     })
 
@@ -502,7 +502,7 @@ New content.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Generated skill for 'test-skill' is out of date.
 
-        Hint: Run 'starlight-to-skills generate test-skill' again."
+        Hint: Run 'pnpm exec starlight-to-skills generate test-skill' again."
       `)
     })
 
@@ -540,7 +540,7 @@ New content.`,
         expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
           "Error: No approved skill found for 'test-skill'.
 
-          Hint: If needed, run 'starlight-to-skills generate test-skill', then run 'starlight-to-skills approve test-skill' without '--existing'."
+          Hint: If needed, run 'pnpm exec starlight-to-skills generate test-skill', then run 'pnpm exec starlight-to-skills approve test-skill' without '--existing'."
         `)
       })
 
@@ -562,7 +562,7 @@ New content.`,
 
            - SKILL.md
 
-          Hint: Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'."
+          Hint: Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'."
         `)
 
         await expect(project.read(skillPath)).resolves.toContain('Update.')
@@ -578,7 +578,7 @@ New content.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Command 'check' accepts only one skill name.
 
-        Hint: Run 'starlight-to-skills check --help' for more information."
+        Hint: Run 'pnpm exec starlight-to-skills check --help' for more information."
       `)
     })
 
@@ -588,7 +588,7 @@ New content.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Skill 'test-skill' has not been approved.
 
-        Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'."
+        Hint: Run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'."
       `)
     })
 
@@ -621,7 +621,7 @@ New content.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Command 'prune' accepts no arguments.
 
-        Hint: Run 'starlight-to-skills prune --help' for more information."
+        Hint: Run 'pnpm exec starlight-to-skills prune --help' for more information."
       `)
     })
 
@@ -631,7 +631,7 @@ New content.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Option '--yes' is only valid for command 'prune'.
 
-        Hint: Run 'starlight-to-skills prune --help' for more information."
+        Hint: Run 'pnpm exec starlight-to-skills prune --help' for more information."
       `)
     })
 

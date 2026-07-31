@@ -1,5 +1,6 @@
 import { styleText } from 'node:util'
 
+import { getUserAgent, resolveCommand } from 'package-manager-detector'
 import yoctoSpinner from 'yocto-spinner'
 
 import { normalizeLineEndings } from './digest'
@@ -22,7 +23,7 @@ export const style = {
   diffAdded: (text: string) => styleText('green', text),
   diffRemoved: (text: string) => styleText('red', text),
   diffChanged: (text: string) => styleText('inverse', text),
-  command: (command: string) => `'${styleText('magenta', command)}'`,
+  command: (command: string) => `'${styleText('magenta', resolveCommandWithPackageManager(command))}'`,
   skillName(name: string) {
     return `'${this.primary(name)}'`
   },
@@ -94,4 +95,11 @@ export async function withProgress<T>(text: string, task: () => Promise<T>): Pro
 
 export function pluralize(count: number, singular: string) {
   return count === 1 ? singular : `${singular}s`
+}
+
+function resolveCommandWithPackageManager(command: string): string {
+  const args = command.split(' ')
+  const agent = getUserAgent() ?? 'npm'
+  const resolvedCommand = resolveCommand(agent, 'execute-local', args) ?? resolveCommand('npm', 'execute-local', args)
+  return resolvedCommand ? [resolvedCommand.command, ...resolvedCommand.args].join(' ') : command
 }

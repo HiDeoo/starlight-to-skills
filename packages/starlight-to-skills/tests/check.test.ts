@@ -40,7 +40,7 @@ describe('getSkillIssues', () => {
     await expect(getSkillIssues(config, definition, digest)).resolves.toMatchInlineSnapshot(`
       Skill 'test-skill' has not been approved.
 
-      Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'.
+      Hint: Run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'.
     `)
   })
 
@@ -63,7 +63,7 @@ describe('getSkillIssues', () => {
 
        - SKILL.md
 
-      Hint: Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'.
+      Hint: Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'.
     `)
   })
 
@@ -96,7 +96,7 @@ describe('getSkillIssues', () => {
        - Before: 0
        - Now: 1
 
-      Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'.
+      Hint: Run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'pnpm exec starlight-to-skills approve test-skill --existing'.
     `)
   })
 
@@ -114,7 +114,7 @@ describe('getSkillIssues', () => {
 
        - ./guide.md
 
-      Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'.
+      Hint: Run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'pnpm exec starlight-to-skills approve test-skill --existing'.
     `)
   })
 })
@@ -143,7 +143,7 @@ describe('checkSkills', () => {
 
       Skill 'test-skill' has not been approved.
 
-      Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'.
+      Hint: Run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'.
     `)
   })
 
@@ -164,7 +164,7 @@ describe('checkSkills', () => {
 
        - ./guide.md
 
-      Hint: Run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'starlight-to-skills approve test-skill --existing'.
+      Hint: Run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'pnpm exec starlight-to-skills approve test-skill --existing'.
     `)
   })
 
@@ -247,7 +247,7 @@ describe('checkSkills', () => {
 
       Orphan approved skill.
 
-      Hint: Run 'starlight-to-skills prune' to review and remove orphan approved skills.
+      Hint: Run 'pnpm exec starlight-to-skills prune' to review and remove orphan approved skills.
     `)
 
     await expect(project.exists('skills/first-orphan')).resolves.toBe(true)

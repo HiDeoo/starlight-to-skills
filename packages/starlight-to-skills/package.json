@@ -33,6 +33,7 @@
     "gray-matter": "^4.0.3",
     "jest-diff": "^30.4.1",
     "jiti": "^2.7.0",
+    "package-manager-detector": "^1.8.0",
     "smol-toml": "^1.7.0",
     "tar-stream": "^3.2.0",
     "yocto-spinner": "^1.2.2"

@@ -172,7 +172,7 @@ describe('persistence', () => {
     test('rejects a missing candidate', async () => {
       await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchObject({
         message: "No generated skill found for 'test-skill'.",
-        hint: "Run 'starlight-to-skills generate test-skill'.",
+        hint: "Run 'pnpm exec starlight-to-skills generate test-skill'.",
       })
     })
 
@@ -185,7 +185,7 @@ describe('persistence', () => {
 
       await expect(loadCandidate(dataDir, 'test-skill', 'new-input-hash')).rejects.toMatchObject({
         message: "Generated skill for 'test-skill' is out of date.",
-        hint: "Run 'starlight-to-skills generate test-skill' again.",
+        hint: "Run 'pnpm exec starlight-to-skills generate test-skill' again.",
       })
     })
 
@@ -200,7 +200,7 @@ describe('persistence', () => {
 
       await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchObject({
         message: "Generated skill for 'test-skill' is invalid.",
-        hint: "Run 'starlight-to-skills generate test-skill' again.",
+        hint: "Run 'pnpm exec starlight-to-skills generate test-skill' again.",
       })
     })
 
@@ -221,7 +221,7 @@ describe('persistence', () => {
 
       await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchObject({
         message: "Generated skill for 'test-skill' is invalid.",
-        hint: "Run 'starlight-to-skills generate test-skill' again.",
+        hint: "Run 'pnpm exec starlight-to-skills generate test-skill' again.",
       })
     })
   })

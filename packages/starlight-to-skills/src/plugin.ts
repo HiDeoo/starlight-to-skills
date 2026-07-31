@@ -8,7 +8,6 @@ import { DiscoveryArchiveRoutePattern, DiscoveryIndexRoutePattern, DiscoveryPath
 import { pathExists } from './libs/fs'
 import { formatError } from './libs/terminal'
 
-// FIXME(HiDeoo) fix all commands, e.g. `pnpm exec`
 // FIXME(HiDeoo) fix color? underline? Something else?
 
 export default function starlightToSkills(): StarlightPlugin {
