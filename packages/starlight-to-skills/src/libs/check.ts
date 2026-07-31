@@ -101,7 +101,7 @@ export async function checkSkills(rootDir: URL): Promise<string> {
   return `${style.success('Check complete:')} ${definitionNames.size === 0 ? 'no skills found.' : 'all skills are up to date.'}`
 }
 
-function checkSkill(
+export function checkSkill(
   manifest: SkillManifest,
   digest: SkillDigest,
   model: string,

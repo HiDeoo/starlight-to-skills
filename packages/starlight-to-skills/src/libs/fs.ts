@@ -1,6 +1,7 @@
 import type { PathLike } from 'node:fs'
 import fs from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
+import path from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { throwError } from './error'
 
@@ -16,6 +17,10 @@ export function getSkillManifestDirUrl(outputDir: URL): URL {
 
 export function getSkillManifestUrl(outputDir: URL, name: string): URL {
   return new URL(`${name}.json`, getSkillManifestDirUrl(outputDir))
+}
+
+export function pathToDirectoryUrl(directoryPath: string): URL {
+  return pathToFileURL(path.join(directoryPath, path.sep))
 }
 
 export function resolveDirectoryUrl(directoryPath: string, base: URL): URL {

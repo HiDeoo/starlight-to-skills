@@ -1,9 +1,7 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
-import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 
-import { beforeEach, describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 
 import {
   approveCandidate,
@@ -18,6 +16,8 @@ import type { SkillConfiguration } from '../src/libs/loader'
 import type { StarlightToSkillsConfig } from '../src/schemas/config'
 import type { SkillDigest } from '../src/schemas/digest'
 import type { SkillManifest } from '../src/schemas/manifest'
+
+import { test, type TestProject } from './project'
 
 describe('createCandidate', () => {
   test('creates a candidate', () => {
@@ -49,16 +49,12 @@ describe('createCandidate', () => {
 })
 
 describe('persistence', () => {
+  let project: TestProject
   let dataDir: URL
-  let testDir: string
-  let candidateUrl: URL
 
-  beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
-    dataDir = pathToFileURL(path.join(testDir, '.starlight-to-skills', path.sep))
-    candidateUrl = new URL('test-skill/', dataDir)
-
-    return () => fs.rm(testDir, { force: true, recursive: true })
+  test.beforeEach(({ project: testProject }) => {
+    project = testProject
+    dataDir = new URL('.starlight-to-skills/', project.rootDir)
   })
 
   describe('writeCandidate', () => {
@@ -70,14 +66,14 @@ describe('persistence', () => {
 
       await writeCandidate(dataDir, 'test-skill', candidate)
 
-      await expect(fs.readFile(new URL('SKILL.md', candidateUrl), 'utf8')).resolves.toMatchInlineSnapshot(
+      await expect(project.read('.starlight-to-skills/test-skill/SKILL.md')).resolves.toMatchInlineSnapshot(
         `"Skill content."`,
       )
-      await expect(fs.readFile(new URL('references/details.md', candidateUrl), 'utf8')).resolves.toMatchInlineSnapshot(
-        `"Reference content."`,
-      )
+      await expect(
+        project.read('.starlight-to-skills/test-skill/references/details.md'),
+      ).resolves.toMatchInlineSnapshot(`"Reference content."`)
 
-      await expect(fs.readFile(new URL('manifest.json', candidateUrl), 'utf8')).resolves.toMatchInlineSnapshot(`
+      await expect(project.read('.starlight-to-skills/test-skill/manifest.json')).resolves.toMatchInlineSnapshot(`
       "{
         "inputHash": "input-hash",
         "files": [
@@ -108,15 +104,13 @@ describe('persistence', () => {
 
       await writeCandidate(dataDir, 'test-skill', candidate)
 
-      const candidateDir = new URL('test-skill/', dataDir)
-
-      await expect(fs.readFile(new URL('SKILL.md', candidateDir), 'utf8')).resolves.toMatchInlineSnapshot(
+      await expect(project.read('.starlight-to-skills/test-skill/SKILL.md')).resolves.toMatchInlineSnapshot(
         `"New skill content."`,
       )
 
-      await expect(fs.stat(new URL('references/deprecated.md', candidateDir))).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(project.exists('.starlight-to-skills/test-skill/references/deprecated.md')).resolves.toBe(false)
 
-      await expect(fs.readFile(new URL('manifest.json', candidateDir), 'utf8')).resolves.toMatchInlineSnapshot(`
+      await expect(project.read('.starlight-to-skills/test-skill/manifest.json')).resolves.toMatchInlineSnapshot(`
       "{
         "inputHash": "new-input-hash",
         "files": [
@@ -138,9 +132,7 @@ describe('persistence', () => {
 
       await writeCandidate(dataDir, 'test-skill', candidate)
 
-      await expect(
-        fs.readFile(path.join(testDir, '.starlight-to-skills', 'test-skill', referencePath), 'utf8'),
-      ).resolves.toBe('Reference content.')
+      await expect(project.read(`.starlight-to-skills/test-skill/${referencePath}`)).resolves.toBe('Reference content.')
 
       await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).resolves.toStrictEqual(candidate)
     })
@@ -161,7 +153,7 @@ describe('persistence', () => {
         "Invalid generated skill file path '../outside.md'.",
       )
 
-      await expect(fs.readFile(new URL('SKILL.md', candidateUrl), 'utf8')).resolves.toBe('Old skill content.')
+      await expect(project.read('.starlight-to-skills/test-skill/SKILL.md')).resolves.toBe('Old skill content.')
     })
   })
 
@@ -204,7 +196,7 @@ describe('persistence', () => {
         createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
       )
 
-      await fs.writeFile(new URL('SKILL.md', candidateUrl), 'Edited skill content.')
+      await project.write('.starlight-to-skills/test-skill/SKILL.md', 'Edited skill content.')
 
       await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchObject({
         message: "Generated skill for 'test-skill' is invalid.",
@@ -218,14 +210,14 @@ describe('persistence', () => {
         'test-skill',
         createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
       )
-      const manifestUrl = new URL('manifest.json', candidateUrl)
-      const manifest = JSON.parse(await fs.readFile(manifestUrl, 'utf8')) as SkillManifest
+      const manifestPath = '.starlight-to-skills/test-skill/manifest.json'
+      const manifest = JSON.parse(await project.read(manifestPath)) as SkillManifest
 
       const [file] = manifest.files
       expect.assert(file)
       file.path = '../outside.md'
 
-      await fs.writeFile(manifestUrl, JSON.stringify(manifest))
+      await project.write(manifestPath, JSON.stringify(manifest))
 
       await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchObject({
         message: "Generated skill for 'test-skill' is invalid.",
@@ -244,7 +236,7 @@ describe('persistence', () => {
 
       await removeCandidateForInput(dataDir, 'test-skill', 'input-hash')
 
-      await expect(fs.stat(candidateUrl)).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(project.exists('.starlight-to-skills/test-skill')).resolves.toBe(false)
     })
 
     test('preserves a candidate with a different input hash', async () => {
@@ -256,7 +248,7 @@ describe('persistence', () => {
 
       await removeCandidateForInput(dataDir, 'test-skill', 'new-input-hash')
 
-      await expect(fs.readFile(new URL('SKILL.md', candidateUrl), 'utf8')).resolves.toBe('Skill content.')
+      await expect(project.read('.starlight-to-skills/test-skill/SKILL.md')).resolves.toBe('Skill content.')
     })
 
     test('does not throw if a candidate does not exist', async () => {
@@ -270,16 +262,15 @@ describe('persistence', () => {
         createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
       )
 
-      await fs.writeFile(new URL('manifest.json', candidateUrl), '{}')
+      await project.write('.starlight-to-skills/test-skill/manifest.json', '{}')
 
       await removeCandidateForInput(dataDir, 'test-skill', 'input-hash')
 
-      await expect(fs.stat(candidateUrl)).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(project.exists('.starlight-to-skills/test-skill')).resolves.toBe(false)
     })
   })
 
   describe('approveCandidate', () => {
-    let rootDir: URL
     let config: StarlightToSkillsConfig
     let skill: SkillConfiguration
 
@@ -289,21 +280,19 @@ describe('persistence', () => {
       docs: [{ path: './guide.md', contentHash: 'doc-hash' }],
     }
 
-    beforeEach(() => {
-      rootDir = pathToFileURL(`${testDir}${path.sep}`)
-
+    test.beforeEach(() => {
       config = {
         model: 'openai/gpt-5.6-luna',
         definitions: './src/skills/*.skill.ts',
-        url: new URL('starlight-to-skills.config.ts', rootDir),
-        rootDir,
-        dataDir: new URL('.starlight-to-skills/', rootDir),
-        outputDir: new URL('skills/', rootDir),
+        url: new URL('starlight-to-skills.config.ts', project.rootDir),
+        rootDir: project.rootDir,
+        dataDir: new URL('.starlight-to-skills/', project.rootDir),
+        outputDir: new URL('skills/', project.rootDir),
       }
 
       skill = {
         name: 'test-skill',
-        url: new URL('src/skills/test-skill.skill.ts', rootDir),
+        url: new URL('src/skills/test-skill.skill.ts', project.rootDir),
         description: 'Migrate a project to v2.',
         docs: ['./guide.md'],
       }
@@ -317,14 +306,10 @@ describe('persistence', () => {
 
       await expect(approveCandidate(config, skill, digest, candidate)).resolves.toBe('approved')
 
-      const approvedSkillUrl = new URL(`${skill.name}/`, config.outputDir)
+      await expect(project.read('skills/test-skill/SKILL.md')).resolves.toBe('Skill content.')
+      await expect(project.read('skills/test-skill/references/details.md')).resolves.toBe('Reference content.')
 
-      await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toBe('Skill content.')
-      await expect(fs.readFile(new URL('references/details.md', approvedSkillUrl), 'utf8')).resolves.toBe(
-        'Reference content.',
-      )
-
-      const manifestData = await fs.readFile(path.join(testDir, 'skills/.starlight-to-skills/test-skill.json'), 'utf8')
+      const manifestData = await project.read('skills/.starlight-to-skills/test-skill.json')
       const manifest = JSON.parse(manifestData) as SkillManifest
 
       expect(manifest).toStrictEqual({
@@ -354,42 +339,33 @@ describe('persistence', () => {
       const candidate = createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }])
 
       await approveCandidate(config, skill, digest, candidate)
-      await fs.writeFile(new URL(`${skill.name}/SKILL.md`, config.outputDir), 'Edited skill content.')
+      await project.write('skills/test-skill/SKILL.md', 'Edited skill content.')
 
       await expect(approveCandidate(config, skill, digest, candidate)).resolves.toBe('approved')
 
-      await expect(fs.readFile(new URL(`${skill.name}/SKILL.md`, config.outputDir), 'utf8')).resolves.toBe(
-        'Skill content.',
-      )
+      await expect(project.read('skills/test-skill/SKILL.md')).resolves.toBe('Skill content.')
     })
 
     test('reapproves a candidate when the approved skill contains extra files', async () => {
       const candidate = createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }])
-      const extraFileUrl = new URL(`${skill.name}/references/details.md`, config.outputDir)
-
       await approveCandidate(config, skill, digest, candidate)
 
-      await fs.mkdir(new URL('.', extraFileUrl), { recursive: true })
-      await fs.writeFile(extraFileUrl, 'Reference content.')
+      await project.write('skills/test-skill/references/details.md', 'Reference content.')
 
       await expect(approveCandidate(config, skill, digest, candidate)).resolves.toBe('approved')
 
-      await expect(fs.stat(extraFileUrl)).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(project.exists('skills/test-skill/references/details.md')).resolves.toBe(false)
     })
 
     test('recreates an approved skill replaced by a file', async () => {
       const candidate = createCandidate('input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }])
-      const skillEntryUrl = new URL(skill.name, config.outputDir)
-
       await approveCandidate(config, skill, digest, candidate)
-      await fs.rm(skillEntryUrl, { recursive: true })
-      await fs.writeFile(skillEntryUrl, 'Corrupted skill.')
+      await fs.rm(project.path('skills/test-skill'), { recursive: true })
+      await project.write('skills/test-skill', 'Corrupted skill.')
 
       await expect(approveCandidate(config, skill, digest, candidate)).resolves.toBe('approved')
 
-      await expect(fs.readFile(new URL(`${skill.name}/SKILL.md`, config.outputDir), 'utf8')).resolves.toBe(
-        'Skill content.',
-      )
+      await expect(project.read('skills/test-skill/SKILL.md')).resolves.toBe('Skill content.')
     })
 
     test('replaces previous approved skill with a new candidate', async () => {
@@ -410,15 +386,9 @@ describe('persistence', () => {
         createCandidate('input-hash', [{ path: 'SKILL.md', content: 'New skill content.' }]),
       )
 
-      const approvedSkillUrl = new URL(`${skill.name}/`, config.outputDir)
+      await expect(project.read('skills/test-skill/SKILL.md')).resolves.toMatchInlineSnapshot(`"New skill content."`)
 
-      await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toMatchInlineSnapshot(
-        `"New skill content."`,
-      )
-
-      await expect(fs.stat(new URL('references/deprecated.md', approvedSkillUrl))).rejects.toMatchObject({
-        code: 'ENOENT',
-      })
+      await expect(project.exists('skills/test-skill/references/deprecated.md')).resolves.toBe(false)
     })
 
     test('rejects an invalid candidate', async () => {
@@ -438,16 +408,11 @@ describe('persistence', () => {
         `[Error: Invalid generated skill file path '../outside.md'.]`,
       )
 
-      await expect(fs.readFile(new URL(`${skill.name}/SKILL.md`, config.outputDir), 'utf8')).resolves.toBe(
-        'Old skill content.',
-      )
+      await expect(project.read('skills/test-skill/SKILL.md')).resolves.toBe('Old skill content.')
     })
 
     test('rejects an unmanaged skill', async () => {
-      const approvedSkillUrl = new URL('test-skill/', config.outputDir)
-
-      await fs.mkdir(approvedSkillUrl, { recursive: true })
-      await fs.writeFile(new URL('SKILL.md', approvedSkillUrl), 'Unmanaged content.')
+      await project.write('skills/test-skill/SKILL.md', 'Unmanaged content.')
 
       await expect(
         approveCandidate(
@@ -461,9 +426,7 @@ describe('persistence', () => {
         hint: 'Move the existing file or directory and try again.',
       })
 
-      await expect(fs.readFile(new URL('SKILL.md', approvedSkillUrl), 'utf8')).resolves.toMatchInlineSnapshot(
-        `"Unmanaged content."`,
-      )
+      await expect(project.read('skills/test-skill/SKILL.md')).resolves.toMatchInlineSnapshot(`"Unmanaged content."`)
     })
   })
 })

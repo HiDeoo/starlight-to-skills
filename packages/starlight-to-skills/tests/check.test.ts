@@ -1,33 +1,22 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
-import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 
-import { beforeEach, describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 
-import { approveCandidate, createCandidate } from '../src/libs/candidate'
 import { checkSkills, getSkillIssues } from '../src/libs/check'
 import { loadSkillInputs } from '../src/libs/loader'
 import type { SkillManifest } from '../src/schemas/manifest'
 
-let testDir: string
-let rootDir: URL
+import { test, type TestProject } from './project'
 
-beforeEach(async () => {
-  testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
-  rootDir = pathToFileURL(`${testDir}${path.sep}`)
+let project: TestProject
 
-  await fs.mkdir(path.join(testDir, 'src/content/docs'), { recursive: true })
-  await fs.mkdir(path.join(testDir, 'src/skills'), { recursive: true })
+test.beforeEach(async ({ project: testProject }) => {
+  project = testProject
 
-  await fs.writeFile(
-    path.join(testDir, 'starlight-to-skills.config.ts'),
-    `export default { model: 'openai/gpt-5.6-luna' }`,
-  )
   await writeSkillDefinition('test-skill', 'Migrate a project to v2.', './guide.md')
 
-  await fs.writeFile(
-    path.join(testDir, 'src/content/docs/guide.md'),
+  await project.write(
+    'src/content/docs/guide.md',
     `---
 title: V2 Migration Guide
 ---
@@ -36,8 +25,6 @@ Change foo to bar.
 
 Then change baz to quux.`,
   )
-
-  return () => fs.rm(testDir, { force: true, recursive: true })
 })
 
 describe('getSkillIssues', () => {
@@ -48,7 +35,7 @@ describe('getSkillIssues', () => {
   })
 
   test('reports a never-approved skill', async () => {
-    const { config, definition, digest } = await loadSkillInputs('test-skill', rootDir)
+    const { config, definition, digest } = await loadSkillInputs('test-skill', project.rootDir)
 
     await expect(getSkillIssues(config, definition, digest)).resolves.toMatchInlineSnapshot(`
       Skill 'test-skill' has not been approved.
@@ -60,10 +47,10 @@ describe('getSkillIssues', () => {
   test('reports skill issues', async () => {
     await approveSkill('test-skill')
 
-    await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
-    await fs.writeFile(path.join(testDir, 'skills/test-skill/SKILL.md'), 'Updated skill.')
+    await project.append('src/content/docs/guide.md', '\nOne more step.')
+    await project.write('skills/test-skill/SKILL.md', 'Updated skill.')
 
-    const { config, definition, digest } = await loadSkillInputs('test-skill', rootDir)
+    const { config, definition, digest } = await loadSkillInputs('test-skill', project.rootDir)
 
     await expect(getSkillIssues(config, definition, digest)).resolves.toMatchInlineSnapshot(`
       Skill 'test-skill' is not up to date.
@@ -83,14 +70,14 @@ describe('getSkillIssues', () => {
   test('reports definition, model, and generator version changes', async () => {
     const { config, definition, digest } = await approveSkill('test-skill')
 
-    const manifestPath = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
+    const manifestPath = 'skills/.starlight-to-skills/test-skill.json'
 
-    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')) as SkillManifest
+    const manifest = JSON.parse(await project.read(manifestPath)) as SkillManifest
     manifest.definitionHash = 'previous-definition-hash'
     manifest.model = 'openai/gpt-5.6-terra'
     manifest.generatorVersion = 0
 
-    await fs.writeFile(manifestPath, JSON.stringify(manifest, undefined, 2))
+    await project.write(manifestPath, JSON.stringify(manifest, undefined, 2))
 
     await expect(getSkillIssues(config, definition, digest)).resolves.toMatchInlineSnapshot(`
       Skill 'test-skill' is not up to date.
@@ -116,9 +103,9 @@ describe('getSkillIssues', () => {
   test('hints to approve an existing skill', async () => {
     await approveSkill('test-skill')
 
-    await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
+    await project.append('src/content/docs/guide.md', '\nOne more step.')
 
-    const { config, definition, digest } = await loadSkillInputs('test-skill', rootDir)
+    const { config, definition, digest } = await loadSkillInputs('test-skill', project.rootDir)
 
     await expect(getSkillIssues(config, definition, digest)).resolves.toMatchInlineSnapshot(`
       Skill 'test-skill' is not up to date.
@@ -134,22 +121,22 @@ describe('getSkillIssues', () => {
 
 describe('checkSkills', () => {
   test('checks a project with no skills', async () => {
-    await fs.rm(path.join(testDir, 'src/skills/test-skill.skill.ts'))
+    await fs.rm(project.path('src/skills/test-skill.skill.ts'))
 
-    await expect(checkSkills(rootDir)).resolves.toBe('Check complete: no skills found.')
+    await expect(checkSkills(project.rootDir)).resolves.toBe('Check complete: no skills found.')
   })
 
   test('checks all up-to-date skills', async () => {
     await addApprovedSkill('other-skill')
     await approveSkill('test-skill')
 
-    await expect(checkSkills(rootDir)).resolves.toBe('Check complete: all skills are up to date.')
+    await expect(checkSkills(project.rootDir)).resolves.toBe('Check complete: all skills are up to date.')
   })
 
   test('reports never-approved skills', async () => {
     await addApprovedSkill('other-skill')
 
-    await expect(checkSkills(rootDir)).rejects.toMatchInlineSnapshot(`
+    await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
        test-skill\u0020
@@ -164,9 +151,9 @@ describe('checkSkills', () => {
     await addApprovedSkill('other-skill')
     await approveSkill('test-skill')
 
-    await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
+    await project.append('src/content/docs/guide.md', '\nOne more step.')
 
-    await expect(checkSkills(rootDir)).rejects.toMatchInlineSnapshot(`
+    await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
        test-skill\u0020
@@ -184,12 +171,9 @@ describe('checkSkills', () => {
   test('reports an invalid definition', async () => {
     await approveSkill('test-skill')
 
-    await fs.writeFile(
-      path.join(testDir, 'src/skills/invalid-skill.skill.ts'),
-      `export default { description: '', docs: [] }`,
-    )
+    await project.write('src/skills/invalid-skill.skill.ts', `export default { description: '', docs: [] }`)
 
-    await expect(checkSkills(rootDir)).rejects.toMatchInlineSnapshot(`
+    await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
        invalid-skill\u0020
@@ -206,12 +190,12 @@ describe('checkSkills', () => {
   test('reports an invalid skill name', async () => {
     await approveSkill('test-skill')
 
-    await fs.writeFile(
-      path.join(testDir, 'src/skills/invalid--skill.skill.ts'),
+    await project.write(
+      'src/skills/invalid--skill.skill.ts',
       `export default { description: 'Migrate a project to v2.', docs: ['./guide.md'] }`,
     )
 
-    await expect(checkSkills(rootDir)).rejects.toMatchInlineSnapshot(`
+    await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
        invalid--skill\u0020
@@ -223,19 +207,17 @@ describe('checkSkills', () => {
   })
 
   test('reports duplicate skill definitions', async () => {
-    await fs.writeFile(
-      path.join(testDir, 'starlight-to-skills.config.ts'),
+    await project.write(
+      'starlight-to-skills.config.ts',
       `export default { model: 'openai/gpt-5.6-luna', definitions: './src/skills/*/*.skill.ts' }`,
     )
-    await fs.mkdir(path.join(testDir, 'src/skills/first'))
-    await fs.mkdir(path.join(testDir, 'src/skills/second'))
 
     const definition = `export default { description: 'Migrate a project to v2.', docs: ['./guide.md'] }`
 
-    await fs.writeFile(path.join(testDir, 'src/skills/first/duplicate.skill.ts'), definition)
-    await fs.writeFile(path.join(testDir, 'src/skills/second/duplicate.skill.ts'), definition)
+    await project.write('src/skills/first/duplicate.skill.ts', definition)
+    await project.write('src/skills/second/duplicate.skill.ts', definition)
 
-    await expect(checkSkills(rootDir)).rejects.toMatchInlineSnapshot(`
+    await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
        duplicate\u0020
@@ -251,10 +233,10 @@ describe('checkSkills', () => {
     await addApprovedSkill('second-orphan')
     await approveSkill('test-skill')
 
-    await fs.rm(path.join(testDir, 'src/skills/first-orphan.skill.ts'))
-    await fs.rm(path.join(testDir, 'src/skills/second-orphan.skill.ts'))
+    await fs.rm(project.path('src/skills/first-orphan.skill.ts'))
+    await fs.rm(project.path('src/skills/second-orphan.skill.ts'))
 
-    await expect(checkSkills(rootDir)).rejects.toMatchInlineSnapshot(`
+    await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
        first-orphan\u0020
@@ -268,16 +250,16 @@ describe('checkSkills', () => {
       Hint: Run 'starlight-to-skills prune' to review and remove orphan approved skills.
     `)
 
-    await expect(fs.stat(path.join(testDir, 'skills/first-orphan'))).resolves.toBeDefined()
-    await expect(fs.stat(path.join(testDir, 'skills/.starlight-to-skills/first-orphan.json'))).resolves.toBeDefined()
+    await expect(project.exists('skills/first-orphan')).resolves.toBe(true)
+    await expect(project.exists('skills/.starlight-to-skills/first-orphan.json')).resolves.toBe(true)
   })
 
   test('reports an invalid manifest filename', async () => {
     await approveSkill('test-skill')
 
-    await fs.writeFile(path.join(testDir, 'skills/.starlight-to-skills/...json'), '')
+    await project.write('skills/.starlight-to-skills/...json', '')
 
-    await expect(checkSkills(rootDir)).rejects.toMatchInlineSnapshot(`
+    await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
        ..\u0020
@@ -290,8 +272,8 @@ describe('checkSkills', () => {
 })
 
 async function writeSkillDefinition(name: string, description: string, docPath: string) {
-  await fs.writeFile(
-    path.join(testDir, `src/skills/${name}.skill.ts`),
+  await project.write(
+    `src/skills/${name}.skill.ts`,
     `export default {
   description: '${description}',
   docs: ['${docPath}'],
@@ -300,9 +282,9 @@ async function writeSkillDefinition(name: string, description: string, docPath: 
 }
 
 async function approveSkill(name: string) {
-  const inputs = await loadSkillInputs(name, rootDir)
+  const inputs = await loadSkillInputs(name, project.rootDir)
 
-  const candidate = createCandidate(inputs.digest.inputHash, [
+  await project.approveSkill(name, [
     {
       path: 'SKILL.md',
       content: `---
@@ -314,8 +296,6 @@ Follow the documentation.`,
     },
   ])
 
-  await approveCandidate(inputs.config, inputs.definition, inputs.digest, candidate)
-
   return inputs
 }
 
@@ -324,8 +304,8 @@ async function addApprovedSkill(name: string) {
 
   await writeSkillDefinition(name, `Use ${name}.`, docPath)
 
-  await fs.writeFile(
-    path.join(testDir, 'src/content/docs', `${name}.md`),
+  await project.write(
+    `src/content/docs/${name}.md`,
     `---
 title: ${name}
 ---

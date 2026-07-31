@@ -1,14 +1,14 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
-import path from 'node:path'
 import type { ReadStream } from 'node:tty'
 import { stripVTControlCharacters } from 'node:util'
 
-import { beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest'
+import { beforeEach, describe, expect, vi, type MockInstance } from 'vitest'
 
 import packageJson from '../package.json' with { type: 'json' }
 import { runCli } from '../src/libs/commands'
 import type { SkillManifest } from '../src/schemas/manifest'
+
+import { test, type TestProject } from './project'
 
 const mastra = vi.hoisted(() => ({
   generate: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
@@ -138,27 +138,20 @@ describe('usage', () => {
 })
 
 describe('commands', () => {
-  let testDir: string
+  let project: TestProject
 
-  beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'starlight-to-skills-'))
+  test.beforeEach(async ({ project: testProject }) => {
+    project = testProject
 
-    await fs.mkdir(path.join(testDir, 'src/content/docs'), { recursive: true })
-    await fs.mkdir(path.join(testDir, 'src/skills'), { recursive: true })
-
-    await fs.writeFile(
-      path.join(testDir, 'starlight-to-skills.config.ts'),
-      `export default { model: 'openai/gpt-5.6-luna' }`,
-    )
-    await fs.writeFile(
-      path.join(testDir, 'src/skills/test-skill.skill.ts'),
+    await project.write(
+      'src/skills/test-skill.skill.ts',
       `export default {
   description: 'Migrate a project to v2.',
   docs: ['./guide.md'],
 }`,
     )
-    await fs.writeFile(
-      path.join(testDir, 'src/content/docs/guide.md'),
+    await project.write(
+      'src/content/docs/guide.md',
       `---
 title: V2 Migration Guide
 ---
@@ -170,17 +163,14 @@ Then change baz to quux.`,
 
     mastra.generate.mockReset()
     mastra.generate.mockResolvedValue(mastraGenerateSuccessResponse)
-
-    return () => fs.rm(testDir, { force: true, recursive: true })
   })
 
   async function writeSkill(name: string) {
-    const skillDir = path.join(testDir, 'skills', name)
-    const manifestPath = path.join(testDir, 'skills/.starlight-to-skills', `${name}.json`)
+    const skillDir = `skills/${name}`
+    const manifestPath = `skills/.starlight-to-skills/${name}.json`
 
-    await fs.mkdir(skillDir, { recursive: true })
-    await fs.mkdir(path.dirname(manifestPath), { recursive: true })
-    await fs.writeFile(manifestPath, '')
+    await fs.mkdir(project.path(skillDir), { recursive: true })
+    await project.write(manifestPath, '')
 
     return { skillDir, manifestPath }
   }
@@ -207,7 +197,7 @@ Then change baz to quux.`,
     })
 
     test('rejects an invalid skill name', async () => {
-      expect(await runCli(['generate', 'invalid--name'], testDir)).toBe(1)
+      expect(await runCli(['generate', 'invalid--name'], project.rootPath)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Invalid skill name 'invalid--name'.
@@ -217,9 +207,9 @@ Then change baz to quux.`,
     })
 
     test('ignores an unrelated definition with an invalid name', async () => {
-      await fs.writeFile(path.join(testDir, 'src/skills/invalid--name.skill.ts'), '')
+      await project.write('src/skills/invalid--name.skill.ts', '')
 
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
     })
 
     test('generates a candidate', async () => {
@@ -233,11 +223,9 @@ Then change baz to quux.`,
         },
       })
 
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
 
-      const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
-
-      await expect(fs.stat(candidateDir)).resolves.toBeDefined()
+      await expect(project.exists('.starlight-to-skills/test-skill')).resolves.toBe(true)
 
       expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`
         "Generated 'test-skill'.
@@ -269,14 +257,14 @@ Then change baz to quux.`,
         object: { data: { status: 'success', body: 'Before.', references: [] } },
       })
 
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
 
       mastra.generate.mockResolvedValueOnce({
         object: { data: { status: 'success', body: 'After.', references: [] } },
       })
 
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
 
       const output = getLastLogMessage(logSpy)
 
@@ -287,12 +275,12 @@ Then change baz to quux.`,
     })
 
     test('uses approved skill and changed documentation paths for updates', async () => {
-      await fs.writeFile(
-        path.join(testDir, 'src/skills/test-skill.skill.ts'),
+      await project.write(
+        'src/skills/test-skill.skill.ts',
         `export default { description: 'Migrate a project to v2.', docs: ['./guide.md', './added.md'] }`,
       )
-      await fs.writeFile(
-        path.join(testDir, 'src/content/docs/added.md'),
+      await project.write(
+        'src/content/docs/added.md',
         `---
 title: Added
 ---
@@ -310,25 +298,25 @@ New content.`,
         },
       })
 
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
 
-      const manifestPath = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
-      const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')) as SkillManifest
+      const manifestPath = 'skills/.starlight-to-skills/test-skill.json'
+      const manifest = JSON.parse(await project.read(manifestPath)) as SkillManifest
       const guideDoc = manifest.docs.find((doc) => doc.path === './guide.md')
 
       expect.assert(guideDoc)
 
-      await fs.writeFile(
+      await project.write(
         manifestPath,
         JSON.stringify({
           ...manifest,
           docs: [guideDoc, { path: './removed.md', contentHash: 'removed-content-hash' }],
         }),
       )
-      await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\n\nA new option.')
+      await project.append('src/content/docs/guide.md', '\n\nA new option.')
 
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
 
       const [prompt] = mastra.generate.mock.calls[1] as [string]
       const input = JSON.parse(prompt) as { update: Record<string, unknown> }
@@ -355,12 +343,12 @@ New content.`,
     })
 
     test('shows the full candidate when the approved skill changed directly', async () => {
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
 
-      await fs.appendFile(path.join(testDir, 'skills/test-skill/SKILL.md'), '\nDirect change.')
+      await project.append('skills/test-skill/SKILL.md', '\nDirect change.')
 
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
 
       const output = getLastLogMessage(logSpy)
 
@@ -374,13 +362,13 @@ New content.`,
     })
 
     test('reports an invalid approved skill', async () => {
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
 
-      await fs.writeFile(path.join(testDir, 'skills/.starlight-to-skills/test-skill.json'), '{')
+      await project.write('skills/.starlight-to-skills/test-skill.json', '{')
       mastra.generate.mockClear()
 
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(1)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(1)
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
@@ -411,13 +399,13 @@ New content.`,
         },
       })
 
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
 
-      const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
+      const candidateDir = '.starlight-to-skills/test-skill'
 
-      await expect(fs.stat(candidateDir)).resolves.toBeDefined()
+      await expect(project.exists(candidateDir)).resolves.toBe(true)
 
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(1)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Could not generate 'test-skill'.
@@ -442,7 +430,7 @@ New content.`,
         Hint: Resolve these issues and run 'starlight-to-skills generate test-skill' again."
       `)
 
-      await expect(fs.stat(candidateDir)).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(project.exists(candidateDir)).resolves.toBe(false)
     })
   })
 
@@ -478,27 +466,24 @@ New content.`,
     })
 
     test('approves the current candidate only once', async () => {
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
 
       mastra.generate.mockClear()
 
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
       expect(mastra.generate).not.toHaveBeenCalled()
 
-      const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
-      const skillDir = path.join(testDir, 'skills/test-skill')
-
-      await expect(fs.stat(candidateDir)).resolves.toBeDefined()
-      await expect(fs.stat(skillDir)).resolves.toBeDefined()
+      await expect(project.exists('.starlight-to-skills/test-skill')).resolves.toBe(true)
+      await expect(project.exists('skills/test-skill')).resolves.toBe(true)
 
       expect(getLastLogMessage(logSpy)).toBe("Approved 'test-skill'.")
 
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
       expect(getLastLogMessage(logSpy)).toBe("Already approved 'test-skill'.")
     })
 
     test('rejects a missing candidate', async () => {
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(1)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: No generated skill found for 'test-skill'.
@@ -508,11 +493,11 @@ New content.`,
     })
 
     test('rejects an outdated candidate', async () => {
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
 
-      await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
+      await project.append('src/content/docs/guide.md', '\nOne more step.')
 
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(1)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Generated skill for 'test-skill' is out of date.
@@ -523,34 +508,34 @@ New content.`,
 
     describe('--existing', () => {
       test('approves an existing skill without changing the candidate', async () => {
-        expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-        expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+        expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+        expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
 
-        await fs.appendFile(path.join(testDir, 'src/content/docs/guide.md'), '\nOne more step.')
-        expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
+        await project.append('src/content/docs/guide.md', '\nOne more step.')
+        expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
 
-        const candidateDir = path.join(testDir, '.starlight-to-skills/test-skill')
+        const candidateDir = '.starlight-to-skills/test-skill'
         const candidateBefore = await Promise.all([
-          fs.readFile(path.join(candidateDir, 'SKILL.md'), 'utf8'),
-          fs.readFile(path.join(candidateDir, 'manifest.json'), 'utf8'),
+          project.read(`${candidateDir}/SKILL.md`),
+          project.read(`${candidateDir}/manifest.json`),
         ])
 
         mastra.generate.mockClear()
 
-        expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(0)
+        expect(await runCli(['approve', 'test-skill', '--existing'], project.rootPath)).toBe(0)
         expect(mastra.generate).not.toHaveBeenCalled()
 
         const candidateAfter = await Promise.all([
-          fs.readFile(path.join(candidateDir, 'SKILL.md'), 'utf8'),
-          fs.readFile(path.join(candidateDir, 'manifest.json'), 'utf8'),
+          project.read(`${candidateDir}/SKILL.md`),
+          project.read(`${candidateDir}/manifest.json`),
         ])
 
         expect(candidateAfter).toStrictEqual(candidateBefore)
-        expect(await runCli(['check', 'test-skill'], testDir)).toBe(0)
+        expect(await runCli(['check', 'test-skill'], project.rootPath)).toBe(0)
       })
 
       test('rejects approving a missing existing skill', async () => {
-        expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(1)
+        expect(await runCli(['approve', 'test-skill', '--existing'], project.rootPath)).toBe(1)
 
         expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
           "Error: No approved skill found for 'test-skill'.
@@ -560,17 +545,17 @@ New content.`,
       })
 
       test('rejects approving an outdated existing skill', async () => {
-        expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-        expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+        expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+        expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
 
-        const skillPath = path.join(testDir, 'skills/test-skill/SKILL.md')
-        const manifestPath = path.join(testDir, 'skills/.starlight-to-skills/test-skill.json')
+        const skillPath = 'skills/test-skill/SKILL.md'
+        const manifestPath = 'skills/.starlight-to-skills/test-skill.json'
 
-        const manifestBefore = await fs.readFile(manifestPath, 'utf8')
+        const manifestBefore = await project.read(manifestPath)
 
-        await fs.appendFile(skillPath, '\nUpdate.')
+        await project.append(skillPath, '\nUpdate.')
 
-        expect(await runCli(['approve', 'test-skill', '--existing'], testDir)).toBe(1)
+        expect(await runCli(['approve', 'test-skill', '--existing'], project.rootPath)).toBe(1)
 
         expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
           "Error: The following files in approved skill 'test-skill' have changed:
@@ -580,8 +565,8 @@ New content.`,
           Hint: Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'starlight-to-skills generate test-skill', review the generated skill, and then run 'starlight-to-skills approve test-skill'."
         `)
 
-        await expect(fs.readFile(skillPath, 'utf8')).resolves.toContain('Update.')
-        await expect(fs.readFile(manifestPath, 'utf8')).resolves.toBe(manifestBefore)
+        await expect(project.read(skillPath)).resolves.toContain('Update.')
+        await expect(project.read(manifestPath)).resolves.toBe(manifestBefore)
       })
     })
   })
@@ -598,7 +583,7 @@ New content.`,
     })
 
     test('reports a never-approved skill', async () => {
-      expect(await runCli(['check', 'test-skill'], testDir)).toBe(1)
+      expect(await runCli(['check', 'test-skill'], project.rootPath)).toBe(1)
 
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Skill 'test-skill' has not been approved.
@@ -608,22 +593,22 @@ New content.`,
     })
 
     test('checks an up-to-date skill', async () => {
-      expect(await runCli(['generate', 'test-skill'], testDir)).toBe(0)
-      expect(await runCli(['approve', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
 
       logSpy.mockClear()
 
-      expect(await runCli(['check', 'test-skill'], testDir)).toBe(0)
+      expect(await runCli(['check', 'test-skill'], project.rootPath)).toBe(0)
 
       expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`"Check complete: 'test-skill' is up to date."`)
     })
 
     test('checks a project with no skills', async () => {
-      await fs.rm(path.join(testDir, 'src/skills/test-skill.skill.ts'))
+      await fs.rm(project.path('src/skills/test-skill.skill.ts'))
 
       logSpy.mockClear()
 
-      expect(await runCli(['check'], testDir)).toBe(0)
+      expect(await runCli(['check'], project.rootPath)).toBe(0)
 
       expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`"Check complete: no skills found."`)
     })
@@ -651,7 +636,7 @@ New content.`,
     })
 
     test('reports when there are no orphan skills', async () => {
-      expect(await runCli(['prune', '--yes'], testDir)).toBe(0)
+      expect(await runCli(['prune', '--yes'], project.rootPath)).toBe(0)
 
       expect(getLastLogMessage(logSpy)).toBe('No orphan approved skills to prune.')
     })
@@ -660,18 +645,18 @@ New content.`,
       const orphanSkill = await writeSkill('orphan-skill')
       const testSkill = await writeSkill('test-skill')
 
-      await fs.writeFile(path.join(testDir, 'src/skills/test-skill.skill.ts'), '')
+      await project.write('src/skills/test-skill.skill.ts', '')
 
-      expect(await runCli(['prune', '--yes'], testDir)).toBe(0)
+      expect(await runCli(['prune', '--yes'], project.rootPath)).toBe(0)
       expect(mastra.generate).not.toHaveBeenCalled()
 
       expect(readline.createInterface).not.toHaveBeenCalled()
 
-      await expect(fs.stat(orphanSkill.skillDir)).rejects.toMatchObject({ code: 'ENOENT' })
-      await expect(fs.stat(orphanSkill.manifestPath)).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(project.exists(orphanSkill.skillDir)).resolves.toBe(false)
+      await expect(project.exists(orphanSkill.manifestPath)).resolves.toBe(false)
 
-      await expect(fs.stat(testSkill.skillDir)).resolves.toBeDefined()
-      await expect(fs.stat(testSkill.manifestPath)).resolves.toBeDefined()
+      await expect(project.exists(testSkill.skillDir)).resolves.toBe(true)
+      await expect(project.exists(testSkill.manifestPath)).resolves.toBe(true)
 
       expect(getLogMessages(logSpy)).toStrictEqual([
         'Orphan approved skills:\n\n - orphan-skill\n',
@@ -682,23 +667,23 @@ New content.`,
     test('does not prune when a definition filename has an invalid skill name', async () => {
       const orphanSkill = await writeSkill('orphan-skill')
 
-      await fs.writeFile(path.join(testDir, 'src/skills/invalid--skill.skill.ts'), '')
+      await project.write('src/skills/invalid--skill.skill.ts', '')
 
-      expect(await runCli(['prune', '--yes'], testDir)).toBe(1)
+      expect(await runCli(['prune', '--yes'], project.rootPath)).toBe(1)
 
-      await expect(fs.stat(orphanSkill.skillDir)).resolves.toBeDefined()
-      await expect(fs.stat(orphanSkill.manifestPath)).resolves.toBeDefined()
+      await expect(project.exists(orphanSkill.skillDir)).resolves.toBe(true)
+      await expect(project.exists(orphanSkill.manifestPath)).resolves.toBe(true)
     })
 
     test('does not prune when a manifest filename has an invalid skill name', async () => {
       const orphanSkill = await writeSkill('orphan-skill')
 
-      await fs.writeFile(path.join(testDir, 'skills/.starlight-to-skills/...json'), '')
+      await project.write('skills/.starlight-to-skills/...json', '')
 
-      expect(await runCli(['prune', '--yes'], testDir)).toBe(1)
+      expect(await runCli(['prune', '--yes'], project.rootPath)).toBe(1)
 
-      await expect(fs.stat(orphanSkill.skillDir)).resolves.toBeDefined()
-      await expect(fs.stat(orphanSkill.manifestPath)).resolves.toBeDefined()
+      await expect(project.exists(orphanSkill.skillDir)).resolves.toBe(true)
+      await expect(project.exists(orphanSkill.manifestPath)).resolves.toBe(true)
     })
 
     test('does not delete orphan skills when cancelling', async () => {
@@ -708,13 +693,13 @@ New content.`,
 
       readline.question.mockResolvedValue('no')
 
-      expect(await runCli(['prune'], testDir)).toBe(0)
+      expect(await runCli(['prune'], project.rootPath)).toBe(0)
 
       expect(readline.question).toHaveBeenCalledWith('Prune 1 orphan approved skill? [y/N] ')
       expect(readline.close).toHaveBeenCalledOnce()
 
-      await expect(fs.stat(orphanSkill.skillDir)).resolves.toBeDefined()
-      await expect(fs.stat(orphanSkill.manifestPath)).resolves.toBeDefined()
+      await expect(project.exists(orphanSkill.skillDir)).resolves.toBe(true)
+      await expect(project.exists(orphanSkill.manifestPath)).resolves.toBe(true)
 
       expect(getLastLogMessage(logSpy)).toBe('Pruning cancelled.')
     })

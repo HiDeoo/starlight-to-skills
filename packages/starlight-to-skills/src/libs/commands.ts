@@ -1,7 +1,5 @@
-import path from 'node:path'
 import process from 'node:process'
 import { createInterface } from 'node:readline/promises'
-import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 
 import packageJson from '../../package.json' with { type: 'json' }
@@ -13,7 +11,7 @@ import { checkSkills, getSkillIssues } from './check'
 import { compileSkill, generateSkillContent, type SkillUpdate } from './content'
 import { renderSkillDiff } from './diff'
 import { createError, throwError } from './error'
-import { getSkillManifestUrl, pathExists } from './fs'
+import { getSkillManifestUrl, pathExists, pathToDirectoryUrl } from './fs'
 import { getHelp } from './help'
 import { loadConfig, loadSkillInputs } from './loader'
 import {
@@ -67,7 +65,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
     return logUsageError("Option '--yes' is only valid for command 'prune'.", 'prune')
   }
 
-  const rootDir = pathToFileURL(path.join(cwd, path.sep))
+  const rootDir = pathToDirectoryUrl(cwd)
 
   if (command === 'prune') {
     if (commandArgs.length > 0) return logUsageError("Command 'prune' accepts no arguments.", 'prune')
