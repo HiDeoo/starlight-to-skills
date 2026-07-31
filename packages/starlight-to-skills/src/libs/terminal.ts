@@ -23,7 +23,7 @@ export const style = {
   diffAdded: (text: string) => styleText('green', text),
   diffRemoved: (text: string) => styleText('red', text),
   diffChanged: (text: string) => styleText('inverse', text),
-  command: (command: string) => `'${styleText('magenta', resolveCommandWithPackageManager(command))}'`,
+  command: (command: string) => `'${styleText('bold', resolveCommandWithPackageManager(command))}'`,
   skillName(name: string) {
     return `'${this.primary(name)}'`
   },

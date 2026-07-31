@@ -8,8 +8,6 @@ import { DiscoveryArchiveRoutePattern, DiscoveryIndexRoutePattern, DiscoveryPath
 import { pathExists } from './libs/fs'
 import { formatError } from './libs/terminal'
 
-// FIXME(HiDeoo) fix color? underline? Something else?
-
 export default function starlightToSkills(): StarlightPlugin {
   return {
     name: 'starlight-to-skills',
