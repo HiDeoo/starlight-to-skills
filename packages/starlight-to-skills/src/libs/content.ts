@@ -1,7 +1,8 @@
+import { MaxSkillLines } from '../schemas/candidate'
 import { ContentResultJSONSchema, ContentResultSchema, type SkillContentResult } from '../schemas/content'
 
 import { throwError } from './error'
-import { Instructions, UpdateInstructions } from './instructions'
+import { getInstructions, UpdateInstructions } from './instructions'
 import type { SkillConfiguration } from './loader'
 import type { SkillDocumentation } from './starlight'
 import { style } from './terminal'
@@ -20,12 +21,15 @@ export async function generateSkillContent(
     update,
   }
 
+  const maxSkillBodyLines = MaxSkillLines - getSkillFrontmatterLines(skill).length - 1
+  const instructions = getInstructions(maxSkillBodyLines)
+
   const { Agent } = await import('@mastra/core/agent')
 
   const agent = new Agent({
     id: 'starlight-to-skills-agent',
     name: 'Starlight to Skills',
-    instructions: update ? `${Instructions}\n\n${UpdateInstructions}` : Instructions,
+    instructions: update ? `${instructions}\n\n${UpdateInstructions}` : instructions,
     model,
   })
 
@@ -61,16 +65,19 @@ export function compileSkill(
   return [
     {
       path: 'SKILL.md',
-      content: [
-        '---',
-        `name: ${JSON.stringify(skill.name)}`,
-        `description: ${JSON.stringify(skill.description)}`,
-        '---',
-        '',
-        content.body,
-      ].join('\n'),
+      content: [...getSkillFrontmatterLines(skill), '', content.body].join('\n'),
     },
     ...content.references.map((reference) => ({ path: reference.path, content: reference.body })),
+  ]
+}
+
+function getSkillFrontmatterLines(skill: SkillConfiguration): string[] {
+  return [
+    '---',
+    `name: ${JSON.stringify(skill.name)}`,
+    `description: ${JSON.stringify(skill.description)}`,
+    ...(skill.license ? [`license: ${JSON.stringify(skill.license)}`] : []),
+    '---',
   ]
 }
 

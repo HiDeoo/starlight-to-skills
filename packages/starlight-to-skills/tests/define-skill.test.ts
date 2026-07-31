@@ -7,6 +7,7 @@ test('returns the skill definition unchanged', () => {
     description: 'Do the thing.',
     docs: ['./getting-started.mdx', './guides/custom-thing.md'],
     guidance: 'Add a usage example to the generated skill.',
+    license: 'MIT',
   }
 
   expect(defineSkill(definition)).toBe(definition)

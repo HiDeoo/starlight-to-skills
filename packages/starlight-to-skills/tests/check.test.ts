@@ -7,6 +7,7 @@ import { loadSkillInputs } from '../src/libs/loader'
 import type { SkillManifest } from '../src/schemas/manifest'
 
 import { test, type TestProject } from './project'
+import { computeSkillDigest } from '../src/libs/digest'
 
 let project: TestProject
 
@@ -84,7 +85,7 @@ describe('getSkillIssues', () => {
 
        Skill definition changed\u0020
 
-      The description, documentation file paths, or guidance changed since the skill was approved.
+      The description, license, documentation file paths, or guidance changed since the skill was approved.
 
        Model changed\u0020
 
@@ -115,6 +116,23 @@ describe('getSkillIssues', () => {
        - ./guide.md
 
       Hint: Run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'. Alternatively, if the existing approved skill is still valid, run 'pnpm exec starlight-to-skills approve test-skill --existing'.
+    `)
+  })
+
+  test('does not hint to approve an existing skill after a license change', async () => {
+    const { config, definition, docs } = await approveSkill('test-skill')
+
+    const changedDefinition = { ...definition, license: 'MIT' }
+    const changedDigest = computeSkillDigest(config.model, changedDefinition, docs)
+
+    await expect(getSkillIssues(config, changedDefinition, changedDigest)).resolves.toMatchInlineSnapshot(`
+      Skill 'test-skill' is not up to date.
+
+       Skill definition changed 
+
+      The description, license, documentation file paths, or guidance changed since the skill was approved.
+
+      Hint: Run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'.
     `)
   })
 })

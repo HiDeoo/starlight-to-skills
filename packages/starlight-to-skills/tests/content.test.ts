@@ -25,6 +25,7 @@ const skill: SkillConfiguration = {
   description: 'Migrate a project to v2.',
   docs: ['./guides/migrate-v2.md', './changelog.md'],
   guidance: 'Write the generated skill in French.',
+  license: 'MIT',
   url: new URL('file:///project/src/skills/migrate-to-v2.skill.ts'),
 }
 
@@ -76,6 +77,8 @@ describe('generateSkillContent', () => {
       guidance: skill.guidance,
       docs,
     })
+    expect(input).not.toHaveProperty('license')
+
     expect(input).not.toHaveProperty('update')
 
     expect(result).toStrictEqual(content)
@@ -138,10 +141,11 @@ describe('generateSkillContent', () => {
   test('rejects invalid model output', async () => {
     mastra.generate.mockResolvedValue({ object: { result: { status: 'success' } } })
 
-    await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toMatchObject({
-      message: "Model 'openai/gpt-5.6-luna' returned an invalid response.",
-      hint: "Run 'pnpm exec starlight-to-skills generate migrate-to-v2' again.",
-    })
+    await expect(generateSkillContent('openai/gpt-5.6-luna', skill, docs)).rejects.toMatchInlineSnapshot(`
+      Model 'openai/gpt-5.6-luna' returned an invalid response.
+
+      Hint: Run 'pnpm exec starlight-to-skills generate migrate-to-v2' again.
+    `)
   })
 
   test('rejects invalid reference paths', async () => {
@@ -180,6 +184,7 @@ describe('compileSkill', () => {
           "content": "---
       name: "migrate-to-v2"
       description: "Migrate a project to v2."
+      license: "MIT"
       ---
 
       Change foo to bar.",

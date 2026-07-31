@@ -1,3 +1,5 @@
+import { MaxSkillLines } from '../schemas/candidate'
+
 /**
  * AI-generated instructions based on the OpenAI and Anthropic skill creator skills.
  *
@@ -7,7 +9,8 @@
  * @see https://github.com/anthropics/claude-plugins-official/blob/df098247831a98731abfc96b4b1298292f03e9c6/plugins/skill-creator/skills/skill-creator/SKILL.md
  */
 
-export const Instructions = `Generate content for an agent skill using only the provided information and selected documentation.
+export function getInstructions(maxSkillBodyLines: number): string {
+  return `Generate content for an agent skill using only the provided information and selected documentation.
 
 # Input
 
@@ -34,7 +37,7 @@ export const Instructions = `Generate content for an agent skill using only the 
 
 - Keep the core workflow, essential procedural instructions, and navigation to references in SKILL.md.
 - Do not add a "When to use" section or repeat activation criteria already owned by the description.
-- Keep the SKILL.md body to at most 495 lines, including blank lines, so the compiled file stays within the 500-line limit.
+- Keep the SKILL.md body to at most ${maxSkillBodyLines} lines, including blank lines, so the compiled file stays within the ${MaxSkillLines}-line limit.
 
 ## References
 
@@ -51,6 +54,7 @@ export const Instructions = `Generate content for an agent skill using only the 
 - On success, return only the Markdown body for SKILL.md, without frontmatter, and zero or more Markdown references.
 - Do not generate or rewrite the skill name or description.
 - Before returning the result, review new or changed content for clarity, concision, generality, and compliance with these instructions.`
+}
 
 export const UpdateInstructions = `# Updating an approved skill
 

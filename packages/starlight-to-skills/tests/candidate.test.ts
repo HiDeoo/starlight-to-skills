@@ -170,10 +170,11 @@ describe('persistence', () => {
     })
 
     test('rejects a missing candidate', async () => {
-      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchObject({
-        message: "No generated skill found for 'test-skill'.",
-        hint: "Run 'pnpm exec starlight-to-skills generate test-skill'.",
-      })
+      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchInlineSnapshot(`
+        No generated skill found for 'test-skill'.
+
+        Hint: Run 'pnpm exec starlight-to-skills generate test-skill'.
+      `)
     })
 
     test('rejects an outdated candidate', async () => {
@@ -183,10 +184,11 @@ describe('persistence', () => {
         createCandidate('old-input-hash', [{ path: 'SKILL.md', content: 'Skill content.' }]),
       )
 
-      await expect(loadCandidate(dataDir, 'test-skill', 'new-input-hash')).rejects.toMatchObject({
-        message: "Generated skill for 'test-skill' is out of date.",
-        hint: "Run 'pnpm exec starlight-to-skills generate test-skill' again.",
-      })
+      await expect(loadCandidate(dataDir, 'test-skill', 'new-input-hash')).rejects.toMatchInlineSnapshot(`
+        Generated skill for 'test-skill' is out of date.
+
+        Hint: Run 'pnpm exec starlight-to-skills generate test-skill' again.
+      `)
     })
 
     test('rejects a manually updated candidate', async () => {
@@ -198,10 +200,11 @@ describe('persistence', () => {
 
       await project.write('.starlight-to-skills/test-skill/SKILL.md', 'Edited skill content.')
 
-      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchObject({
-        message: "Generated skill for 'test-skill' is invalid.",
-        hint: "Run 'pnpm exec starlight-to-skills generate test-skill' again.",
-      })
+      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchInlineSnapshot(`
+        Generated skill for 'test-skill' is invalid.
+
+        Hint: Run 'pnpm exec starlight-to-skills generate test-skill' again.
+      `)
     })
 
     test('rejects an invalid manifested path', async () => {
@@ -219,10 +222,11 @@ describe('persistence', () => {
 
       await project.write(manifestPath, JSON.stringify(manifest))
 
-      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchObject({
-        message: "Generated skill for 'test-skill' is invalid.",
-        hint: "Run 'pnpm exec starlight-to-skills generate test-skill' again.",
-      })
+      await expect(loadCandidate(dataDir, 'test-skill', 'input-hash')).rejects.toMatchInlineSnapshot(`
+        Generated skill for 'test-skill' is invalid.
+
+        Hint: Run 'pnpm exec starlight-to-skills generate test-skill' again.
+      `)
     })
   })
 

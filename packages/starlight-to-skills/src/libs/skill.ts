@@ -197,9 +197,9 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
 
   if (
     manifest.definitionHash !== digest.definitionHash &&
-    !(await hasMatchingSkillDescription(config.outputDir, skill.name, skill.description))
+    !(await hasMatchingSkillFrontmatter(config.outputDir, skill))
   ) {
-    throwError(`Description for ${style.skillName(skill.name)} has changed.`, {
+    throwError(`Description or license for ${style.skillName(skill.name)} has changed.`, {
       hint: `Run ${style.command(`starlight-to-skills generate ${skill.name}`)}.`,
     })
   }
@@ -214,18 +214,21 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
   }
 }
 
-export async function hasMatchingSkillDescription(outputDir: URL, name: string, expectedDescription: string) {
+export async function hasMatchingSkillFrontmatter(
+  outputDir: URL,
+  skill: Pick<SkillConfiguration, 'name' | 'description' | 'license'>,
+) {
   let content: string
 
   try {
-    content = await fs.readFile(new URL('SKILL.md', resolveDirectoryUrl(name, outputDir)), 'utf8')
+    content = await fs.readFile(new URL('SKILL.md', resolveDirectoryUrl(skill.name, outputDir)), 'utf8')
   } catch (error) {
-    throwError(`Failed to load approved skill ${style.skillName(name)}.`, { cause: error })
+    throwError(`Failed to load approved skill ${style.skillName(skill.name)}.`, { cause: error })
   }
 
   try {
-    const description: unknown = matter(content).data['description']
-    return description === expectedDescription
+    const frontmatter = matter(content).data
+    return frontmatter['description'] === skill.description && frontmatter['license'] === skill.license
   } catch {
     return false
   }

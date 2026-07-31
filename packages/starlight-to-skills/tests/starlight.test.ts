@@ -42,10 +42,11 @@ describe('loadSkillDocs', () => {
   test('rejects an unknown documentation file', async () => {
     const skill = { docs: ['./unknown.md'] }
 
-    await expect(loadSkillDocs(config, skill)).rejects.toMatchObject({
-      message: "Failed to load documentation file './unknown.md'.",
-      hint: 'Check the path in the skill definition and try again.',
-    })
+    await expect(loadSkillDocs(config, skill)).rejects.toMatchInlineSnapshot(`
+      Failed to load documentation file './unknown.md'.
+
+      Hint: Check the path in the skill definition and try again.
+    `)
   })
 
   test.for(['../outside.md', '/outside.md'])(
@@ -63,18 +64,20 @@ describe('loadSkillDocs', () => {
   test('rejects a documentation file that is not a file', async () => {
     const skill = { docs: ['./directory.md'] }
 
-    await expect(loadSkillDocs(config, skill)).rejects.toMatchObject({
-      message: "Documentation path './directory.md' is not a file.",
-      hint: 'Specify a Markdown or MDX file in the skill definition and try again.',
-    })
+    await expect(loadSkillDocs(config, skill)).rejects.toMatchInlineSnapshot(`
+      Documentation path './directory.md' is not a file.
+
+      Hint: Specify a Markdown or MDX file in the skill definition and try again.
+    `)
   })
 
   test('rejects a documentation file with an invalid frontmatter', async () => {
     const skill = { docs: ['./invalid-frontmatter.md'] }
 
-    await expect(loadSkillDocs(config, skill)).rejects.toMatchObject({
-      message: "Documentation file './invalid-frontmatter.md' has an invalid title.",
-      hint: "Fix 'title' in the file's frontmatter and try again.",
-    })
+    await expect(loadSkillDocs(config, skill)).rejects.toMatchInlineSnapshot(`
+      Documentation file './invalid-frontmatter.md' has an invalid title.
+
+      Hint: Fix 'title' in the file's frontmatter and try again.
+    `)
   })
 })

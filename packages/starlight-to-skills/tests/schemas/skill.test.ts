@@ -26,7 +26,6 @@ describe('definition', () => {
   const baseDefinition = {
     description: 'Do the thing.',
     docs: ['./getting-started.mdx', './guides/custom-thing.md'],
-    guidance: 'Add a usage example to the generated skill.',
   }
 
   test('requires non-empty description', () => {
@@ -70,5 +69,24 @@ describe('definition', () => {
     expect(result.error.issues[0]?.message).toMatchInlineSnapshot(
       `"A documentation file must use a supported Markdown or MDX extension."`,
     )
+  })
+
+  describe.for(['guidance', 'license'] as const)('%s', (field) => {
+    test('accepts unspecified values', () => {
+      expect(SkillDefinitionSchema.parse(baseDefinition)[field]).toBeUndefined()
+    })
+
+    test('normalizes values', () => {
+      expect(SkillDefinitionSchema.parse({ ...baseDefinition, [field]: '' })[field]).toBeUndefined()
+
+      expect(SkillDefinitionSchema.parse({ ...baseDefinition, [field]: ' ' })[field]).toBe(' ')
+      expect(SkillDefinitionSchema.parse({ ...baseDefinition, [field]: 'Value' })[field]).toBe('Value')
+    })
+
+    test.for([null, 1, {}])('rejects non-string value %j', (value) => {
+      const result = SkillDefinitionSchema.safeParse({ ...baseDefinition, [field]: value })
+
+      expect(result.error?.issues[0]?.path).toStrictEqual([field])
+    })
   })
 })

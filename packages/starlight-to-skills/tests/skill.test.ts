@@ -205,10 +205,7 @@ describe('loadSkill', () => {
       files: [...manifest.files, { path: '../outside.md', contentHash: 'outside-hash' }],
     }
 
-    await project.write(
-      'skills/.starlight-to-skills/test-skill.json',
-      JSON.stringify(invalidManifest, undefined, 2),
-    )
+    await project.write('skills/.starlight-to-skills/test-skill.json', JSON.stringify(invalidManifest, undefined, 2))
 
     await expect(loadSkill(outputDir, 'test-skill')).rejects.toThrowErrorMatchingInlineSnapshot(`
       Failed to load approved skill 'test-skill'.
@@ -227,7 +224,7 @@ describe('approveSkill', () => {
   const candidate = createCandidate('input-hash', [
     {
       path: 'SKILL.md',
-      content: `---\nname: "test-skill"\ndescription: "Migrate a project to v2."\n---\n\nSkill content.`,
+      content: `---\nname: "test-skill"\ndescription: "Migrate a project to v2."\nlicense: "MIT"\n---\n\nSkill content.`,
     },
   ])
 
@@ -253,6 +250,7 @@ describe('approveSkill', () => {
       url: new URL('src/skills/test-skill.skill.ts', project.rootDir),
       description: 'Migrate a project to v2.',
       docs: ['./guide.md'],
+      license: 'MIT',
     }
   })
 
@@ -302,15 +300,48 @@ describe('approveSkill', () => {
         { ...skill, description: 'Migrate a project to v3.' },
         { ...digest, inputHash: 'updated-input-hash', definitionHash: 'updated-definition-hash' },
       ),
-    ).rejects.toMatchObject({
-      message: "Description for 'test-skill' has changed.",
-      hint: "Run 'pnpm exec starlight-to-skills generate test-skill'.",
-    })
+    ).rejects.toMatchInlineSnapshot(`
+      Description or license for 'test-skill' has changed.
+
+      Hint: Run 'pnpm exec starlight-to-skills generate test-skill'.
+    `)
 
     await expect(project.read('skills/test-skill/SKILL.md')).resolves.toBe(contentBefore)
 
     await expect(project.read(manifestPath)).resolves.toBe(manifestBefore)
   })
+
+  test.for([
+    { approvedLicense: undefined, currentLicense: 'MIT' },
+    { approvedLicense: 'MIT', currentLicense: 'Apache-2.0' },
+    { approvedLicense: 'MIT', currentLicense: undefined },
+  ])(
+    'rejects approving an existing skill when its license changes from $approvedLicense to $currentLicense',
+    async ({ approvedLicense, currentLicense }) => {
+      const license = approvedLicense === undefined ? '' : `\nlicense: ${JSON.stringify(approvedLicense)}`
+
+      const approvedCandidate = createCandidate('input-hash', [
+        {
+          path: 'SKILL.md',
+          content: `---\nname: "test-skill"\ndescription: "Migrate a project to v2."${license}\n---\n\nSkill content.`,
+        },
+      ])
+
+      await approveCandidate(config, { ...skill, license: approvedLicense }, digest, approvedCandidate)
+
+      await expect(
+        approveSkill(
+          config,
+          { ...skill, license: currentLicense },
+          { ...digest, inputHash: 'updated-input-hash', definitionHash: 'updated-definition-hash' },
+        ),
+      ).rejects.toMatchInlineSnapshot(`
+        Description or license for 'test-skill' has changed.
+
+        Hint: Run 'pnpm exec starlight-to-skills generate test-skill'.
+      `)
+    },
+  )
 })
 
 describe('pruneSkill', () => {

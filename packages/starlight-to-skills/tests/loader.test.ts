@@ -53,6 +53,7 @@ describe('loadSkillDefinitionInputs', () => {
       description: 'Do the thing.',
       docs: ['./getting-started.mdx', './guides/custom-thing.md'],
       guidance: 'Add a usage example to the generated skill.',
+      license: 'MIT',
     })
 
     expect(docs.map((doc) => doc.path)).toStrictEqual(definition.docs)

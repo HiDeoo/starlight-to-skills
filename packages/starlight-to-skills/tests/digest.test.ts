@@ -53,32 +53,32 @@ describe('computeSkillDigest', () => {
     expect(lfDigest).toStrictEqual(crlfDigest)
   })
 
-  test('hashes relevant values', () => {
+  test.for([
+    { name: 'description', skill: { ...skill, description: 'Migrate to v3 with this skill.' } },
+    { name: 'documentation paths', skill: { ...skill, docs: ['./migrations/migrate-v2.md', './changelog.md'] } },
+    { name: 'guidance', skill: { ...skill, guidance: 'Add a usage example to the generated skill.' } },
+    { name: 'license', skill: { ...skill, license: 'MIT' } },
+  ])('includes $name in the definition and input hashes', ({ skill: changedSkill }) => {
     const digest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs)
 
-    const differentModelDigest = computeSkillDigest('openai/gpt-5.6-terra', skill, docs)
+    const changedDigest = computeSkillDigest('openai/gpt-5.6-luna', changedSkill, docs)
 
-    expect(digest.inputHash).not.toBe(differentModelDigest.inputHash)
+    expect(digest.inputHash).not.toBe(changedDigest.inputHash)
+    expect(digest.definitionHash).not.toBe(changedDigest.definitionHash)
+  })
 
-    const differentSkillDigest = computeSkillDigest(
-      'openai/gpt-5.6-luna',
-      { ...skill, description: 'Migrate to v3 with this skill.' },
-      docs,
-    )
+  test('hashes non-definition input changes', () => {
+    const digest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs)
 
-    expect(digest.inputHash).not.toBe(differentSkillDigest.inputHash)
+    const changedModelDigest = computeSkillDigest('openai/gpt-5.6-terra', skill, docs)
 
-    const differentDocsOrderDigest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs.toReversed())
+    expect(digest.inputHash).not.toBe(changedModelDigest.inputHash)
+    expect(digest.definitionHash).toBe(changedModelDigest.definitionHash)
 
-    expect(digest.inputHash).not.toBe(differentDocsOrderDigest.inputHash)
+    const changedDocsDigest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs.toReversed())
 
-    const differentDocsPathDigest = computeSkillDigest(
-      'openai/gpt-5.6-luna',
-      { ...skill, docs: ['./migrations/migrate-v2.md', './changelog.md'] },
-      docs,
-    )
-
-    expect(digest.inputHash).not.toBe(differentDocsPathDigest.inputHash)
+    expect(digest.inputHash).not.toBe(changedDocsDigest.inputHash)
+    expect(digest.definitionHash).toBe(changedDocsDigest.definitionHash)
   })
 })
 

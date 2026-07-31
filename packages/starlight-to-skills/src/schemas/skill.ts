@@ -4,6 +4,8 @@ import { throwError } from '../libs/error'
 import { StarlightDocsExtensionsRegex } from '../libs/starlight'
 import { style } from '../libs/terminal'
 
+const emptyStringToUndefinedSchema = z.string().transform((value) => (value === '' ? undefined : value))
+
 // https://agentskills.io/specification#name-field
 export const SkillNameSchema = z
   .string()
@@ -47,7 +49,8 @@ export const SkillDefinitionSchema = z.strictObject({
         seen.add(docPath)
       }
     }),
-  guidance: z.string().optional(),
+  guidance: emptyStringToUndefinedSchema.optional(),
+  license: emptyStringToUndefinedSchema.optional(),
 })
 
 export type SkillUserDefinition = z.input<typeof SkillDefinitionSchema>

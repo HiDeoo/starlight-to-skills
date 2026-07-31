@@ -4,7 +4,7 @@ import type { SkillFile } from '../libs/content'
 import { normalizeLineEndings } from '../libs/digest'
 
 // https://agentskills.io/specification#progressive-disclosure
-const maxSkillLines = 500
+export const MaxSkillLines = 500
 
 export const CandidateReferencePathSchema = z
   .string()
@@ -71,8 +71,8 @@ export function validateCandidateFiles(files: SkillFile[]) {
     // Remove trailing empty line at the end of the file.
     if (lines.at(-1) === '') lines.pop()
 
-    if (lines.length > maxSkillLines) {
-      throw new Error(`Generated 'SKILL.md' exceeds the ${maxSkillLines}-line limit (${lines.length} lines).`)
+    if (lines.length > MaxSkillLines) {
+      throw new Error(`Generated 'SKILL.md' exceeds the ${MaxSkillLines}-line limit (${lines.length} lines).`)
     }
 
     return

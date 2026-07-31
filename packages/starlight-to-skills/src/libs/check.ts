@@ -13,7 +13,7 @@ import {
   getSkillDefinitionUrlByName,
   getSkillNameByDefinitionUrl,
   getSkillNameByManifestUrl,
-  hasMatchingSkillDescription,
+  hasMatchingSkillFrontmatter,
   loadSkill,
 } from './skill'
 import { formatError, style } from './terminal'
@@ -151,7 +151,7 @@ export async function getSkillIssues(
 
     switch (issue.type) {
       case 'definition-change': {
-        return `${heading}\n\nThe description, documentation file paths, or guidance changed since the skill was approved.`
+        return `${heading}\n\nThe description, license, documentation file paths, or guidance changed since the skill was approved.`
       }
       case 'approved-skill-change':
       case 'docs-change': {
@@ -174,7 +174,7 @@ export async function getSkillIssues(
   const canApproveExistingSkill =
     fileMismatches.length === 0 &&
     (manifest.definitionHash === digest.definitionHash ||
-      (await hasMatchingSkillDescription(config.outputDir, definition.name, definition.description)))
+      (await hasMatchingSkillFrontmatter(config.outputDir, definition)))
 
   const hints =
     fileMismatches.length > 0
