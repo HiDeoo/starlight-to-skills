@@ -55,6 +55,7 @@ describe('loadSkillDefinitionInputs', () => {
       guidance: 'Add a usage example to the generated skill.',
       license: 'MIT',
       compatibility: 'Requires git, docker, jq, and access to the internet',
+      metadata: { author: 'example-org', version: '1.0' },
     })
 
     expect(docs.map((doc) => doc.path)).toStrictEqual(definition.docs)

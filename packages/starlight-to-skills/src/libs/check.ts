@@ -151,7 +151,7 @@ export async function getSkillIssues(
 
     switch (issue.type) {
       case 'definition-change': {
-        return `${heading}\n\nThe description, license, compatibility, documentation file paths, or guidance changed since the skill was approved.`
+        return `${heading}\n\nThe description, license, compatibility, metadata, documentation file paths, or guidance changed since the skill was approved.`
       }
       case 'approved-skill-change':
       case 'docs-change': {

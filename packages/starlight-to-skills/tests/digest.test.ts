@@ -62,6 +62,7 @@ describe('computeSkillDigest', () => {
       name: 'compatibility',
       skill: { ...skill, compatibility: 'Requires git, docker, jq, and access to the internet' },
     },
+    { name: 'metadata', skill: { ...skill, metadata: { author: 'example-org', version: '1.0' } } },
   ])('includes $name in the definition and input hashes', ({ skill: changedSkill }) => {
     const digest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs)
 
@@ -69,6 +70,22 @@ describe('computeSkillDigest', () => {
 
     expect(digest.inputHash).not.toBe(changedDigest.inputHash)
     expect(digest.definitionHash).not.toBe(changedDigest.definitionHash)
+  })
+
+  test('includes metadata key order in the definition and input hashes', () => {
+    const digest = computeSkillDigest(
+      'openai/gpt-5.6-luna',
+      { ...skill, metadata: { author: 'example-org', version: '1.0' } },
+      docs,
+    )
+    const reorderedDigest = computeSkillDigest(
+      'openai/gpt-5.6-luna',
+      { ...skill, metadata: { version: '1.0', author: 'example-org' } },
+      docs,
+    )
+
+    expect(digest.inputHash).not.toBe(reorderedDigest.inputHash)
+    expect(digest.definitionHash).not.toBe(reorderedDigest.definitionHash)
   })
 
   test('hashes non-definition input changes', () => {

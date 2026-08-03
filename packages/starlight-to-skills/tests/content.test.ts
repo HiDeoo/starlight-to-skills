@@ -27,6 +27,7 @@ const skill: SkillConfiguration = {
   guidance: 'Write the generated skill in French.',
   license: 'MIT',
   compatibility: 'Requires git, docker, jq, and access to the internet',
+  metadata: { author: 'example-org', version: '1.0' },
   url: new URL('file:///project/src/skills/migrate-to-v2.skill.ts'),
 }
 
@@ -80,6 +81,7 @@ describe('generateSkillContent', () => {
     })
     expect(input).not.toHaveProperty('license')
     expect(input).not.toHaveProperty('compatibility')
+    expect(input).not.toHaveProperty('metadata')
 
     expect(input).not.toHaveProperty('update')
 
@@ -188,6 +190,9 @@ describe('compileSkill', () => {
       description: "Migrate a project to v2."
       license: "MIT"
       compatibility: "Requires git, docker, jq, and access to the internet"
+      metadata:
+        "author": "example-org"
+        "version": "1.0"
       ---
 
       Change foo to bar.",

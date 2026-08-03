@@ -52,6 +52,10 @@ export const SkillDefinitionSchema = z.strictObject({
   guidance: emptyStringToUndefinedSchema.optional(),
   license: emptyStringToUndefinedSchema.optional(),
   compatibility: z.string().max(500).pipe(emptyStringToUndefinedSchema).optional(),
+  metadata: z
+    .record(z.string(), z.string())
+    .transform((value) => (Object.keys(value).length === 0 ? undefined : value))
+    .optional(),
 })
 
 export type SkillUserDefinition = z.input<typeof SkillDefinitionSchema>

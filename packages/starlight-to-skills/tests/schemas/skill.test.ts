@@ -95,4 +95,28 @@ describe('definition', () => {
 
     expect(result.error?.issues[0]?.path).toStrictEqual(['compatibility'])
   })
+
+  describe('metadata', () => {
+    test('normalizes values', () => {
+      expect(SkillDefinitionSchema.parse(baseDefinition).metadata).toBeUndefined()
+      expect(SkillDefinitionSchema.parse({ ...baseDefinition, metadata: {} }).metadata).toBeUndefined()
+
+      expect(
+        SkillDefinitionSchema.parse({ ...baseDefinition, metadata: { author: 'example-org', version: '1.0' } })
+          .metadata,
+      ).toStrictEqual({ author: 'example-org', version: '1.0' })
+    })
+
+    test.for([null, 1, 'value'])('rejects non-record value %j', (value) => {
+      const result = SkillDefinitionSchema.safeParse({ ...baseDefinition, metadata: value })
+
+      expect(result.error?.issues[0]?.path).toStrictEqual(['metadata'])
+    })
+
+    test('rejects non-string values', () => {
+      const result = SkillDefinitionSchema.safeParse({ ...baseDefinition, metadata: { version: 1 } })
+
+      expect(result.error?.issues[0]?.path).toStrictEqual(['metadata', 'version'])
+    })
+  })
 })

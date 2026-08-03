@@ -2,6 +2,7 @@ import type { Dirent } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { isDeepStrictEqual } from 'node:util'
 
 import matter from 'gray-matter'
 
@@ -199,7 +200,7 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
     manifest.definitionHash !== digest.definitionHash &&
     !(await hasMatchingSkillFrontmatter(config.outputDir, skill))
   ) {
-    throwError(`Description, license, or compatibility for ${style.skillName(skill.name)} has changed.`, {
+    throwError(`Description, license, compatibility, or metadata for ${style.skillName(skill.name)} has changed.`, {
       hint: `Run ${style.command(`starlight-to-skills generate ${skill.name}`)}.`,
     })
   }
@@ -216,7 +217,7 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
 
 export async function hasMatchingSkillFrontmatter(
   outputDir: URL,
-  skill: Pick<SkillConfiguration, 'name' | 'description' | 'license' | 'compatibility'>,
+  skill: Pick<SkillConfiguration, 'name' | 'description' | 'license' | 'compatibility' | 'metadata'>,
 ) {
   let content: string
 
@@ -231,7 +232,8 @@ export async function hasMatchingSkillFrontmatter(
     return (
       frontmatter['description'] === skill.description &&
       frontmatter['license'] === skill.license &&
-      frontmatter['compatibility'] === skill.compatibility
+      frontmatter['compatibility'] === skill.compatibility &&
+      isDeepStrictEqual(frontmatter['metadata'], skill.metadata)
     )
   } catch {
     return false

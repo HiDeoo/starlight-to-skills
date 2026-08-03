@@ -72,12 +72,17 @@ export function compileSkill(
 }
 
 function getSkillFrontmatterLines(skill: SkillConfiguration): string[] {
+  const metadata = Object.entries(skill.metadata ?? {})
+
   return [
     '---',
     `name: ${JSON.stringify(skill.name)}`,
     `description: ${JSON.stringify(skill.description)}`,
     ...(skill.license ? [`license: ${JSON.stringify(skill.license)}`] : []),
     ...(skill.compatibility ? [`compatibility: ${JSON.stringify(skill.compatibility)}`] : []),
+    ...(metadata.length > 0
+      ? ['metadata:', ...metadata.map(([key, value]) => `  ${JSON.stringify(key)}: ${JSON.stringify(value)}`)]
+      : []),
     '---',
   ]
 }
