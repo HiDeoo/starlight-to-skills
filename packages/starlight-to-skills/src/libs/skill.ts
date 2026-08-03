@@ -199,7 +199,7 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
     manifest.definitionHash !== digest.definitionHash &&
     !(await hasMatchingSkillFrontmatter(config.outputDir, skill))
   ) {
-    throwError(`Description or license for ${style.skillName(skill.name)} has changed.`, {
+    throwError(`Description, license, or compatibility for ${style.skillName(skill.name)} has changed.`, {
       hint: `Run ${style.command(`starlight-to-skills generate ${skill.name}`)}.`,
     })
   }
@@ -216,7 +216,7 @@ export async function approveSkill(config: StarlightToSkillsConfig, skill: Skill
 
 export async function hasMatchingSkillFrontmatter(
   outputDir: URL,
-  skill: Pick<SkillConfiguration, 'name' | 'description' | 'license'>,
+  skill: Pick<SkillConfiguration, 'name' | 'description' | 'license' | 'compatibility'>,
 ) {
   let content: string
 
@@ -228,7 +228,11 @@ export async function hasMatchingSkillFrontmatter(
 
   try {
     const frontmatter = matter(content).data
-    return frontmatter['description'] === skill.description && frontmatter['license'] === skill.license
+    return (
+      frontmatter['description'] === skill.description &&
+      frontmatter['license'] === skill.license &&
+      frontmatter['compatibility'] === skill.compatibility
+    )
   } catch {
     return false
   }

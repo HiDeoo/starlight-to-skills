@@ -77,6 +77,7 @@ function getSkillFrontmatterLines(skill: SkillConfiguration): string[] {
     `name: ${JSON.stringify(skill.name)}`,
     `description: ${JSON.stringify(skill.description)}`,
     ...(skill.license ? [`license: ${JSON.stringify(skill.license)}`] : []),
+    ...(skill.compatibility ? [`compatibility: ${JSON.stringify(skill.compatibility)}`] : []),
     '---',
   ]
 }

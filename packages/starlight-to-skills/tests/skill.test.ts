@@ -301,7 +301,7 @@ describe('approveSkill', () => {
         { ...digest, inputHash: 'updated-input-hash', definitionHash: 'updated-definition-hash' },
       ),
     ).rejects.toMatchInlineSnapshot(`
-      Description or license for 'test-skill' has changed.
+      Description, license, or compatibility for 'test-skill' has changed.
 
       Hint: Run 'pnpm exec starlight-to-skills generate test-skill'.
     `)
@@ -336,7 +336,7 @@ describe('approveSkill', () => {
           { ...digest, inputHash: 'updated-input-hash', definitionHash: 'updated-definition-hash' },
         ),
       ).rejects.toMatchInlineSnapshot(`
-        Description or license for 'test-skill' has changed.
+        Description, license, or compatibility for 'test-skill' has changed.
 
         Hint: Run 'pnpm exec starlight-to-skills generate test-skill'.
       `)

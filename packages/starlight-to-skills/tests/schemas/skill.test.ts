@@ -71,7 +71,7 @@ describe('definition', () => {
     )
   })
 
-  describe.for(['guidance', 'license'] as const)('%s', (field) => {
+  describe.for(['guidance', 'license', 'compatibility'] as const)('%s', (field) => {
     test('accepts unspecified values', () => {
       expect(SkillDefinitionSchema.parse(baseDefinition)[field]).toBeUndefined()
     })
@@ -88,5 +88,11 @@ describe('definition', () => {
 
       expect(result.error?.issues[0]?.path).toStrictEqual([field])
     })
+  })
+
+  test('rejects compatibility over 500 characters', () => {
+    const result = SkillDefinitionSchema.safeParse({ ...baseDefinition, compatibility: 'a'.repeat(501) })
+
+    expect(result.error?.issues[0]?.path).toStrictEqual(['compatibility'])
   })
 })

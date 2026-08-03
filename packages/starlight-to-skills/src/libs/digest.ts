@@ -17,6 +17,7 @@ export function computeSkillDigest(model: string, skill: SkillConfiguration, doc
     docs: skill.docs,
     guidance: skill.guidance === undefined ? undefined : normalizeLineEndings(skill.guidance),
     license: skill.license,
+    compatibility: skill.compatibility,
   }
 
   const normalizedDocs = docs.map((doc) => ({

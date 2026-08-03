@@ -85,7 +85,7 @@ describe('getSkillIssues', () => {
 
        Skill definition changed\u0020
 
-      The description, license, documentation file paths, or guidance changed since the skill was approved.
+      The description, license, compatibility, documentation file paths, or guidance changed since the skill was approved.
 
        Model changed\u0020
 
@@ -128,9 +128,26 @@ describe('getSkillIssues', () => {
     await expect(getSkillIssues(config, changedDefinition, changedDigest)).resolves.toMatchInlineSnapshot(`
       Skill 'test-skill' is not up to date.
 
-       Skill definition changed 
+       Skill definition changed\u0020
 
-      The description, license, documentation file paths, or guidance changed since the skill was approved.
+      The description, license, compatibility, documentation file paths, or guidance changed since the skill was approved.
+
+      Hint: Run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'.
+    `)
+  })
+
+  test('does not hint to approve an existing skill after a compatibility change', async () => {
+    const { config, definition, docs } = await approveSkill('test-skill')
+
+    const changedDefinition = { ...definition, compatibility: 'Requires git, docker, jq, and access to the internet' }
+    const changedDigest = computeSkillDigest(config.model, changedDefinition, docs)
+
+    await expect(getSkillIssues(config, changedDefinition, changedDigest)).resolves.toMatchInlineSnapshot(`
+      Skill 'test-skill' is not up to date.
+
+       Skill definition changed\u0020
+
+      The description, license, compatibility, documentation file paths, or guidance changed since the skill was approved.
 
       Hint: Run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'.
     `)

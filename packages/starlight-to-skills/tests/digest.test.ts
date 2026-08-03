@@ -58,6 +58,10 @@ describe('computeSkillDigest', () => {
     { name: 'documentation paths', skill: { ...skill, docs: ['./migrations/migrate-v2.md', './changelog.md'] } },
     { name: 'guidance', skill: { ...skill, guidance: 'Add a usage example to the generated skill.' } },
     { name: 'license', skill: { ...skill, license: 'MIT' } },
+    {
+      name: 'compatibility',
+      skill: { ...skill, compatibility: 'Requires git, docker, jq, and access to the internet' },
+    },
   ])('includes $name in the definition and input hashes', ({ skill: changedSkill }) => {
     const digest = computeSkillDigest('openai/gpt-5.6-luna', skill, docs)
 
