@@ -26,7 +26,7 @@ export function getInstructions(maxSkillBodyLines: number): string {
 
 # Writing the skill
 
-- Treat the skill as an actionable onboarding guide that equips an agent with useful, non-obvious procedural or domain knowledge, not as a summary of the selected documentation.
+- Treat the skill as an actionable onboarding guide, not as a summary of the selected documentation. Prioritize project-specific procedures, conventions, corrections, failure modes, and non-obvious edge cases supported by the declared inputs; omit generic advice an agent is likely to know.
 - Keep content concise to preserve context for the task and other instructions.
 - Use imperative language for procedural instructions.
 - Use flexible guidance when the declared inputs allow multiple approaches, recommend a preferred pattern only when they establish one, and prescribe exact steps when they show that errors are costly or order matters.
