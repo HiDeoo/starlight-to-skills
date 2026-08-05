@@ -24,7 +24,9 @@ export async function generateSkillContent(
   const maxSkillBodyLines = MaxSkillLines - getSkillFrontmatterLines(skill).length - 1
   const instructions = getInstructions(maxSkillBodyLines)
 
-  const { Agent } = await import('@mastra/core/agent')
+  const [{ Agent }, { Mastra }] = await Promise.all([import('@mastra/core/agent'), import('@mastra/core/mastra')])
+
+  const mastra = new Mastra({ logger: false })
 
   const agent = new Agent({
     id: 'starlight-to-skills-agent',
@@ -32,6 +34,8 @@ export async function generateSkillContent(
     instructions: update ? `${instructions}\n\n${UpdateInstructions}` : instructions,
     model,
   })
+
+  mastra.addAgent(agent)
 
   let output: Awaited<ReturnType<typeof agent.generate>>
 

@@ -5,7 +5,9 @@ import type { SkillConfiguration } from '../src/libs/loader'
 import type { SkillDocumentation } from '../src/libs/starlight'
 
 const mastra = vi.hoisted(() => ({
+  addAgent: vi.fn(),
   constructAgent: vi.fn(),
+  constructMastra: vi.fn(),
   generate: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
 }))
 
@@ -16,6 +18,17 @@ vi.mock('@mastra/core/agent', () => ({
     }
     generate(...args: unknown[]) {
       return mastra.generate(...args)
+    }
+  },
+}))
+
+vi.mock('@mastra/core/mastra', () => ({
+  Mastra: class {
+    constructor(options: unknown) {
+      mastra.constructMastra(options)
+    }
+    addAgent(agent: unknown) {
+      mastra.addAgent(agent)
     }
   },
 }))

@@ -11,7 +11,16 @@ import type { SkillManifest } from '../src/schemas/manifest'
 import { test, type TestProject } from './project'
 
 const mastra = vi.hoisted(() => ({
+  addAgent: vi.fn(),
   generate: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+}))
+
+vi.mock('@mastra/core/mastra', () => ({
+  Mastra: class {
+    addAgent(agent: unknown) {
+      mastra.addAgent(agent)
+    }
+  },
 }))
 
 const readline = vi.hoisted(() => {

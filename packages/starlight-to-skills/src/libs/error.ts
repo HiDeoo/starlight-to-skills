@@ -21,7 +21,12 @@ export class StarlightToSkillsError extends Error {
 
   static #getCauseDetails(cause: unknown) {
     if (cause instanceof z.ZodError) return z.prettifyError(cause)
-    if (cause instanceof Error) return cause.message
+    if (cause instanceof Error) {
+      return cause.message.replace(
+        /^Could not find API key process\.env\.([A-Z_][A-Z0-9_]*) for model id (.+)$/,
+        "Model '$2' requires the $1 environment variable.",
+      )
+    }
     if (typeof cause === 'string') return cause
     return
   }
