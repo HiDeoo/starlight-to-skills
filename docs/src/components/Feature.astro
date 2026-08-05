@@ -16,7 +16,7 @@ const hasIcon = Astro.slots.has('icon')
   </span>
   <div class="content">
     <h2 class="title">{title}</h2>
-    <div class="description">{description}</div>
+    <div class="description" set:html={description} />
   </div>
   <div class="preview"><slot /></div>
 </li>
@@ -28,6 +28,26 @@ const hasIcon = Astro.slots.has('icon')
     counter-increment: features-counter;
     margin-top: 0;
     position: relative;
+  }
+
+  .feature-card:nth-child(5n + 1) {
+    --feature-card-accent: var(--sl-color-orange-high);
+  }
+
+  .feature-card:nth-child(5n + 2) {
+    --feature-card-accent: var(--sl-color-green-high);
+  }
+
+  .feature-card:nth-child(5n + 3) {
+    --feature-card-accent: var(--sl-color-purple-high);
+  }
+
+  .feature-card:nth-child(5n + 4) {
+    --feature-card-accent: var(--sl-color-blue-high);
+  }
+
+  .feature-card:nth-child(5n + 5) {
+    --feature-card-accent: var(--sl-color-red-high);
   }
 
   .marker {
@@ -85,7 +105,7 @@ const hasIcon = Astro.slots.has('icon')
   }
 
   .title {
-    color: var(--sl-color-white);
+    color: var(--feature-card-accent);
     font-size: var(--sl-text-h4);
     font-weight: 600;
     line-height: var(--sl-line-height-headings);
@@ -103,6 +123,24 @@ const hasIcon = Astro.slots.has('icon')
 
     & :global(.copy) {
       display: none;
+    }
+
+    & :global(.frame.has-title:not(.is-terminal)) {
+      & :global(.header::before) {
+        border-inline-end: none;
+      }
+
+      & :global(.title) {
+        border: none;
+      }
+
+      & :global(.title::after) {
+        border-top-color: var(--sl-color-gray-5);
+      }
+    }
+
+    & :global(.frame.is-terminal .header) {
+      border-inline: none;
     }
   }
 </style>
