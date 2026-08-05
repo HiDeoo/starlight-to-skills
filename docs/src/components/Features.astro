@@ -1,0 +1,121 @@
+<starlight-to-skills-features>
+  <ol class="features-list"><slot /></ol>
+</starlight-to-skills-features>
+
+<script>
+  customElements.define(
+    'starlight-to-skills-features',
+    class StarlightToSkillsFeatures extends HTMLElement {
+      #animationFrame: number | undefined
+      #list = this.querySelector<HTMLOListElement>('.features-list')
+      #markers = [...this.querySelectorAll<HTMLElement>('.marker')]
+
+      connectedCallback() {
+        this.#update()
+
+        window.addEventListener('scroll', this.#requestUpdate)
+        window.addEventListener('resize', this.#requestUpdate)
+      }
+
+      #requestUpdate = () => {
+        if (this.#animationFrame !== undefined) return
+
+        this.#animationFrame = requestAnimationFrame(() => {
+          this.#animationFrame = undefined
+          this.#update()
+        })
+      }
+
+      #update = () => {
+        if (!this.#list) return
+
+        const anchor = window.innerHeight / 2
+
+        const listRect = this.#list.getBoundingClientRect()
+        const listTop = window.scrollY + listRect.top
+
+        const scrollStart = Math.max(0, listTop - anchor)
+        const scrollEnd = document.documentElement.scrollHeight - window.innerHeight
+        const scrollRange = scrollEnd - scrollStart
+
+        const progress =
+          scrollRange > 0
+            ? Math.min(1, Math.max(0, (window.scrollY - scrollStart) / scrollRange))
+            : window.scrollY >= scrollEnd
+              ? 1
+              : 0
+
+        const markers = this.#markers.map((marker) => ({ marker, top: marker.getBoundingClientRect().top }))
+
+        const hairlineTop = markers[0]?.top ?? listRect.top
+        const hairlineHeight = listRect.height
+        const highlightedHairlineEnd = hairlineTop + hairlineHeight * progress
+
+        this.#list.style.setProperty('--hairline-start', `${hairlineTop - listRect.top}px`)
+        this.#list.style.setProperty('--hairline-height', `${hairlineHeight}px`)
+        this.#list.style.setProperty('--hairline-progress', String(progress))
+
+        for (const { marker, top } of markers) {
+          marker.classList.toggle('highlighted', highlightedHairlineEnd >= top)
+        }
+      }
+    },
+  )
+</script>
+
+<style>
+  starlight-to-skills-features {
+    --hairline-start: var(--marker-margin-block);
+    --hairline-height: 100%;
+    --hairline-progress: 0;
+    --hairline-highlight: color-mix(in oklch, var(--sl-color-accent) 70%, var(--sl-color-white));
+
+    --marker-size: calc(var(--sl-line-height) * 1.5rem);
+    --marker-margin-block: 2rem;
+    --marker-margin-inline: clamp(0.5rem, 2vw, 1rem);
+
+    display: block;
+  }
+
+  :global([data-theme='light']) starlight-to-skills-features {
+    --hairline-highlight: color-mix(in oklch, var(--sl-color-accent) 90%, var(--sl-color-white));
+  }
+
+  .features-list {
+    counter-reset: features-counter;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1rem, 4vw, 2.5rem);
+    list-style: none;
+    margin-inline: auto;
+    padding-inline-start: calc(var(--marker-size) + var(--marker-margin-inline) * 2);
+    position: relative;
+    width: min(100%, 50rem);
+  }
+
+  .features-list::before,
+  .features-list::after {
+    content: '';
+    height: var(--hairline-height);
+    inset-block-start: var(--hairline-start);
+    inset-inline-start: calc(var(--marker-size) / 2);
+    position: absolute;
+    width: 1px;
+  }
+
+  .features-list::before {
+    background-color: var(--sl-color-hairline-light);
+  }
+
+  .features-list::after {
+    background-color: var(--hairline-highlight);
+    transform: scaleY(var(--hairline-progress));
+    transform-origin: top;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .features-list::after {
+      display: none;
+    }
+  }
+</style>

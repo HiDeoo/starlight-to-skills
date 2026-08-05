@@ -1,0 +1,108 @@
+---
+interface Props {
+  description: string
+  requiresApproval?: boolean
+  title: string
+}
+
+const { description, requiresApproval, title } = Astro.props
+
+const hasIcon = Astro.slots.has('icon')
+---
+
+<li class="feature-card">
+  <span aria-hidden="true" class:list={['marker', { 'marker-approval': requiresApproval, 'marker-icon': hasIcon }]}>
+    {hasIcon && <slot name="icon" />}
+  </span>
+  <div class="content">
+    <h2 class="title">{title}</h2>
+    <div class="description">{description}</div>
+  </div>
+  <div class="preview"><slot /></div>
+</li>
+
+<style>
+  .feature-card {
+    background-color: var(--sl-color-black);
+    border: 1px solid var(--sl-color-gray-5);
+    counter-increment: features-counter;
+    margin-top: 0;
+    position: relative;
+  }
+
+  .marker {
+    align-items: center;
+    display: flex;
+    font-weight: 600;
+    height: var(--marker-size);
+    inset-block-start: calc(var(--marker-margin-block) - 1px);
+    inset-inline-start: calc((var(--marker-size) + var(--marker-margin-inline) * 2) * -1);
+    justify-content: center;
+    width: var(--marker-size);
+    position: absolute;
+    z-index: 1;
+  }
+
+  .marker::before {
+    background-color: var(--sl-color-gray-6);
+    border-radius: 99rem;
+    box-shadow: inset 0 0 0 1px var(--sl-color-gray-5);
+    content: '';
+    inset: 0;
+    position: absolute;
+    z-index: -1;
+  }
+
+  .marker:not(.marker-icon)::after {
+    content: counter(features-counter);
+    line-height: 1;
+  }
+
+  .marker-approval::before {
+    border-radius: 0.375rem;
+    transform: rotate(45deg) scale(0.85);
+  }
+
+  .feature-card:first-child .marker::before,
+  .marker.highlighted::before {
+    box-shadow: inset 0 0 0 2px var(--hairline-highlight);
+  }
+
+  .feature-card:first-child .marker,
+  .marker.highlighted {
+    color: var(--sl-color-accent-high);
+  }
+
+  .marker-icon :global(svg) {
+    fill: currentColor;
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+
+  .content {
+    margin-top: 0;
+    padding: clamp(1rem, calc(0.125rem + 3vw), 2rem);
+  }
+
+  .title {
+    color: var(--sl-color-white);
+    font-size: var(--sl-text-h4);
+    font-weight: 600;
+    line-height: var(--sl-line-height-headings);
+  }
+
+  .preview {
+    margin-block: 0;
+  }
+
+  .preview :global(.expressive-code) {
+    & :global(pre) {
+      border-bottom: none;
+      border-inline: none;
+    }
+
+    & :global(.copy) {
+      display: none;
+    }
+  }
+</style>
