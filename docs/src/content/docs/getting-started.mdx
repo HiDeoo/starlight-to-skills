@@ -1,0 +1,111 @@
+---
+title: Getting Started
+description: Learn how to turn your documentation pages into reviewed, discoverable, and up-to-date agent skills using the Starlight to Skills plugin.
+---
+
+A [Starlight](https://starlight.astro.build) plugin and command-line tool to turn Starlight documentation pages into reviewed, discoverable, and up-to-date agent skills.
+
+1. **Define**: Describe what a skill does, when agents should use it, and choose which Starlight documentation pages contain the knowledge they need.
+2. **Generate**: Use the model of your choice to turn your definition and selected documentation pages into an agent skill.
+3. **Approve**: Review and explicitly approve each new or updated skill before making it available to agents.
+4. **Serve**: Make approved skills available to agents through Agent Skills Discovery on your Starlight site.
+5. **Keep up to date**: Use deterministic checks to prevent outdated skills from remaining available to agents as your documentation changes.
+
+## Prerequisites
+
+You will need to have a Starlight website set up.
+If you don't have one yet, you can follow the ["Getting Started"](https://starlight.astro.build/getting-started) guide in the Starlight docs to create one.
+
+## Installation
+
+import { Steps } from '@astrojs/starlight/components'
+import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
+
+<Steps>
+
+1. Starlight to Skills is a Starlight [plugin](https://starlight.astro.build/reference/plugins/) and command-line tool. Install it using your favorite package manager:
+
+   <PackageManagers pkg="starlight-to-skills" />
+
+2. Configure the plugin in your Starlight [configuration](https://starlight.astro.build/reference/configuration/#plugins) in the `astro.config.mjs` file.
+
+   ```diff lang="js"
+   // astro.config.mjs
+   import starlight from '@astrojs/starlight'
+   import { defineConfig } from 'astro/config'
+   +import starlightToSkills from 'starlight-to-skills'
+
+   export default defineConfig({
+     integrations: [
+       starlight({
+   +      plugins: [starlightToSkills()],
+         title: 'My Docs',
+       }),
+     ],
+   })
+   ```
+
+3. Starlight to Skills requires a dedicated `starlight-to-skills.config.ts` configuration file at the root of your Starlight project.
+   Use the [configuration](/configuration/) to define the provider and model to use for generating skills.
+
+   Starlight to Skills uses [Mastra](https://mastra.ai/) under the hood to call the model and generate the skill content.
+   A list of all supported providers and models can be found in the [Mastra documentation](https://mastra.ai/models/providers).
+
+   The following example configures Starlight to Skills to use the `gpt-5.6-sol` model from the `openai` provider.
+
+   ```ts
+   // starlight-to-skills.config.ts
+   import { defineConfig } from 'starlight-to-skills/config'
+
+   export default defineConfig({
+     model: 'openai/gpt-5.6-sol',
+   })
+   ```
+
+4. If using Git, make sure to add the plugin's temporary `.starlight-to-skills/` directory to `.gitignore`. Other generated content should be committed.
+
+5. Define your first skill by creating a TypeScript file in the `src/skills/` directory named after the skill with a `.skill.ts` extension, e.g. `skill-name.skill.ts`.
+
+   The [definition](/skill-definition/) should include a description of the skill and a list of Starlight documentation pages that contain the knowledge needed for the skill.
+   Documentation paths are relative to the `src/content/docs/` directory.
+   Optionally, guidance can provide additional context and instructions for skill generation.
+
+   The following example defines a skill named `upgrade-v2-to-v3`:
+
+   ```ts
+   // src/skills/upgrade-v2-to-v3.skill.ts
+   import { defineSkill } from 'starlight-to-skills/skill'
+
+   export default defineSkill({
+     description:
+       'Upgrade projects from package v2 to v3, including required dependency, ' +
+       'configuration, and API changes. Use when planning, performing, reviewing, ' +
+       'or troubleshooting the migration.',
+     docs: ['./upgrade.mdx', './guides/upgrade-to/v3.mdx'],
+     guidance: 'List any in-use features no longer supported in v3.',
+   })
+   ```
+
+6. Generate the skill using the `generate` command of the Starlight to Skills CLI with the name of the skill.
+
+   Mastra reads the API key for the configured provider from an environment variable.
+   You can find the complete list of required environment variables for each provider in the [Mastra documentation](https://mastra.ai/models/environment-variables).
+
+   <PackageManagers type="exec" pkg="starlight-to-skills" args="generate upgrade-v2-to-v3" prefix="OPENAI_API_KEY=xyz" />
+
+7. Review the generated skill and approve it using the `approve` command with the name of the skill.
+
+   <PackageManagers type="exec" pkg="starlight-to-skills" args="approve upgrade-v2-to-v3" />
+
+</Steps>
+
+Once approved, the new skill will be available to agents through [Agent Skills Discovery](https://github.com/cloudflare/agent-skills-discovery-rfc) on your Starlight site.
+
+For example, for a Starlight site hosted at `https://example.com`, the [`skills` command-line tool](https://www.skills.sh/) can be used to install the skill from your documentation site:
+
+<PackageManagers type="dlx" pkg="skills" args="add https://example.com" />
+
+When documentation pages associated with a skill change, building the Starlight project will trigger an error as the skill is now out of date.
+You can then generate and approve an updated version of the skill or confirm that the existing skill remains valid.
+
+The Starlight to Skills plugin behavior can be tweaked using various [configuration options](/configuration/) and [skill definition properties](/skill-definition/).
