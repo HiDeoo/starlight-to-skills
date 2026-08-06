@@ -46,7 +46,7 @@ import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
    ```
 
 3. Starlight to Skills requires a dedicated `starlight-to-skills.config.ts` configuration file at the root of your Starlight project.
-   Use the [configuration](/configuration/) to define the provider and model to use for generating skills.
+   Use the [configuration](/configuration/#model) to define the provider and model to use for generating skills.
 
    Starlight to Skills uses [Mastra](https://mastra.ai/) under the hood to call the model and generate the skill content.
    A list of all supported providers and models can be found in the [Mastra documentation](https://mastra.ai/models/providers).
@@ -62,7 +62,8 @@ import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
    })
    ```
 
-4. Exclude the plugin's temporary `.starlight-to-skills/` directory from version control. Other generated content should be committed.
+4. Exclude the plugin's temporary `.starlight-to-skills/` directory from version control.
+   [Approved skills](/configuration/#outputdir) should be committed.
 
 5. Define your first skill by creating a TypeScript file in the `src/skills/` directory named after the skill with a `.skill.ts` extension, e.g. `skill-name.skill.ts`.
 
