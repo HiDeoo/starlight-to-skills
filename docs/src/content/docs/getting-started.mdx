@@ -87,14 +87,14 @@ import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
    })
    ```
 
-6. Generate the skill using the `generate` command of the Starlight to Skills CLI with the name of the skill.
+6. Generate the skill using the [`generate` command](/commands/generate/) of the Starlight to Skills CLI with the name of the skill.
 
    Provide the API key for the configured provider in a [`.env` file](https://nodejs.org/api/environment_variables.html#env-files) at the root of your project that is excluded from version control or set it inline when running the command.
    You can find the complete list of required environment variables for each provider in the [Mastra documentation](https://mastra.ai/models/environment-variables).
 
    <PackageManagers type="exec" pkg="starlight-to-skills" args="generate upgrade-v2-to-v3" />
 
-7. Review the generated skill and approve it using the `approve` command with the name of the skill.
+7. Review the generated skill and approve it using the [`approve` command](/commands/approve/) with the name of the skill.
 
    <PackageManagers type="exec" pkg="starlight-to-skills" args="approve upgrade-v2-to-v3" />
 
@@ -106,7 +106,7 @@ For example, for a Starlight site hosted at `https://example.com`, the [`skills`
 
 <PackageManagers type="dlx" pkg="skills" args="add https://example.com" />
 
-When documentation pages associated with a skill change, building the Starlight project will trigger an error as the skill is now out of date.
-You can then generate and approve an updated version of the skill or confirm that the existing skill remains valid.
+When documentation pages associated with a skill change, the project-wide [`check` command](/commands/check/#check-all-skills) runs during the next build and reports the skill as not up to date.
+You can [generate an updated skill](/commands/generate/#generate-a-skill) or [reapprove the existing skill](/commands/approve/#reapprove-an-existing-skill) if it remains valid.
 
 The Starlight to Skills plugin behavior can be tweaked using various [configuration options](/configuration/) and [skill definition properties](/skill-definition/).

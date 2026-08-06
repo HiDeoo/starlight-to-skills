@@ -1,0 +1,26 @@
+---
+title: Prune command
+description: Remove orphan approved skills.
+sidebar:
+  label: Prune
+  order: 4
+---
+
+The `prune` command removes orphan approved skills.
+An approved skill becomes orphaned when its skill definition is deleted or renamed.
+
+The command lists all orphan approved skills and asks for confirmation before removing them.
+
+## Prune orphan approved skills
+
+Use the command by running it with your preferred package manager in the root of your Starlight project.
+
+import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
+
+<PackageManagers type="exec" pkg="starlight-to-skills" args="prune" />
+
+## Skip confirmation
+
+To skip the confirmation prompt, run the command with the `--yes` option using your preferred package manager in the root of your Starlight project.
+
+<PackageManagers type="exec" pkg="starlight-to-skills" args="prune --yes" />

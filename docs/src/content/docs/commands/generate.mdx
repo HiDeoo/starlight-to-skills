@@ -1,0 +1,22 @@
+---
+title: Generate command
+description: Generate a skill for review.
+sidebar:
+  label: Generate
+  order: 1
+---
+
+The `generate` command generates one specified skill for review by sending a request to the configured model.
+
+The command displays the generated contents or, when available, a diff against the previously approved skill.
+
+Review the generated skill and use the [`approve` command](/commands/approve/) if the skill is correct and ready to be used by agents.
+Otherwise, update the skill definition or documentation and run the `generate` command again.
+
+## Generate a skill
+
+Use the command by running it with your preferred package manager in the root of your Starlight project and pass the name of the skill you want to generate.
+
+import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
+
+<PackageManagers type="exec" pkg="starlight-to-skills" args="generate skill-name" />
