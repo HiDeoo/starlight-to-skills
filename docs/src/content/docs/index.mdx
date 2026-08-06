@@ -20,7 +20,7 @@ hero:
   image:
     html: '⚗️'
   actions:
-    - text: Getting Started
+    - text: Get Started
       link: /getting-started/
       icon: rocket
 ---
@@ -52,7 +52,7 @@ export default defineSkill({
     title="Generate"
     description="Use the model of your choice to turn your definition and selected documentation pages into an agent skill."
   >
-  
+
 ```ansi wrap
 [32m❯[0m [1mpnpm exec starlight-to-skills generate upgrade-v2-to-v3[0m
 [32mGenerated[0m '[36mupgrade-v2-to-v3[0m'.
@@ -65,12 +65,12 @@ export default defineSkill({
   ---
 
   # Upgrade to v3
-  
+
   1. Update `@example/package` in `package.json` from `^2.0.0` to `^3.0.0`.
   2. Rename the `foo` configuration option to `bar`.
-  
+
   ## Handle removed APIs
-  
+
   v3 removes `createLegacyBaz()` without a replacement. If the project uses it, leave the call unchanged and mention it in the final response.
 
 [1;30;46m Next steps [0m
