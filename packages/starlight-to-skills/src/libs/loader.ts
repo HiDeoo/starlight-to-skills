@@ -43,6 +43,7 @@ export async function loadConfig(rootDir: URL): Promise<StarlightToSkillsConfig>
     url,
     rootDir,
     dataDir: getDataDirUrl(rootDir),
+    definitionsDir: resolveDirectoryUrl(config.definitionsDir, rootDir),
     outputDir: resolveDirectoryUrl(config.outputDir, rootDir),
   }
 }

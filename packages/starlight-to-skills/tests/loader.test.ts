@@ -10,10 +10,10 @@ describe('loadConfig', () => {
 
     expect(config).toStrictEqual({
       model: 'openai/gpt-5.6-luna',
-      definitions: './src/skills-definitions/*.skill.ts',
       url: new URL('starlight-to-skills.config.ts', rootDir),
       rootDir,
       dataDir: new URL('.starlight-to-skills/', rootDir),
+      definitionsDir: new URL('src/skills-definitions/', rootDir),
       outputDir: new URL('../skills/', rootDir),
     })
   })

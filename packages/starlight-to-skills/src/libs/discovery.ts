@@ -108,12 +108,6 @@ async function getDiscoverableSkills(rootDir: URL) {
     try {
       const name = parseSkillName(getSkillNameByDefinitionUrl(definitionUrl))
 
-      if (seen.has(name)) {
-        skillsByName.delete(name)
-        isComplete = false
-        continue
-      }
-
       seen.add(name)
 
       const { definition, digest } = await loadSkillDefinitionInputs(config, definitionUrl)

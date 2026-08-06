@@ -23,7 +23,7 @@ const rootDir = new URL('fixtures/', import.meta.url)
 
 describe('discoverSkillDefinitions', () => {
   test('discovers skill definitions', async () => {
-    const definitionUrls = await discoverSkillDefinitions({ rootDir, definitions: '*.skill.ts' })
+    const definitionUrls = await discoverSkillDefinitions({ definitionsDir: rootDir })
 
     expect(definitionUrls).toStrictEqual([
       new URL('skill-invalid.skill.ts', rootDir),
@@ -32,8 +32,20 @@ describe('discoverSkillDefinitions', () => {
     ])
   })
 
+  test('ignores non-skill and nested definition files', async ({ project }) => {
+    const definitionsDir = new URL('definitions/', project.rootDir)
+
+    await project.write('definitions/test.skill.ts', 'export default {}')
+    await project.write('definitions/other.ts', 'export default {}')
+    await project.write('definitions/nested/nested.skill.ts', 'export default {}')
+
+    await expect(discoverSkillDefinitions({ definitionsDir })).resolves.toStrictEqual([
+      new URL('test.skill.ts', definitionsDir),
+    ])
+  })
+
   test('returns an empty list of definitions when no matches are found', async () => {
-    const definitionUrls = await discoverSkillDefinitions({ rootDir, definitions: './unknown/*.skill.ts' })
+    const definitionUrls = await discoverSkillDefinitions({ definitionsDir: new URL('unknown/', rootDir) })
 
     expect(definitionUrls).toStrictEqual([])
   })
@@ -74,19 +86,6 @@ describe('getSkillDefinitionUrlByName', () => {
     expect(
       getSkillDefinitionUrlByName([new URL('invalid--name.skill.ts', rootDir), definitionUrl], 'skill-valid'),
     ).toBe(definitionUrl)
-  })
-
-  test('rejects duplicate skill names', () => {
-    expect(() =>
-      getSkillDefinitionUrlByName(
-        [new URL('a/duplicate.skill.ts', rootDir), new URL('b/duplicate.skill.ts', rootDir)],
-        'duplicate',
-      ),
-    ).toThrowErrorMatchingInlineSnapshot(`
-      Multiple skill definitions found for 'duplicate'.
-
-      Hint: Keep only one skill definition named 'duplicate.skill.ts'.
-    `)
   })
 })
 
@@ -238,10 +237,10 @@ describe('approveSkill', () => {
     project = testProject
     config = {
       model: 'openai/gpt-5.6-luna',
-      definitions: './src/skills/*.skill.ts',
       url: new URL('starlight-to-skills.config.ts', project.rootDir),
       rootDir: project.rootDir,
       dataDir: new URL('.starlight-to-skills/', project.rootDir),
+      definitionsDir: new URL('src/skills/', project.rootDir),
       outputDir: new URL('skills/', project.rootDir),
     }
 

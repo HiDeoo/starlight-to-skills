@@ -231,28 +231,6 @@ describe('checkSkills', () => {
     `)
   })
 
-  test('reports duplicate skill definitions', async () => {
-    await project.write(
-      'starlight-to-skills.config.ts',
-      `export default { model: 'openai/gpt-5.6-luna', definitions: './src/skills/*/*.skill.ts' }`,
-    )
-
-    const definition = `export default { description: 'Migrate a project to v2.', docs: ['./guide.md'] }`
-
-    await project.write('src/skills/first/duplicate.skill.ts', definition)
-    await project.write('src/skills/second/duplicate.skill.ts', definition)
-
-    await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
-      Not all skills are up to date.
-
-       duplicate\u0020
-
-      Multiple skill definitions found for 'duplicate'.
-
-      Hint: Keep only one skill definition named 'duplicate.skill.ts'.
-    `)
-  })
-
   test('reports orphan skills', async () => {
     await addApprovedSkill('first-orphan')
     await addApprovedSkill('second-orphan')

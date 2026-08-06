@@ -37,13 +37,13 @@ export function getSkillNameByManifestUrl(url: URL): string {
 }
 
 export async function discoverSkillDefinitions(
-  config: Pick<StarlightToSkillsConfig, 'definitions' | 'rootDir'>,
+  config: Pick<StarlightToSkillsConfig, 'definitionsDir'>,
 ): Promise<URL[]> {
   const definitionUrls: URL[] = []
 
   try {
-    for await (const entry of fs.glob(config.definitions, {
-      cwd: fileURLToPath(config.rootDir),
+    for await (const entry of fs.glob(`*${skillDefinitionSuffix}`, {
+      cwd: fileURLToPath(config.definitionsDir),
       withFileTypes: true,
     })) {
       if (!entry.isFile()) continue
@@ -51,6 +51,7 @@ export async function discoverSkillDefinitions(
       definitionUrls.push(pathToFileURL(path.join(entry.parentPath, entry.name)))
     }
   } catch (error) {
+    if (isFileNotFoundError(error)) return []
     throwError('Failed to find skill definitions.', { cause: error })
   }
 
@@ -61,16 +62,11 @@ export function getSkillDefinitionUrlByName(definitionUrls: URL[], name: string)
   const skillName = parseSkillName(name)
   const filename = `${skillName}${skillDefinitionSuffix}`
 
-  const matchingUrls = definitionUrls.filter((url) => getSkillNameByUrl(url, skillDefinitionSuffix) === skillName)
-  const [matchingUrl] = matchingUrls
+  const matchingUrl = definitionUrls.find((url) => getSkillNameByUrl(url, skillDefinitionSuffix) === skillName)
 
   if (!matchingUrl) {
     throwError(`No skill definition found for ${style.skillName(skillName)}.`, {
       hint: `Check the skill name or create '${filename}'.`,
-    })
-  } else if (matchingUrls.length > 1) {
-    throwError(`Multiple skill definitions found for ${style.skillName(skillName)}.`, {
-      hint: `Keep only one skill definition named '${filename}'.`,
     })
   }
 

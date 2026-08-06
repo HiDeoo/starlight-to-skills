@@ -1,4 +1,3 @@
-import fs from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { buffer } from 'node:stream/consumers'
 import { gunzipSync } from 'node:zlib'
@@ -110,62 +109,6 @@ test('does not serve discovery index with no skills', async () => {
 
   await expect(route.getStaticPaths({ routePattern: DiscoveryIndexRoutePattern })).resolves.toStrictEqual([])
   await expect(route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })).resolves.toStrictEqual([])
-})
-
-test('does not serve duplicate skill definitions', async () => {
-  await project.write(
-    'starlight-to-skills.config.ts',
-    `export default { model: 'openai/gpt-5.6-luna', definitions: './src/skills/*/*.skill.ts' }`,
-  )
-
-  await fs.mkdir(project.path('src/skills/first'))
-  await fs.mkdir(project.path('src/skills/second'))
-
-  await addSkillInputs('foo')
-  await fs.rename(project.path('src/skills/foo.skill.ts'), project.path('src/skills/first/foo.skill.ts'))
-  await project.approveSkill('foo', [{ path: 'SKILL.md', content: 'Foo.' }])
-
-  await addSkillInputs('duplicate')
-
-  const definitionPath = project.path('src/skills/duplicate.skill.ts')
-
-  await fs.rename(definitionPath, project.path('src/skills/first/duplicate.skill.ts'))
-
-  await project.approveSkill('duplicate', [{ path: 'SKILL.md', content: 'Duplicate.' }])
-
-  await fs.copyFile(
-    project.path('src/skills/first/duplicate.skill.ts'),
-    project.path('src/skills/second/duplicate.skill.ts'),
-  )
-
-  const route = makeDiscoveryRoute(project.rootDir, false)
-
-  await expect(route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })).resolves.toMatchInlineSnapshot(`
-    [
-      {
-        "params": {
-          "skill": "foo",
-        },
-      },
-    ]
-  `)
-
-  const indexResponse = await getDiscoveryResponse(route, { file: 'index' })
-
-  await expect(indexResponse.json()).resolves.toMatchInlineSnapshot(`
-    {
-      "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
-      "skills": [
-        {
-          "description": "Use foo.",
-          "digest": "sha256:04930c26107e32b96d509da2a4c1057c328a5c51ea61fb7b1cd4669273040832",
-          "name": "foo",
-          "type": "archive",
-          "url": "/.well-known/agent-skills/foo.tar.gz",
-        },
-      ],
-    }
-  `)
 })
 
 test('serves identical archive digests for identical skill content', async () => {

@@ -287,10 +287,10 @@ describe('persistence', () => {
     test.beforeEach(() => {
       config = {
         model: 'openai/gpt-5.6-luna',
-        definitions: './src/skills/*.skill.ts',
         url: new URL('starlight-to-skills.config.ts', project.rootDir),
         rootDir: project.rootDir,
         dataDir: new URL('.starlight-to-skills/', project.rootDir),
+        definitionsDir: new URL('src/skills/', project.rootDir),
         outputDir: new URL('skills/', project.rootDir),
       }
 
