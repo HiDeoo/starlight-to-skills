@@ -1,4 +1,5 @@
-import { expect, test } from 'vitest'
+import type { ModelRouterModelId } from '@mastra/core/llm'
+import { expect, expectTypeOf, test } from 'vitest'
 
 import { defineConfig, type StarlightToSkillsUserConfig } from '../src/config'
 
@@ -9,5 +10,9 @@ test('returns the configuration unchanged', () => {
     outputDir: './output',
   }
 
-  expect(defineConfig(config)).toBe(config)
+  const result = defineConfig(config)
+
+  expect(result).toBe(config)
+
+  expectTypeOf(result.model).toExtend<ModelRouterModelId>()
 })

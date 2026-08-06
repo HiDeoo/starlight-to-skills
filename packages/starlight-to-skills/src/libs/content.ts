@@ -1,4 +1,5 @@
 import { MaxSkillLines } from '../schemas/candidate'
+import type { StarlightToSkillsConfig } from '../schemas/config'
 import { ContentResultJSONSchema, ContentResultSchema, type SkillContentResult } from '../schemas/content'
 
 import { throwError } from './error'
@@ -8,7 +9,7 @@ import type { SkillDocumentation } from './starlight'
 import { style } from './terminal'
 
 export async function generateSkillContent(
-  model: string,
+  model: StarlightToSkillsConfig['model'],
   skill: SkillConfiguration,
   docs: SkillDocumentation[],
   update?: SkillUpdate,

@@ -2,7 +2,6 @@ import fs from 'node:fs/promises'
 
 import { describe, expect } from 'vitest'
 
-import type { StarlightToSkillsConfig } from '../src/config'
 import { approveCandidate, createCandidate } from '../src/libs/candidate'
 import { computeSkillFileDigest, GeneratorVersion } from '../src/libs/digest'
 import type { SkillConfiguration } from '../src/libs/loader'
@@ -14,6 +13,7 @@ import {
   loadSkill,
   pruneSkill,
 } from '../src/libs/skill'
+import type { StarlightToSkillsConfig } from '../src/schemas/config'
 import type { SkillDigest } from '../src/schemas/digest'
 import type { SkillManifest } from '../src/schemas/manifest'
 

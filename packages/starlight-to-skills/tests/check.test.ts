@@ -3,11 +3,11 @@ import fs from 'node:fs/promises'
 import { describe, expect } from 'vitest'
 
 import { checkSkills, getSkillIssues } from '../src/libs/check'
+import { computeSkillDigest } from '../src/libs/digest'
 import { loadSkillInputs } from '../src/libs/loader'
 import type { SkillManifest } from '../src/schemas/manifest'
 
 import { test, type TestProject } from './project'
-import { computeSkillDigest } from '../src/libs/digest'
 
 let project: TestProject
 

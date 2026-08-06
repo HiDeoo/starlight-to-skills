@@ -1,7 +1,8 @@
+import type { ModelRouterModelId } from '@mastra/core/llm'
 import { z } from 'astro/zod'
 
 export const ConfigSchema = z.strictObject({
-  model: z.string().min(1),
+  model: z.string().min(1) as z.ZodType<ModelRouterModelId, ModelRouterModelId>,
   definitions: z.string().default('./src/skills/*.skill.ts'),
   outputDir: z.string().default('./skills'),
 })
