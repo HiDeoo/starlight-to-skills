@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import process from 'node:process'
 import type { ReadStream } from 'node:tty'
 import { stripVTControlCharacters } from 'node:util'
 
@@ -57,7 +58,10 @@ beforeEach(() => {
   readline.createInterface.mockClear()
   readline.question.mockReset().mockResolvedValue('yes')
 
-  return () => vi.restoreAllMocks()
+  return () => {
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+  }
 })
 
 const mastraGenerateSuccessResponse = {
@@ -185,6 +189,16 @@ Then change baz to quux.`,
   }
 
   describe('generate', () => {
+    test('loads environment variables from .env', async () => {
+      vi.stubEnv('STARLIGHT_TO_SKILLS_TEST_ENV', undefined)
+
+      await project.write('.env', 'STARLIGHT_TO_SKILLS_TEST_ENV=loaded')
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+      expect(process.env['STARLIGHT_TO_SKILLS_TEST_ENV']).toBe('loaded')
+    })
+
     test('rejects missing skill name', async () => {
       expect(await runCli(['generate'])).toBe(1)
 

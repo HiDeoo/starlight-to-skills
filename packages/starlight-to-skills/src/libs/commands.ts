@@ -1,4 +1,4 @@
-import process from 'node:process'
+import process, { loadEnvFile } from 'node:process'
 import { createInterface } from 'node:readline/promises'
 import { parseArgs } from 'node:util'
 
@@ -104,6 +104,9 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 }
 
 async function runGenerateCandidate(name: string, rootDir: URL): Promise<number> {
+  const envUrl = new URL('.env', rootDir)
+  if (await pathExists(envUrl)) loadEnvFile(envUrl)
+
   const { config, definition, docs, digest } = await loadSkillInputs(name, rootDir)
   let approvedSkill: LoadedSkill | undefined
   let update: SkillUpdate | undefined

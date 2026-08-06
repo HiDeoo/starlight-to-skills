@@ -62,7 +62,7 @@ import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
    })
    ```
 
-4. If using Git, make sure to add the plugin's temporary `.starlight-to-skills/` directory to `.gitignore`. Other generated content should be committed.
+4. Exclude the plugin's temporary `.starlight-to-skills/` directory from version control. Other generated content should be committed.
 
 5. Define your first skill by creating a TypeScript file in the `src/skills/` directory named after the skill with a `.skill.ts` extension, e.g. `skill-name.skill.ts`.
 
@@ -88,10 +88,10 @@ import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
 
 6. Generate the skill using the `generate` command of the Starlight to Skills CLI with the name of the skill.
 
-   Mastra reads the API key for the configured provider from an environment variable.
+   Provide the API key for the configured provider in a [`.env` file](https://nodejs.org/api/environment_variables.html#env-files) at the root of your project that is excluded from version control or set it inline when running the command.
    You can find the complete list of required environment variables for each provider in the [Mastra documentation](https://mastra.ai/models/environment-variables).
 
-   <PackageManagers type="exec" pkg="starlight-to-skills" args="generate upgrade-v2-to-v3" prefix="OPENAI_API_KEY=xyz" />
+   <PackageManagers type="exec" pkg="starlight-to-skills" args="generate upgrade-v2-to-v3" />
 
 7. Review the generated skill and approve it using the `approve` command with the name of the skill.
 
