@@ -9,7 +9,7 @@ sidebar:
 The `approve` command approves one specified skill after review so it can be used by agents.
 
 By default, the command approves a generated skill.
-If changes such as documentation updates do not affect an existing approved skill, the command can reapprove it without regenerating it.
+If changes such as documentation updates do not affect an existing approved skill, the command can confirm that it remains valid without regenerating it.
 
 ## Approve a generated skill
 
@@ -19,9 +19,9 @@ import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
 
 <PackageManagers type="exec" pkg="starlight-to-skills" args="approve skill-name" />
 
-## Reapprove an existing skill
+## Confirm an existing skill
 
-To reapprove an existing skill without regenerating it, run the command with its name and the `--existing` option using your preferred package manager in the root of your Starlight project.
+To confirm that an existing approved skill remains valid without regenerating it, run the command with its name and the `--existing` option using your preferred package manager in the root of your Starlight project.
 
 Only use this option after reviewing the changes and confirming that the existing approved skill is still valid.
 
