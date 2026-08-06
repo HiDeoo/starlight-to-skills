@@ -40,7 +40,7 @@ defineConfig({
 **Type:** `string`  
 **Default:** `'./src/skills'`
 
-The directory relative to the project root containing the skill definition files to use for generating skills.
+The directory relative to the project root containing the [skill definition files](/skill-definition/) to use for generating skills.
 Starlight to Skills only loads files with a `.skill.ts` extension that are in the specified directory and does not search nested directories.
 
 ```ts
