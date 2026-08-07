@@ -8,6 +8,7 @@ test('returns the configuration unchanged', () => {
     model: 'openai/gpt-5',
     definitionsDir: './definitions',
     outputDir: './output',
+    catalog: { path: 'ai/skills' },
   }
 
   const result = defineConfig(config)

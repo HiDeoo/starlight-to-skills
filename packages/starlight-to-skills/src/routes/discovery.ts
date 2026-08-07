@@ -1,9 +1,9 @@
 import type { APIRoute, GetStaticPaths } from 'astro'
-import { root } from 'astro:config/server'
+import skills from 'virtual:starlight-to-skills/skills'
 
-import { makeDiscoveryRoute } from './libs/discovery'
+import { makeDiscoveryRoute } from '../libs/discovery'
 
-const route = makeDiscoveryRoute(root, import.meta.env.DEV)
+const route = makeDiscoveryRoute(skills, import.meta.env.DEV)
 
 export const prerender = true
 

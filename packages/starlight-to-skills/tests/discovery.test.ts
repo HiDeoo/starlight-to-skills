@@ -6,7 +6,12 @@ import type { APIContext } from 'astro'
 import tar from 'tar-stream'
 import { expect, vi } from 'vitest'
 
-import { DiscoveryArchiveRoutePattern, DiscoveryIndexRoutePattern, makeDiscoveryRoute } from '../src/libs/discovery'
+import {
+  DiscoveryArchiveRoutePattern,
+  DiscoveryIndexRoutePattern,
+  getDiscoverableSkills,
+  makeDiscoveryRoute,
+} from '../src/libs/discovery'
 
 import { test, type TestProject } from './project'
 
@@ -32,7 +37,7 @@ test('serves discovery index and valid skills', async () => {
   await project.append('src/content/docs/baz.md', '\nUpdated documentaion file.')
   await project.write('skills/qux/SKILL.md', 'Edited skill content.')
 
-  const route = makeDiscoveryRoute(project.rootDir, true)
+  const route = await makeRoute(true)
   const indexPaths = await route.getStaticPaths({ routePattern: DiscoveryIndexRoutePattern })
   const archivePaths = await route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })
 
@@ -105,7 +110,7 @@ test('serves discovery index and valid skills', async () => {
 test('does not serve discovery index with no skills', async () => {
   await addSkillInputs('foo')
 
-  const route = makeDiscoveryRoute(project.rootDir, false)
+  const route = await makeRoute(false)
 
   await expect(route.getStaticPaths({ routePattern: DiscoveryIndexRoutePattern })).resolves.toStrictEqual([])
   await expect(route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })).resolves.toStrictEqual([])
@@ -117,8 +122,8 @@ test('serves identical archive digests for identical skill content', async () =>
     { path: 'references/details.md', content: 'Reference content.' },
   ])
 
-  const firstRoute = makeDiscoveryRoute(project.rootDir, false)
-  const secondRoute = makeDiscoveryRoute(project.rootDir, false)
+  const firstRoute = await makeRoute(false)
+  const secondRoute = await makeRoute(false)
 
   const firstIndexResponse = await getDiscoveryResponse(firstRoute, { file: 'index' })
   const secondIndexResponse = await getDiscoveryResponse(secondRoute, { file: 'index' })
@@ -131,7 +136,7 @@ test('does not serve extra files from approved skills', async () => {
 
   await project.write('skills/foo/extra.md', 'Extra content.')
 
-  const route = makeDiscoveryRoute(project.rootDir, false)
+  const route = await makeRoute(false)
 
   const response = await getDiscoveryResponse(route, { skill: 'foo' })
   const bytes = Buffer.from(await response.arrayBuffer())
@@ -144,7 +149,7 @@ test('does not serve extra files from approved skills', async () => {
 test('rejects a file updated after discovery', async () => {
   await addApprovedSkill('foo', [{ path: 'SKILL.md', content: 'Foo.' }])
 
-  const route = makeDiscoveryRoute(project.rootDir, false)
+  const route = await makeRoute(false)
 
   await route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })
 
@@ -157,6 +162,10 @@ test('rejects a file updated after discovery', async () => {
 
 function getDiscoveryResponse(route: ReturnType<typeof makeDiscoveryRoute>, params: APIContext['params']) {
   return route.GET({ params, logger })
+}
+
+async function makeRoute(isDevelopment: boolean) {
+  return makeDiscoveryRoute(await getDiscoverableSkills(project.rootDir), isDevelopment)
 }
 
 async function addSkillInputs(name: string) {

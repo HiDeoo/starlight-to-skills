@@ -63,3 +63,31 @@ defineConfig({
   outputDir: './.agents/skills',
 })
 ```
+
+### `catalog`
+
+**Type:** `{ path: string } | false`  
+**Default:** `{ path: 'skills' }` when Astro's `site` option is set, otherwise `false`
+
+Controls the catalog page listing all approved skills available for [discovery](https://github.com/cloudflare/agent-skills-discovery-rfc).
+
+The catalog requires Astro's [`site` option](https://docs.astro.build/en/reference/configuration-reference/#site) to be set and is available at `/skills/` by default.
+Use the `catalog.path` option to change the catalog route.
+
+```ts
+defineConfig({
+  // Serve the catalog at `/ai/skills/`.
+  catalog: {
+    path: 'ai/skills',
+  },
+})
+```
+
+Set `catalog` to `false` to disable the catalog entirely.
+
+```ts
+defineConfig({
+  // Disable the catalog page.
+  catalog: false,
+})
+```

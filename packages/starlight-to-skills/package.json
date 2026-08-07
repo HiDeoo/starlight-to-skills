@@ -15,7 +15,8 @@
       "types": "./dist/config.d.mts",
       "import": "./dist/config.mjs"
     },
-    "./routes": "./dist/routes.mjs",
+    "./routes/catalog": "./dist/routes/catalog.astro",
+    "./routes/discovery": "./dist/routes/discovery.mjs",
     "./skill": {
       "types": "./dist/skill.d.mts",
       "import": "./dist/skill.mjs"

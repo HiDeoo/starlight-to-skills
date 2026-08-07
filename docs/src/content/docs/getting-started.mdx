@@ -65,7 +65,21 @@ import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
 4. Exclude the plugin's temporary `.starlight-to-skills/` directory from version control.
    [Approved skills](/configuration/#outputdir) should be committed.
 
-5. Define your first skill by creating a TypeScript file in the `src/skills/` directory named after the skill with a `.skill.ts` extension, e.g. `skill-name.skill.ts`.
+5. Set Astro's [`site` option](https://docs.astro.build/en/reference/configuration-reference/#site) to your site's deployed URL to enable the [catalog page](/configuration/#catalog) which lists all approved skills available for discovery.
+
+   ```diff lang="js"
+   // astro.config.mjs
+   export default defineConfig({
+   +  site: 'https://example.com',
+     integrations: [
+       starlight({
+         // ...
+       }),
+     ],
+   })
+   ```
+
+6. Define your first skill by creating a TypeScript file in the `src/skills/` directory named after the skill with a `.skill.ts` extension, e.g. `skill-name.skill.ts`.
 
    The [definition](/skill-definition/) should include a description of the skill and a list of Starlight documentation pages that contain the knowledge needed for the skill.
    Documentation paths are relative to the `src/content/docs/` directory.
@@ -87,14 +101,14 @@ import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
    })
    ```
 
-6. Generate the skill using the [`generate` command](/commands/generate/) of the Starlight to Skills CLI with the name of the skill.
+7. Generate the skill using the [`generate` command](/commands/generate/) of the Starlight to Skills CLI with the name of the skill.
 
    Provide the API key for the configured provider in a [`.env` file](https://nodejs.org/api/environment_variables.html#env-files) at the root of your project that is excluded from version control or set it inline when running the command.
    You can find the complete list of required environment variables for each provider in the [Mastra documentation](https://mastra.ai/models/environment-variables).
 
    <PackageManagers type="exec" pkg="starlight-to-skills" args="generate upgrade-v2-to-v3" />
 
-7. Review the generated skill and approve it using the [`approve` command](/commands/approve/) with the name of the skill.
+8. Review the generated skill and approve it using the [`approve` command](/commands/approve/) with the name of the skill.
 
    <PackageManagers type="exec" pkg="starlight-to-skills" args="approve upgrade-v2-to-v3" />
 

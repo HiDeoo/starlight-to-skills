@@ -28,9 +28,7 @@ export const DiscoveryIndexRoutePattern = `/${DiscoveryPath}/[file].json`
 export const DiscoveryArchiveRoutePattern = `/${DiscoveryPath}/[skill].tar.gz`
 
 // https://github.com/cloudflare/agent-skills-discovery-rfc
-export function makeDiscoveryRoute(rootDir: URL, isDevelopment: boolean) {
-  const discoverableSkillsPromise = getDiscoverableSkills(rootDir)
-
+export function makeDiscoveryRoute(discoverableSkills: DiscoverableSkills, isDevelopment: boolean) {
   const archives = new Map<string, Promise<SkillArchive>>()
 
   function getSkillArchive(skill: DiscoverableSkill): Promise<SkillArchive> {
@@ -45,19 +43,15 @@ export function makeDiscoveryRoute(rootDir: URL, isDevelopment: boolean) {
   }
 
   const getStaticPaths = (async ({ routePattern }: Pick<GetStaticPathsOptions, 'routePattern'>) => {
-    const result = await discoverableSkillsPromise
-
-    if (result.skills.length === 0) return []
+    if (discoverableSkills.skills.length === 0) return []
 
     if (routePattern === DiscoveryIndexRoutePattern) return [{ params: { file: 'index' } }]
 
-    return result.skills.map((skill) => ({ params: { skill: skill.name } }))
+    return discoverableSkills.skills.map((skill) => ({ params: { skill: skill.name } }))
   }) satisfies GetStaticPaths
 
   const GET = (async ({ logger, params }: Pick<APIContext, 'logger' | 'params'>) => {
-    const result = await discoverableSkillsPromise
-
-    if (isDevelopment && !result.isComplete) {
+    if (isDevelopment && !discoverableSkills.isComplete) {
       logger.warn(`Not all skills are up to date. Run ${style.command('starlight-to-skills check')} for details.`)
     }
 
@@ -65,7 +59,7 @@ export function makeDiscoveryRoute(rootDir: URL, isDevelopment: boolean) {
 
     if (!skillName) {
       const skills = await Promise.all(
-        result.skills.map(async (skill) => {
+        discoverableSkills.skills.map(async (skill) => {
           const archive = await getSkillArchive(skill)
 
           return {
@@ -84,7 +78,7 @@ export function makeDiscoveryRoute(rootDir: URL, isDevelopment: boolean) {
       )
     }
 
-    const skill = result.skills.find(({ name }) => skillName === name)
+    const skill = discoverableSkills.skills.find(({ name }) => skillName === name)
     if (!skill) return new Response(null, { status: 404 })
 
     const archive = await getSkillArchive(skill)
@@ -95,7 +89,7 @@ export function makeDiscoveryRoute(rootDir: URL, isDevelopment: boolean) {
   return { getStaticPaths, GET }
 }
 
-async function getDiscoverableSkills(rootDir: URL) {
+export async function getDiscoverableSkills(rootDir: URL): Promise<DiscoverableSkills> {
   const config = await loadConfig(rootDir)
   const definitionUrls = await discoverSkillDefinitions(config)
 
@@ -182,6 +176,11 @@ function sortByKey<K extends PropertyKey, T extends Record<K, string>>(values: T
     const bKey = b[key]
     return aKey === bKey ? 0 : aKey < bKey ? -1 : 1
   })
+}
+
+export interface DiscoverableSkills {
+  isComplete: boolean
+  skills: DiscoverableSkill[]
 }
 
 interface DiscoverableSkill {

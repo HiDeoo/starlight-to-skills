@@ -1,0 +1,56 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro'
+import { Code } from '@astrojs/starlight/components'
+import skills from 'virtual:starlight-to-skills/skills'
+
+import Heading from '../components/Heading.astro'
+import { AstroError } from 'astro/errors'
+
+export const prerender = true
+
+const site = Astro.site
+if (!site) {
+  throw new AstroError(
+    "Starlight to Skills requires Astro's `site` option to be defined when the catalog option is configured.",
+    "Configure Astro's `site` option or set `catalog` to `false`.",
+  )
+}
+
+const skillsCatalog = skills.skills.map(({ name, description }) => ({ name, description, id: `skill-${name}` }))
+
+const installSkillsHeading = Astro.locals.t('starlightToSkills.catalog.install.heading')
+const availableSkillsHeading = Astro.locals.t('starlightToSkills.catalog.available.heading', {
+  count: skillsCatalog.length,
+})
+
+const headings = [
+  { depth: 2, slug: 'install-skills', text: installSkillsHeading },
+  { depth: 2, slug: 'available-skills', text: availableSkillsHeading },
+  ...skillsCatalog.map(({ id, name }) => ({ depth: 3, slug: id, text: name })),
+]
+---
+
+<StarlightPage frontmatter={{ title: Astro.locals.t('starlightToSkills.catalog.title') }} {headings}>
+  <p set:html={Astro.locals.t('starlightToSkills.catalog.intro')} />
+  <Heading id="install-skills" level={2}>{installSkillsHeading}</Heading>
+  <p set:html={Astro.locals.t('starlightToSkills.catalog.install.interactive')} />
+  <Code code={`npx skills add ${site.origin}`} lang="sh" />
+  <p set:html={Astro.locals.t('starlightToSkills.catalog.install.specific')} />
+  <Code code={`npx skills add ${site.origin} --skill <skill-name>`} lang="sh" />
+  <Heading id="available-skills" level={2}>{availableSkillsHeading}</Heading>
+  {
+    skillsCatalog.length === 0 ? (
+      <p set:html={Astro.locals.t('starlightToSkills.catalog.available.none')} />
+    ) : (
+      skillsCatalog.map(({ description, id, name }) => (
+        <>
+          <Heading {id} level={3}>
+            <code>{name}</code>
+          </Heading>
+          <p>{description}</p>
+          <Code code={`npx skills add ${site.origin} --skill ${name}`} lang="sh" />
+        </>
+      ))
+    )
+  }
+</StarlightPage>
