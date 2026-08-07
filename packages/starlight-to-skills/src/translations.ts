@@ -10,5 +10,7 @@ export const Translations = {
     'starlightToSkills.catalog.available.heading_one': 'Available skill',
     'starlightToSkills.catalog.available.heading_other': 'Available skills',
     'starlightToSkills.catalog.available.none': 'No skills are currently available.',
+    'starlightToSkills.skillCallout.install': 'Install',
+    'starlightToSkills.skillCallout.title': 'Let your agent handle this',
   },
 }

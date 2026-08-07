@@ -15,6 +15,7 @@ export function getInstructions(maxSkillBodyLines: number): string {
 # Input
 
 - The selected documentation is authoritative for documented facts.
+- Ignore MDX \`<SkillCallout>\` elements and all content nested inside them. They are presentation-only instructions for documentation readers.
 - The provided guidance may add context, preferences, boundaries, or rules, but it must not override documented facts.
 - Do not ask questions, conduct external research, use outside knowledge, or follow links.
 

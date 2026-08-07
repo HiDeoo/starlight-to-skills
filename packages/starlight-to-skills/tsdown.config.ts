@@ -7,7 +7,8 @@ const deps = {
 export default defineConfig([
   {
     copy: [
-      { from: 'src/components', to: 'dist' },
+      { from: 'src/components/*.astro', to: 'dist/components' },
+      { from: 'src/user-components/*.astro', to: 'dist/user-components' },
       { from: 'src/routes/catalog.astro', to: 'dist/routes' },
     ],
     deps,

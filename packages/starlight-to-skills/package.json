@@ -11,6 +11,7 @@
       "types": "./dist/plugin.d.mts",
       "import": "./dist/plugin.mjs"
     },
+    "./components/SkillCallout.astro": "./dist/user-components/SkillCallout.astro",
     "./config": {
       "types": "./dist/config.d.mts",
       "import": "./dist/config.mjs"
