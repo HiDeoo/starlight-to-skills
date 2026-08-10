@@ -27,6 +27,8 @@ hero:
 
 import Features from '../../components/Features.astro'
 import Feature from '../../components/Feature.astro'
+import { Code } from '@astrojs/starlight/components'
+import exampleDefinition from '../../skills/upgrade-v2-to-v3.skill.ts?raw'
 
 <Features>
   <Feature
@@ -34,18 +36,7 @@ import Feature from '../../components/Feature.astro'
     description="Describe what a skill does, when agents should use it, and choose which Starlight documentation pages contain the knowledge they need."
   >
 
-```ts title="src/skills/upgrade-v2-to-v3.skill.ts"
-import { defineSkill } from 'starlight-to-skills/skill'
-
-export default defineSkill({
-  description:
-    'Upgrade projects from package v2 to v3, including required dependency, ' +
-    'configuration, and API changes. Use when planning, performing, reviewing, ' +
-    'or troubleshooting the migration.',
-  docs: ['./upgrade.mdx', './guides/upgrade-to/v3.mdx'],
-  guidance: 'List any in-use features no longer supported in v3.',
-})
-```
+<Code code={exampleDefinition} lang="ts" title="src/skills/upgrade-v2-to-v3.skill.ts" />
 
   </Feature>
   <Feature
