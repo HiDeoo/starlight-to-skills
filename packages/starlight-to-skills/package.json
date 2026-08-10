@@ -2,7 +2,7 @@
   "name": "starlight-to-skills",
   "version": "0.0.1",
   "license": "MIT",
-  "description": "// TODO(HiDeoo)",
+  "description": "Turn Starlight documentation pages into reviewed, discoverable, and up-to-date agent skills.",
   "author": "HiDeoo <github@hideoo.dev> (https://hideoo.dev)",
   "type": "module",
   "bin": "./dist/cli.mjs",
@@ -61,7 +61,13 @@
     "dist"
   ],
   "keywords": [
-    "// TODO(HiDeoo)"
+    "starlight",
+    "plugin",
+    "skills",
+    "ai",
+    "agent",
+    "documentation",
+    "astro"
   ],
   "homepage": "https://github.com/HiDeoo/starlight-to-skills",
   "repository": {
