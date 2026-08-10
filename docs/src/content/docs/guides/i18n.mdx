@@ -1,0 +1,19 @@
+---
+title: Internationalization (i18n)
+description: Learn how internationalization works with the Starlight to Skills plugin
+---
+
+Starlight to Skills relies on Starlight's built-in support for [internationalization](https://starlight.astro.build/guides/i18n/) to provide multilingual support for page including skills with features like routing or fallback content.
+
+See the [Starlight internationalization documentation](https://starlight.astro.build/guides/i18n/) for more information on how to configure i18n in your Starlight website.
+
+## Translate the UI
+
+The Starlight to Skills plugin allows you to translate the default UI strings used by the plugin so that your pages with skills can be fully localized and readers can enjoy a seamless experience in their preferred language.
+
+import { I18n } from '@hideoo/starlight-plugins-docs-components'
+
+<I18n
+  label="Starlight to Skills"
+  translations={import('../../../../../packages/starlight-to-skills/src/translations')}
+/>
