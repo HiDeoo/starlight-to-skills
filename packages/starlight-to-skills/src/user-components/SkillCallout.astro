@@ -81,6 +81,10 @@ const hasFooter = Astro.slots.has('footer')
     margin-top: 0.75rem;
   }
 
+  .content:empty {
+    margin-top: 0;
+  }
+
   .content.footer {
     margin-top: 0;
   }
