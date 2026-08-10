@@ -1,0 +1,22 @@
+<div class="experimental-notice" data-pagefind-ignore>
+  <strong>Experimental:</strong> This plugin is in early development. Expect breaking changes between releases.
+</div>
+
+<style>
+  .experimental-notice {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin-top: 0.75rem;
+  }
+
+  :global([data-has-hero]) .experimental-notice {
+    border-block: 1px solid var(--sl-color-hairline-light);
+    margin-top: 0;
+    padding-block: 0.75rem;
+  }
+
+  .experimental-notice strong {
+    color: color-mix(in oklch, var(--sl-color-orange-high) 75%, var(--sl-color-orange));
+    font-weight: 600;
+  }
+</style>

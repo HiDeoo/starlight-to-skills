@@ -1,0 +1,32 @@
+---
+import DefaultHero from '@astrojs/starlight/components/Hero.astro'
+import ExperimentalNotice from './ExperimentalNotice.astro'
+---
+
+<div class="hero-with-notice">
+  <ExperimentalNotice />
+  <DefaultHero />
+</div>
+
+<style>
+  .hero-with-notice {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .hero-with-notice :global(.hero) {
+    padding-block: 0;
+  }
+
+  @media (min-width: 50rem) {
+    .hero-with-notice {
+      column-gap: 3%;
+      grid-template-columns: 7fr 4fr;
+      padding-block: clamp(2.5rem, calc(1rem + 10vmin), 10rem);
+    }
+
+    .hero-with-notice :global(.hero) {
+      grid-column: 1 / -1;
+    }
+  }
+</style>
