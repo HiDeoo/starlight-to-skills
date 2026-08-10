@@ -183,7 +183,17 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
 
   if (approvedSkill?.fileMismatches.length === 0) {
     files = renderSkillDiff(approvedSkill.files, candidate.files)
-    reviewMessage = 'Review changes to the generated skill.'
+
+    const approvedFileHashes = new Map(
+      approvedSkill.manifest.files.map(({ path, contentHash }) => [path, contentHash]),
+    )
+    const hasFileChanges =
+      candidate.fileDigests.length !== approvedFileHashes.size ||
+      candidate.fileDigests.some(({ path, contentHash }) => approvedFileHashes.get(path) !== contentHash)
+
+    reviewMessage = hasFileChanges
+      ? 'Review changes to the generated skill.'
+      : 'The generated skill has no file changes from the approved skill.'
   }
 
   const nextSteps = [

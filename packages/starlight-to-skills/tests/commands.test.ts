@@ -297,6 +297,33 @@ Then change baz to quux.`,
       expect(output).toContain('Review changes to the generated skill.')
     })
 
+    test('reports when a generated skill has no file changes', async () => {
+      mastra.generate.mockResolvedValue({
+        object: {
+          data: {
+            status: 'success',
+            body: 'Unchanged skill.',
+            references: [{ path: 'references/details.md', body: 'Unchanged reference.' }],
+          },
+        },
+      })
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+
+      await project.append('src/content/docs/guide.md', '\nNew content that does not affect the skill.')
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+      const output = getLastLogMessage(logSpy)
+
+      expect(output).toContain('The generated skill has no file changes from the approved skill.')
+
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+
+      expect(getLastLogMessage(logSpy)).toBe("Approved 'test-skill'.")
+    })
+
     test('uses approved skill and changed documentation paths for updates', async () => {
       await project.write(
         'src/skills/test-skill.skill.ts',
