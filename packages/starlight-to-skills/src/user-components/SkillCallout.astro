@@ -1,6 +1,7 @@
 ---
 import { Code, Icon } from '@astrojs/starlight/components'
 import { AstroError } from 'astro/errors'
+import skills from 'virtual:starlight-to-skills/skills'
 
 export interface Props {
   skill: string
@@ -14,6 +15,13 @@ if (!site) {
   throw new AstroError(
     "The `<SkillCallout>` component requires Astro's `site` option to be defined.",
     "Configure Astro's `site` option to use the `<SkillCallout>` component.",
+  )
+}
+
+if (!skills.skills.some(({ name }) => name === skill)) {
+  throw new AstroError(
+    `No approved skill found for '${skill}'.`,
+    'Check the skill name or approve the skill before using the `<SkillCallout>` component.',
   )
 }
 

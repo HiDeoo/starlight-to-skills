@@ -12,9 +12,9 @@ import { Preview } from '@hideoo/starlight-plugins-docs-components'
 <Preview>
 
 <Fragment slot="preview">
-  <SkillCallout skill="upgrade-v2-to-v3">
+  <SkillCallout skill="starlight-to-skills-install">
 
-    Install this skill and ask your agent to migrate your project from v2 to v3.
+    Install this skill and ask your agent to add Starlight to Skills to your project.
 
   </SkillCallout>
 </Fragment>
@@ -39,12 +39,12 @@ A `<SkillCallout>` requires a [`skill`](#skill) prop matching the [name](/skill-
 ```mdx
 import SkillCallout from 'starlight-to-skills/components/SkillCallout.astro'
 
-<SkillCallout skill="upgrade-v2-to-v3" />
+<SkillCallout skill="starlight-to-skills-install" />
 ```
 
 <Fragment slot="preview">
 
-<SkillCallout skill="upgrade-v2-to-v3" />
+<SkillCallout skill="starlight-to-skills-install" />
 
 </Fragment>
 
@@ -59,20 +59,20 @@ Add a description to provide additional context or instructions.
 ```mdx {5-6}
 import SkillCallout from 'starlight-to-skills/components/SkillCallout.astro'
 
-<SkillCallout skill="upgrade-v2-to-v3">
+<SkillCallout skill="starlight-to-skills-install">
 
-We have a skill specifically designed to help you migrate your project to v3.
-Install it before asking your agent to perform the migration.
+We have a skill specifically designed to help you install Starlight to Skills.
+Install it before asking your agent to add and configure the plugin.
 
 </SkillCallout>
 ```
 
 <Fragment slot="preview">
 
-<SkillCallout skill="upgrade-v2-to-v3">
+<SkillCallout skill="starlight-to-skills-install">
 
-We have a skill specifically designed to help you migrate your project to v3.
-Install it before asking your agent to perform the migration.
+We have a skill specifically designed to help you install Starlight to Skills.
+Install it before asking your agent to add and configure the plugin.
 
 </SkillCallout>
 
@@ -91,14 +91,14 @@ Override the default title by using the `title` attribue.
 import SkillCallout from 'starlight-to-skills/components/SkillCallout.astro'
 
 <SkillCallout
-  skill="upgrade-v2-to-v3"
-  title="Use your agent to migrate to v3"
+  skill="starlight-to-skills-install"
+  title="Use your agent to install Starlight to Skills"
 />
 ```
 
 <Fragment slot="preview">
 
-<SkillCallout skill="upgrade-v2-to-v3" title="Use your agent to migrate to v3" />
+<SkillCallout skill="starlight-to-skills-install" title="Use your agent to install Starlight to Skills" />
 
 </Fragment>
 
@@ -114,12 +114,12 @@ Add follow-up instructions displayed below the installation command by using the
 ```mdx {7-9}
 import SkillCallout from 'starlight-to-skills/components/SkillCallout.astro'
 
-<SkillCallout skill="upgrade-v2-to-v3">
+<SkillCallout skill="starlight-to-skills-install">
 
-Install the skill specifically designed to help you migrate your project to v3.
+Install the skill specifically designed to help you add Starlight to Skills to your project.
 
 <Fragment slot="footer">
-  Then ask your agent to perform the migration.
+  Then ask your agent to add and configure the plugin.
 </Fragment>
 
 </SkillCallout>
@@ -127,11 +127,11 @@ Install the skill specifically designed to help you migrate your project to v3.
 
 <Fragment slot="preview">
 
-<SkillCallout skill="upgrade-v2-to-v3">
+<SkillCallout skill="starlight-to-skills-install">
 
-Install the skill specifically designed to help you migrate your project to v3.
+Install the skill specifically designed to help you add Starlight to Skills to your project.
 
-<Fragment slot="footer">Then ask your agent to perform the migration.</Fragment>
+<Fragment slot="footer">Then ask your agent to add and configure the plugin.</Fragment>
 
 </SkillCallout>
 
