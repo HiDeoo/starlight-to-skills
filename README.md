@@ -1,1 +1,1 @@
-# starlight-skills-sync
+packages/starlight-to-skills/README.md

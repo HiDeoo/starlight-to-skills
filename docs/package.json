@@ -1,0 +1,44 @@
+{
+  "name": "starlight-to-skills-docs",
+  "version": "0.0.1",
+  "license": "MIT",
+  "description": "Turn Starlight documentation pages into reviewed, discoverable, and up-to-date agent skills.",
+  "author": "HiDeoo <github@hideoo.dev> (https://hideoo.dev)",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "lint": "eslint . --cache --max-warnings=0"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.41.3",
+    "@hideoo/starlight-plugins-docs-components": "^0.4.2",
+    "astro": "^7.2.0",
+    "sharp": "^0.35.3",
+    "starlight-to-skills": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "private": true,
+  "sideEffects": false,
+  "keywords": [
+    "starlight",
+    "plugin",
+    "skills",
+    "ai",
+    "agent",
+    "documentation",
+    "astro"
+  ],
+  "homepage": "https://github.com/HiDeoo/starlight-to-skills",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HiDeoo/starlight-to-skills.git",
+    "directory": "docs"
+  },
+  "bugs": "https://github.com/HiDeoo/starlight-to-skills/issues"
+}

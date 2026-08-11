@@ -1,0 +1,33 @@
+---
+title: Check command
+description: Check whether approved skills are up to date.
+sidebar:
+  label: Check
+  order: 3
+---
+
+The `check` command performs the following checks for all skills or one specified skill:
+
+- Every checked skill is approved.
+- The checked skill definitions are valid.
+- Every approved skill being checked is up to date.
+
+The command exits successfully when all checks pass.
+Otherwise, it exits with a non-zero code and reports the issues and relevant next steps.
+
+When [building](https://docs.astro.build/en/reference/cli-reference/#astro-build) your Starlight documentation site, the same project-wide check runs automatically.
+
+## Check all skills
+
+Use the command by running it with your preferred package manager in the root of your Starlight project.
+All skills will be checked.
+
+import { PackageManagers } from '@hideoo/starlight-plugins-docs-components'
+
+<PackageManagers type="exec" pkg="starlight-to-skills" args="check" />
+
+## Check one skill
+
+To check one skill, run the command with its name using your preferred package manager in the root of your Starlight project.
+
+<PackageManagers type="exec" pkg="starlight-to-skills" args="check skill-name" />

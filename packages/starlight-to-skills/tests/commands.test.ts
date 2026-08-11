@@ -1,0 +1,770 @@
+import fs from 'node:fs/promises'
+import process from 'node:process'
+import type { ReadStream } from 'node:tty'
+import { stripVTControlCharacters } from 'node:util'
+
+import { beforeEach, describe, expect, vi, type MockInstance } from 'vitest'
+
+import packageJson from '../package.json' with { type: 'json' }
+import { runCli } from '../src/libs/commands'
+import type { SkillManifest } from '../src/schemas/manifest'
+
+import { test, type TestProject } from './project'
+
+const mastra = vi.hoisted(() => ({
+  addAgent: vi.fn(),
+  generate: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+}))
+
+vi.mock('@mastra/core/mastra', () => ({
+  Mastra: class {
+    addAgent(agent: unknown) {
+      mastra.addAgent(agent)
+    }
+  },
+}))
+
+const readline = vi.hoisted(() => {
+  const close = vi.fn()
+  const question = vi.fn<() => Promise<string>>()
+
+  return { close, createInterface: vi.fn(() => ({ close, question })), question }
+})
+
+vi.mock('../src/libs/terminal', async (importOriginal) => {
+  const terminal = await importOriginal<typeof import('../src/libs/terminal')>()
+  return { ...terminal, withProgress: <T>(_text: string, task: () => Promise<T>) => task() }
+})
+
+vi.mock('@mastra/core/agent', () => ({
+  Agent: class {
+    generate(...args: unknown[]) {
+      return mastra.generate(...args)
+    }
+  },
+}))
+
+vi.mock('node:readline/promises', () => ({
+  createInterface: readline.createInterface,
+}))
+
+let logSpy: MockInstance
+let errorSpy: MockInstance
+
+beforeEach(() => {
+  logSpy = vi.spyOn(console, 'log').mockReturnValue()
+  errorSpy = vi.spyOn(console, 'error').mockReturnValue()
+  readline.close.mockClear()
+  readline.createInterface.mockClear()
+  readline.question.mockReset().mockResolvedValue('yes')
+
+  return () => {
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+  }
+})
+
+const mastraGenerateSuccessResponse = {
+  object: {
+    data: {
+      status: 'success',
+      body: 'Change foo to bar and then change baz to quux.',
+      references: [],
+    },
+  },
+}
+
+describe('usage', () => {
+  test('prints help', async () => {
+    expect(await runCli(['--help'])).toBe(0)
+
+    expect(logSpy).toHaveBeenCalledOnce()
+    expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`
+      "
+        starlight-to-skills <command> [options]
+
+         Commands\u0020
+                approve  Approve a generated skill.
+                  check  Check whether approved skills are up to date.
+               generate  Generate a skill for review.
+                  prune  Remove orphan approved skills.
+
+         Global options\u0020
+             -h, --help  Show this help message.
+          -v, --version  Show the version number."
+    `)
+  })
+
+  test.for(['approve', 'check', 'generate', 'prune'])('prints help for the %s command', async (command) => {
+    expect(await runCli([command, '--help'])).toBe(0)
+
+    expect(logSpy).toHaveBeenCalledOnce()
+
+    const output = getLastLogMessage(logSpy)
+
+    expect(output).toContain(`starlight-to-skills ${command}`)
+    expect(output).toContain('--help')
+
+    if (command === 'approve') expect(output).toContain('--existing')
+    else expect(output).not.toContain('--existing')
+
+    if (command === 'prune') expect(output).toContain('--yes')
+    else expect(output).not.toContain('--yes')
+  })
+
+  test('prints the version', async () => {
+    expect(await runCli(['--version'])).toBe(0)
+
+    expect(logSpy).toHaveBeenCalledOnce()
+    expect(getLastLogMessage(logSpy)).toBe(packageJson.version)
+  })
+
+  test('rejects a missing command', async () => {
+    expect(await runCli([])).toBe(1)
+
+    expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+      "Error: Missing command.
+
+      Hint: Run 'pnpm exec starlight-to-skills --help' for more information."
+    `)
+  })
+
+  test('rejects unknown commands', async () => {
+    expect(await runCli(['test'])).toBe(1)
+
+    expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+      "Error: Unknown command 'test'.
+
+      Hint: Run 'pnpm exec starlight-to-skills --help' for more information."
+    `)
+  })
+
+  test('rejects unknown options', async () => {
+    expect(await runCli(['--test'])).toBe(1)
+
+    expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+      "Error: Unknown option '--test'. To specify a positional argument starting with a '-', place it at the end of the command after '--', as in '-- "--test"
+
+      Hint: Run 'pnpm exec starlight-to-skills --help' for more information."
+    `)
+  })
+})
+
+describe('commands', () => {
+  let project: TestProject
+
+  test.beforeEach(async ({ project: testProject }) => {
+    project = testProject
+
+    await project.write(
+      'src/skills/test-skill.skill.ts',
+      `export default {
+  description: 'Migrate a project to v2.',
+  docs: ['./guide.md'],
+}`,
+    )
+    await project.write(
+      'src/content/docs/guide.md',
+      `---
+title: V2 Migration Guide
+---
+
+Change foo to bar.
+
+Then change baz to quux.`,
+    )
+
+    mastra.generate.mockReset()
+    mastra.generate.mockResolvedValue(mastraGenerateSuccessResponse)
+  })
+
+  async function writeSkill(name: string) {
+    const skillDir = `skills/${name}`
+    const manifestPath = `skills/.starlight-to-skills/${name}.json`
+
+    await fs.mkdir(project.path(skillDir), { recursive: true })
+    await project.write(manifestPath, '')
+
+    return { skillDir, manifestPath }
+  }
+
+  describe('generate', () => {
+    test('loads environment variables from .env', async () => {
+      vi.stubEnv('STARLIGHT_TO_SKILLS_TEST_ENV', undefined)
+
+      await project.write('.env', 'STARLIGHT_TO_SKILLS_TEST_ENV=loaded')
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+      expect(process.env['STARLIGHT_TO_SKILLS_TEST_ENV']).toBe('loaded')
+    })
+
+    test('rejects missing skill name', async () => {
+      expect(await runCli(['generate'])).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Command 'generate' requires a skill name.
+
+        Hint: Run 'pnpm exec starlight-to-skills generate --help' for more information."
+      `)
+    })
+
+    test('rejects multiple skill names', async () => {
+      expect(await runCli(['generate', 'foo', 'bar'])).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Command 'generate' accepts only one skill name.
+
+        Hint: Run 'pnpm exec starlight-to-skills generate --help' for more information."
+      `)
+    })
+
+    test('rejects an invalid skill name', async () => {
+      expect(await runCli(['generate', 'invalid--name'], project.rootPath)).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Invalid skill name 'invalid--name'.
+
+        Hint: Use 1-64 lowercase letters, numbers, or hyphens, without leading, trailing, or consecutive hyphens."
+      `)
+    })
+
+    test('ignores an unrelated definition with an invalid name', async () => {
+      await project.write('src/skills/invalid--name.skill.ts', '')
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+    })
+
+    test('generates a candidate', async () => {
+      mastra.generate.mockResolvedValueOnce({
+        object: {
+          data: {
+            status: 'success',
+            body: 'Change foo to bar and then change baz to quux.',
+            references: [{ path: 'references/details.md', body: 'Additional details.' }],
+          },
+        },
+      })
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+      await expect(project.exists('.starlight-to-skills/test-skill')).resolves.toBe(true)
+
+      expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`
+        "Generated 'test-skill'.
+
+         SKILL.md\u0020
+
+          ---
+          name: "test-skill"
+          description: "Migrate a project to v2."
+          ---
+        \u0020\u0020
+          Change foo to bar and then change baz to quux.
+
+         references/details.md\u0020
+
+          Additional details.
+
+         Next steps\u0020
+
+        Review the generated skill.
+
+         - To make changes, update the skill definition or documentation, then run 'pnpm exec starlight-to-skills generate test-skill' again.
+         - To approve it, run 'pnpm exec starlight-to-skills approve test-skill'."
+      `)
+    })
+
+    test('shows a diff against a verified approved skill', async () => {
+      mastra.generate.mockResolvedValueOnce({
+        object: { data: { status: 'success', body: 'Before.', references: [] } },
+      })
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+
+      mastra.generate.mockResolvedValueOnce({
+        object: { data: { status: 'success', body: 'After.', references: [] } },
+      })
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+      const output = getLastLogMessage(logSpy)
+
+      expect(output).toContain('- Before.')
+      expect(output).toContain('+ After.')
+
+      expect(output).toContain('Review changes to the generated skill.')
+    })
+
+    test('reports when a generated skill has no file changes', async () => {
+      mastra.generate.mockResolvedValue({
+        object: {
+          data: {
+            status: 'success',
+            body: 'Unchanged skill.',
+            references: [{ path: 'references/details.md', body: 'Unchanged reference.' }],
+          },
+        },
+      })
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+
+      await project.append('src/content/docs/guide.md', '\nNew content that does not affect the skill.')
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+      const output = getLastLogMessage(logSpy)
+
+      expect(output).toContain('The generated skill has no file changes from the approved skill.')
+
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+
+      expect(getLastLogMessage(logSpy)).toBe("Approved 'test-skill'.")
+    })
+
+    test('uses approved skill and changed documentation paths for updates', async () => {
+      await project.write(
+        'src/skills/test-skill.skill.ts',
+        `export default { description: 'Migrate a project to v2.', docs: ['./guide.md', './added.md'] }`,
+      )
+      await project.write(
+        'src/content/docs/added.md',
+        `---
+title: Added
+---
+
+New content.`,
+      )
+
+      mastra.generate.mockResolvedValueOnce({
+        object: {
+          data: {
+            status: 'success',
+            body: 'Before.',
+            references: [{ path: 'references/details.md', body: 'Approved reference.' }],
+          },
+        },
+      })
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+
+      const manifestPath = 'skills/.starlight-to-skills/test-skill.json'
+      const manifest = JSON.parse(await project.read(manifestPath)) as SkillManifest
+      const guideDoc = manifest.docs.find((doc) => doc.path === './guide.md')
+
+      expect.assert(guideDoc)
+
+      await project.write(
+        manifestPath,
+        JSON.stringify({
+          ...manifest,
+          docs: [guideDoc, { path: './removed.md', contentHash: 'removed-content-hash' }],
+        }),
+      )
+      await project.append('src/content/docs/guide.md', '\n\nA new option.')
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+      const [prompt] = mastra.generate.mock.calls[1] as [string]
+      const input = JSON.parse(prompt) as { update: Record<string, unknown> }
+
+      expect(input.update['changedDocPaths']).toStrictEqual(['./guide.md', './added.md', './removed.md'])
+
+      expect(input.update['approvedFiles']).toMatchInlineSnapshot(`
+        [
+          {
+            "content": "---
+        name: "test-skill"
+        description: "Migrate a project to v2."
+        ---
+
+        Before.",
+            "path": "SKILL.md",
+          },
+          {
+            "content": "Approved reference.",
+            "path": "references/details.md",
+          },
+        ]
+      `)
+    })
+
+    test('shows the full candidate when the approved skill changed directly', async () => {
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+
+      await project.append('skills/test-skill/SKILL.md', '\nDirect change.')
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+      const output = getLastLogMessage(logSpy)
+
+      expect(output).not.toContain('Direct change.')
+
+      expect(output).toContain('Review the generated skill.')
+
+      const [prompt] = mastra.generate.mock.calls[1] as [string]
+
+      expect(JSON.parse(prompt)).not.toHaveProperty('update')
+    })
+
+    test('reports an invalid approved skill', async () => {
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+
+      await project.write('skills/.starlight-to-skills/test-skill.json', '{')
+      mastra.generate.mockClear()
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(1)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Failed to load approved skill 'test-skill'.
+
+        Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+      `)
+    })
+
+    test('reports issues', async () => {
+      mastra.generate.mockResolvedValueOnce(mastraGenerateSuccessResponse).mockResolvedValueOnce({
+        object: {
+          data: {
+            status: 'error',
+            issues: [
+              {
+                type: 'missing-information',
+                docPaths: ['./guide.md'],
+                details: 'The migration steps are missing.',
+              },
+              {
+                type: 'conflicting-information',
+                docPaths: ['./guide.md', './changelog.md'],
+                details: 'The migration guide is for v3.',
+              },
+            ],
+          },
+        },
+      })
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+      const candidateDir = '.starlight-to-skills/test-skill'
+
+      await expect(project.exists(candidateDir)).resolves.toBe(true)
+
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Could not generate 'test-skill'.
+
+         Missing information\u0020
+
+        The migration steps are missing.
+
+        Documentation file:
+
+         - ./guide.md
+
+         Conflicting information\u0020
+
+        The migration guide is for v3.
+
+        Documentation files:
+
+         - ./guide.md
+         - ./changelog.md
+
+        Hint: Resolve these issues and run 'pnpm exec starlight-to-skills generate test-skill' again."
+      `)
+
+      await expect(project.exists(candidateDir)).resolves.toBe(false)
+    })
+  })
+
+  describe('approve', () => {
+    test('rejects missing skill name', async () => {
+      expect(await runCli(['approve'])).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Command 'approve' requires a skill name.
+
+        Hint: Run 'pnpm exec starlight-to-skills approve --help' for more information."
+      `)
+    })
+
+    test('rejects multiple skill names', async () => {
+      expect(await runCli(['approve', 'foo', 'bar'])).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Command 'approve' accepts only one skill name.
+
+        Hint: Run 'pnpm exec starlight-to-skills approve --help' for more information."
+      `)
+    })
+
+    test('rejects --existing for commands other than approve', async () => {
+      expect(await runCli(['generate', 'test-skill', '--existing'])).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Option '--existing' is only valid for command 'approve'.
+
+        Hint: Run 'pnpm exec starlight-to-skills approve --help' for more information."
+      `)
+    })
+
+    test('approves the current candidate only once', async () => {
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+      mastra.generate.mockClear()
+
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      await expect(project.exists('.starlight-to-skills/test-skill')).resolves.toBe(true)
+      await expect(project.exists('skills/test-skill')).resolves.toBe(true)
+
+      expect(getLastLogMessage(logSpy)).toBe("Approved 'test-skill'.")
+
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+      expect(getLastLogMessage(logSpy)).toBe("Already approved 'test-skill'.")
+    })
+
+    test('rejects a missing candidate', async () => {
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: No generated skill found for 'test-skill'.
+
+        Hint: Run 'pnpm exec starlight-to-skills generate test-skill'."
+      `)
+    })
+
+    test('rejects an outdated candidate', async () => {
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+      await project.append('src/content/docs/guide.md', '\nOne more step.')
+
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Generated skill for 'test-skill' is out of date.
+
+        Hint: Run 'pnpm exec starlight-to-skills generate test-skill' again."
+      `)
+    })
+
+    describe('--existing', () => {
+      test('approves an existing skill without changing the candidate', async () => {
+        expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+        expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+
+        await project.append('src/content/docs/guide.md', '\nOne more step.')
+        expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+
+        const candidateDir = '.starlight-to-skills/test-skill'
+        const candidateBefore = await Promise.all([
+          project.read(`${candidateDir}/SKILL.md`),
+          project.read(`${candidateDir}/manifest.json`),
+        ])
+
+        mastra.generate.mockClear()
+
+        expect(await runCli(['approve', 'test-skill', '--existing'], project.rootPath)).toBe(0)
+        expect(mastra.generate).not.toHaveBeenCalled()
+
+        const candidateAfter = await Promise.all([
+          project.read(`${candidateDir}/SKILL.md`),
+          project.read(`${candidateDir}/manifest.json`),
+        ])
+
+        expect(candidateAfter).toStrictEqual(candidateBefore)
+        expect(await runCli(['check', 'test-skill'], project.rootPath)).toBe(0)
+      })
+
+      test('rejects approving a missing existing skill', async () => {
+        expect(await runCli(['approve', 'test-skill', '--existing'], project.rootPath)).toBe(1)
+
+        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+          "Error: No approved skill found for 'test-skill'.
+
+          Hint: If needed, run 'pnpm exec starlight-to-skills generate test-skill', then run 'pnpm exec starlight-to-skills approve test-skill' without '--existing'."
+        `)
+      })
+
+      test('rejects approving an outdated existing skill', async () => {
+        expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+        expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+
+        const skillPath = 'skills/test-skill/SKILL.md'
+        const manifestPath = 'skills/.starlight-to-skills/test-skill.json'
+
+        const manifestBefore = await project.read(manifestPath)
+
+        await project.append(skillPath, '\nUpdate.')
+
+        expect(await runCli(['approve', 'test-skill', '--existing'], project.rootPath)).toBe(1)
+
+        expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+          "Error: The following files in approved skill 'test-skill' have changed:
+
+           - SKILL.md
+
+          Hint: Restore the listed files. To keep intended changes, update the skill definition or documentation, run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'."
+        `)
+
+        await expect(project.read(skillPath)).resolves.toContain('Update.')
+        await expect(project.read(manifestPath)).resolves.toBe(manifestBefore)
+      })
+    })
+  })
+
+  describe('check', () => {
+    test('rejects multiple skill names', async () => {
+      expect(await runCli(['check', 'foo', 'bar'])).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Command 'check' accepts only one skill name.
+
+        Hint: Run 'pnpm exec starlight-to-skills check --help' for more information."
+      `)
+    })
+
+    test('reports a never-approved skill', async () => {
+      expect(await runCli(['check', 'test-skill'], project.rootPath)).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Skill 'test-skill' has not been approved.
+
+        Hint: Run 'pnpm exec starlight-to-skills generate test-skill', review the generated skill, and then run 'pnpm exec starlight-to-skills approve test-skill'."
+      `)
+    })
+
+    test('checks an up-to-date skill', async () => {
+      expect(await runCli(['generate', 'test-skill'], project.rootPath)).toBe(0)
+      expect(await runCli(['approve', 'test-skill'], project.rootPath)).toBe(0)
+
+      logSpy.mockClear()
+
+      expect(await runCli(['check', 'test-skill'], project.rootPath)).toBe(0)
+
+      expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`"Check complete: 'test-skill' is up to date."`)
+    })
+
+    test('checks a project with no skills', async () => {
+      await fs.rm(project.path('src/skills/test-skill.skill.ts'))
+
+      logSpy.mockClear()
+
+      expect(await runCli(['check'], project.rootPath)).toBe(0)
+
+      expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`"Check complete: no skills found."`)
+    })
+  })
+
+  describe('prune', () => {
+    test('rejects arguments', async () => {
+      expect(await runCli(['prune', 'test-skill'])).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Command 'prune' accepts no arguments.
+
+        Hint: Run 'pnpm exec starlight-to-skills prune --help' for more information."
+      `)
+    })
+
+    test('rejects --yes for commands other than prune', async () => {
+      expect(await runCli(['check', '--yes'])).toBe(1)
+
+      expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
+        "Error: Option '--yes' is only valid for command 'prune'.
+
+        Hint: Run 'pnpm exec starlight-to-skills prune --help' for more information."
+      `)
+    })
+
+    test('reports when there are no orphan skills', async () => {
+      expect(await runCli(['prune', '--yes'], project.rootPath)).toBe(0)
+
+      expect(getLastLogMessage(logSpy)).toBe('No orphan approved skills to prune.')
+    })
+
+    test('prunes orphan skills', async () => {
+      const orphanSkill = await writeSkill('orphan-skill')
+      const testSkill = await writeSkill('test-skill')
+
+      await project.write('src/skills/test-skill.skill.ts', '')
+
+      expect(await runCli(['prune', '--yes'], project.rootPath)).toBe(0)
+      expect(mastra.generate).not.toHaveBeenCalled()
+
+      expect(readline.createInterface).not.toHaveBeenCalled()
+
+      await expect(project.exists(orphanSkill.skillDir)).resolves.toBe(false)
+      await expect(project.exists(orphanSkill.manifestPath)).resolves.toBe(false)
+
+      await expect(project.exists(testSkill.skillDir)).resolves.toBe(true)
+      await expect(project.exists(testSkill.manifestPath)).resolves.toBe(true)
+
+      expect(getLogMessages(logSpy)).toStrictEqual([
+        'Orphan approved skills:\n\n - orphan-skill\n',
+        "Pruned 'orphan-skill'.",
+      ])
+    })
+
+    test('does not prune when a definition filename has an invalid skill name', async () => {
+      const orphanSkill = await writeSkill('orphan-skill')
+
+      await project.write('src/skills/invalid--skill.skill.ts', '')
+
+      expect(await runCli(['prune', '--yes'], project.rootPath)).toBe(1)
+
+      await expect(project.exists(orphanSkill.skillDir)).resolves.toBe(true)
+      await expect(project.exists(orphanSkill.manifestPath)).resolves.toBe(true)
+    })
+
+    test('does not prune when a manifest filename has an invalid skill name', async () => {
+      const orphanSkill = await writeSkill('orphan-skill')
+
+      await project.write('skills/.starlight-to-skills/...json', '')
+
+      expect(await runCli(['prune', '--yes'], project.rootPath)).toBe(1)
+
+      await expect(project.exists(orphanSkill.skillDir)).resolves.toBe(true)
+      await expect(project.exists(orphanSkill.manifestPath)).resolves.toBe(true)
+    })
+
+    test('does not delete orphan skills when cancelling', async () => {
+      vi.spyOn(process, 'stdin', 'get').mockReturnValue({ fd: 0, isTTY: true } as ReadStream & { fd: 0 })
+
+      const orphanSkill = await writeSkill('orphan-skill')
+
+      readline.question.mockResolvedValue('no')
+
+      expect(await runCli(['prune'], project.rootPath)).toBe(0)
+
+      expect(readline.question).toHaveBeenCalledWith('Prune 1 orphan approved skill? [y/N] ')
+      expect(readline.close).toHaveBeenCalledOnce()
+
+      await expect(project.exists(orphanSkill.skillDir)).resolves.toBe(true)
+      await expect(project.exists(orphanSkill.manifestPath)).resolves.toBe(true)
+
+      expect(getLastLogMessage(logSpy)).toBe('Pruning cancelled.')
+    })
+  })
+})
+
+function getLogMessages(spy: MockInstance): string[] {
+  return spy.mock.calls.map(([message]) => {
+    if (typeof message !== 'string') throw new Error('Expected a string log message.')
+    return stripVTControlCharacters(message)
+  })
+}
+
+function getLastLogMessage(spy: MockInstance): string {
+  const message = getLogMessages(spy).at(-1)
+  if (message === undefined) throw new Error('Expected at least one log message.')
+  return message
+}

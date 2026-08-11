@@ -1,0 +1,214 @@
+import { createHash } from 'node:crypto'
+import { Readable } from 'node:stream'
+import { buffer } from 'node:stream/consumers'
+import { gunzipSync } from 'node:zlib'
+
+import type { APIContext } from 'astro'
+import tar from 'tar-stream'
+import { expect, vi } from 'vitest'
+
+import {
+  DiscoveryArchiveRoutePattern,
+  DiscoveryIndexRoutePattern,
+  getDiscoverableSkills,
+  makeDiscoveryRoute,
+} from '../src/libs/discovery'
+
+import { test, type TestProject } from './project'
+
+const logger: APIContext['logger'] = { error: vi.fn(), info: vi.fn(), warn: vi.fn() }
+
+let project: TestProject
+
+test.beforeEach(({ project: testProject }) => {
+  project = testProject
+})
+
+test('serves discovery index and valid skills', async () => {
+  await addApprovedSkill('foo', [
+    { path: 'SKILL.md', content: 'Foo.' },
+    { path: 'references/details.md', content: 'Reference content.' },
+  ])
+  await addApprovedSkill('bar', [{ path: 'SKILL.md', content: 'Bar.' }])
+  await addApprovedSkill('baz', [{ path: 'SKILL.md', content: 'Baz.' }])
+  await addApprovedSkill('qux', [{ path: 'SKILL.md', content: 'Qux.' }])
+
+  await addSkillInputs('quux')
+
+  await project.append('src/content/docs/baz.md', '\nUpdated documentaion file.')
+  await project.write('skills/qux/SKILL.md', 'Edited skill content.')
+
+  const route = await makeRoute(true)
+  const indexPaths = route.getStaticPaths({ routePattern: DiscoveryIndexRoutePattern })
+  const archivePaths = route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })
+
+  expect(indexPaths).toMatchInlineSnapshot(`
+    [
+      {
+        "params": {
+          "file": "index",
+        },
+      },
+    ]
+  `)
+
+  expect(archivePaths).toMatchInlineSnapshot(`
+    [
+      {
+        "params": {
+          "skill": "bar",
+        },
+      },
+      {
+        "params": {
+          "skill": "foo",
+        },
+      },
+    ]
+  `)
+
+  const fooResponse = await getDiscoveryResponse(route, { skill: 'foo' })
+  const fooBytes = Buffer.from(await fooResponse.arrayBuffer())
+
+  expect(fooResponse.headers.get('Content-Type')).toBe('application/gzip')
+
+  await expect(getArchiveContent(fooBytes)).resolves.toMatchInlineSnapshot(`
+    {
+      "SKILL.md": "Foo.",
+      "references/details.md": "Reference content.",
+    }
+  `)
+
+  const indexResponse = await getDiscoveryResponse(route, { file: 'index' })
+
+  expect(indexResponse.headers.get('Content-Type')).toBe('application/json')
+
+  const index = (await indexResponse.json()) as { skills: { digest: string; name: string }[] }
+
+  expect(index).toMatchObject({
+    $schema: 'https://schemas.agentskills.io/discovery/0.2.0/schema.json',
+    skills: [
+      {
+        description: 'Use bar.',
+        name: 'bar',
+        type: 'archive',
+        url: '/.well-known/agent-skills/bar.tar.gz',
+      },
+      {
+        description: 'Use foo.',
+        name: 'foo',
+        type: 'archive',
+        url: '/.well-known/agent-skills/foo.tar.gz',
+      },
+    ],
+  })
+
+  for (const { digest, name } of index.skills) {
+    const response = await getDiscoveryResponse(route, { skill: name })
+    const bytes = Buffer.from(await response.arrayBuffer())
+
+    expect(digest).toBe(`sha256:${createHash('sha256').update(bytes).digest('hex')}`)
+  }
+
+  await expect(getDiscoveryResponse(route, { skill: 'missing' })).resolves.toMatchObject({ status: 404 })
+})
+
+test('does not serve discovery index with no skills', async () => {
+  await addSkillInputs('foo')
+
+  const route = await makeRoute(false)
+
+  expect(route.getStaticPaths({ routePattern: DiscoveryIndexRoutePattern })).toStrictEqual([])
+  expect(route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })).toStrictEqual([])
+})
+
+test('serves identical archive digests for identical skill content', async () => {
+  await addApprovedSkill('test', [
+    { path: 'SKILL.md', content: 'Skill content.' },
+    { path: 'references/details.md', content: 'Reference content.' },
+  ])
+
+  const firstRoute = await makeRoute(false)
+  const secondRoute = await makeRoute(false)
+
+  const firstIndexResponse = await getDiscoveryResponse(firstRoute, { file: 'index' })
+  const secondIndexResponse = await getDiscoveryResponse(secondRoute, { file: 'index' })
+
+  expect(await firstIndexResponse.json()).toStrictEqual(await secondIndexResponse.json())
+})
+
+test('does not serve extra files from approved skills', async () => {
+  await addApprovedSkill('foo', [{ path: 'SKILL.md', content: 'Foo.' }])
+
+  await project.write('skills/foo/extra.md', 'Extra content.')
+
+  const route = await makeRoute(false)
+
+  const response = await getDiscoveryResponse(route, { skill: 'foo' })
+  const bytes = Buffer.from(await response.arrayBuffer())
+
+  await expect(getArchiveContent(bytes)).resolves.toStrictEqual({
+    'SKILL.md': 'Foo.',
+  })
+})
+
+test('rejects a file updated after discovery', async () => {
+  await addApprovedSkill('foo', [{ path: 'SKILL.md', content: 'Foo.' }])
+
+  const route = await makeRoute(false)
+
+  route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })
+
+  await project.write('skills/foo/SKILL.md', 'Updateed skill content.')
+
+  await expect(getDiscoveryResponse(route, { skill: 'foo' })).rejects.toMatchInlineSnapshot(
+    `Skill 'foo' is not up to date.`,
+  )
+})
+
+function getDiscoveryResponse(route: ReturnType<typeof makeDiscoveryRoute>, params: APIContext['params']) {
+  return route.GET({ params, logger })
+}
+
+async function makeRoute(isDevelopment: boolean) {
+  return makeDiscoveryRoute(await getDiscoverableSkills(project.rootDir), isDevelopment)
+}
+
+async function addSkillInputs(name: string) {
+  await project.write(
+    `src/skills/${name}.skill.ts`,
+    `export default { description: 'Use ${name}.', docs: ['./${name}.md'] }`,
+  )
+  await project.write(
+    `src/content/docs/${name}.md`,
+    `---
+title: ${name}
+---
+
+# ${name}`,
+  )
+}
+
+async function addApprovedSkill(name: string, files: TestFile[]) {
+  await addSkillInputs(name)
+  await project.approveSkill(name, files)
+}
+
+async function getArchiveContent(bytes: Buffer): Promise<Record<string, string>> {
+  const files: Record<string, string> = {}
+  const extract = tar.extract()
+
+  Readable.from([gunzipSync(bytes)]).pipe(extract)
+
+  for await (const entry of extract) {
+    const content = await buffer(entry)
+    files[entry.header.name] = content.toString()
+  }
+
+  return files
+}
+
+interface TestFile {
+  path: string
+  content: string
+}

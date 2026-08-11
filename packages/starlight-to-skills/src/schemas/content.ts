@@ -1,0 +1,41 @@
+import { z } from 'astro/zod'
+
+import { CandidateReferencePathSchema } from './candidate'
+
+const contentResultIssueTypeSchema = z.enum(['conflicting-information', 'missing-information'])
+
+export const ContentResultSchema = z.strictObject({
+  data: z.union([
+    z.strictObject({
+      status: z.literal('error'),
+      issues: z
+        .array(
+          z.strictObject({
+            type: contentResultIssueTypeSchema,
+            docPaths: z.array(z.string().min(1)),
+            details: z.string(),
+          }),
+        )
+        .min(1),
+    }),
+    z.strictObject({
+      status: z.literal('success'),
+      body: z.string().min(1),
+      references: z.array(
+        z.strictObject({
+          path: CandidateReferencePathSchema,
+          body: z.string().min(1),
+        }),
+      ),
+    }),
+  ]),
+})
+
+export const ContentResultJSONSchema = z.toJSONSchema(ContentResultSchema)
+
+export const ContentResultIssueLabels: Record<z.output<typeof contentResultIssueTypeSchema>, string> = {
+  'conflicting-information': 'Conflicting information',
+  'missing-information': 'Missing information',
+}
+
+export type SkillContentResult = z.output<typeof ContentResultSchema>['data']

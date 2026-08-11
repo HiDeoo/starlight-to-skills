@@ -1,0 +1,149 @@
+---
+title: Starlight to Skills
+description: Turn Starlight documentation pages into reviewed, discoverable, and up-to-date agent skills.
+head:
+  - tag: title
+    content: Starlight to Skills
+  - tag: style
+    content: |
+      .hero-html {
+        --size: 12rem;
+        font-size: var(--size);
+        justify-content: center;
+        line-height: var(--size);
+      }
+template: splash
+editUrl: false
+lastUpdated: false
+hero:
+  tagline: Turn Starlight documentation pages into reviewed, discoverable, and up-to-date agent skills.
+  image:
+    html: '⚗️'
+  actions:
+    - text: Get Started
+      link: /getting-started/
+      icon: rocket
+---
+
+import Features from '../../components/Features.astro'
+import Feature from '../../components/Feature.astro'
+
+<Features>
+  <Feature
+    title="Define"
+    description="Describe what a skill does, when agents should use it, and choose which Starlight documentation pages contain the knowledge they need."
+  >
+
+```ts title="src/skills/upgrade-v2-to-v3.skill.ts"
+import { defineSkill } from 'starlight-to-skills/skill'
+
+export default defineSkill({
+  description:
+    'Upgrade projects from package v2 to v3, including required dependency, ' +
+    'configuration, and API changes. Use when planning, performing, reviewing, ' +
+    'or troubleshooting the migration.',
+  docs: ['./upgrade.mdx', './guides/upgrade-to/v3.mdx'],
+  guidance: 'List any in-use features no longer supported in v3.',
+})
+```
+
+  </Feature>
+  <Feature
+    title="Generate"
+    description="Use the model of your choice to turn your definition and selected documentation pages into an agent skill."
+  >
+
+```ansi wrap frame="none"
+[32m❯[0m [1mpnpm exec starlight-to-skills generate upgrade-v2-to-v3[0m
+[32mGenerated[0m '[36mupgrade-v2-to-v3[0m'.
+
+[1;7m SKILL.md [0m
+
+  ---
+  name: "upgrade-v2-to-v3"
+  description: "Upgrade projects from package v2 to v3, including required dependency, configuration, and API changes. Use when planning, performing, reviewing, or troubleshooting the migration."
+  ---
+
+  # Upgrade to v3
+
+  1. Update `@example/package` in `package.json` from `^2.0.0` to `^3.0.0`.
+  2. Rename the `foo` configuration option to `bar`.
+
+  ## Handle removed APIs
+
+  v3 removes `createLegacyBaz()` without a replacement. If the project uses it, leave the call unchanged and mention it in the final response.
+
+[1;30;46m Next steps [0m
+
+Review the generated skill.
+
+[2m -[0m To make changes, update the skill definition or documentation, then run '[1mpnpm exec starlight-to-skills generate upgrade-v2-to-v3[0m' again.
+[2m -[0m To approve it, run '[1mpnpm exec starlight-to-skills approve upgrade-v2-to-v3[0m'.
+```
+
+  </Feature>
+  <Feature
+    title="Approve"
+    description="Review and explicitly approve each new or updated skill before making it available to agents."
+    requiresApproval
+  >
+
+```ansi frame="none"
+[32m❯[0m [1mpnpm exec starlight-to-skills approve upgrade-v2-to-v3[0m
+[32mApproved[0m '[36mupgrade-v2-to-v3[0m'.
+```
+
+  </Feature>
+  <Feature
+    title="Serve"
+    description='Make approved skills available to agents through <a href="https://github.com/cloudflare/agent-skills-discovery-rfc">Agent Skills Discovery</a> on your Starlight site. List all skills in a dedicated <a href="/configuration/#catalog">catalog page</a>, and prominently recommend individual skills in relevant documentation with the <a href="/components/skill-callout/"><code>&amp;lt;SkillCallout&amp;gt;</code> component</a>.'
+  >
+
+```ansi frame="none"
+[32m❯[0m [1mnpx skills add https://example.com[0m
+
+[90m┌[0m  [30;46m skills [0m
+[90m│[0m
+[32m◇[0m  Source: https://example.com
+[90m│[0m
+[32m◇[0m  Found [32m1[0m skill
+[90m│[0m
+[34m●[0m  Skill: [36mupgrade-v2-to-v3[0m
+[90m│[0m
+[90m│[0m  [2mUpgrade projects from package v2 to v3, including required dependency, configuration, and API changes. Use when planning, performing, reviewing, or troubleshooting the migration.[0m
+[90m│[0m
+```
+
+  </Feature>
+  <Feature
+    title="Keep up to date"
+    description="Use deterministic checks to prevent outdated skills from remaining available to agents as your documentation changes."
+  >
+
+<Fragment slot="icon">
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M8.625 8.5h-4.5a1 1 0 0 1-1-1V3a1 1 0 0 1 2 0v3.5h3.5a1 1 0 0 1 0 2" />
+  <path d="M21 13a1 1 0 0 1-1-1A7.995 7.995 0 0 0 5.08 8.001a1 1 0 0 1-1.731-1.002A9.995 9.995 0 0 1 22 12a1 1 0 0 1-1 1m-1.125 9a1 1 0 0 1-1-1v-3.5h-3.5a1 1 0 0 1 0-2h4.5a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1" />
+  <path d="M12 22A10.01 10.01 0 0 1 2 12a1 1 0 0 1 2 0 7.995 7.995 0 0 0 14.92 3.999 1 1 0 0 1 1.731 1.002A10.03 10.03 0 0 1 12 22" />
+</svg>
+
+</Fragment>
+
+```ansi wrap frame="none"
+[32m❯[0m [1mpnpm astro build[0m
+[31m[ERROR] [starlight-to-skills][0m Not all skills are up to date.
+
+[1;30;46m upgrade-v2-to-v3 [0m
+
+Skill '[36mupgrade-v2-to-v3[0m' is not up to date.
+
+[1;7m Documentation content changed [0m
+
+[2m -[0m ./guides/upgrade-to/v3.mdx
+
+[33mHint:[0m Run '[1mpnpm exec starlight-to-skills generate upgrade-v2-to-v3[0m', review the generated skill, and then run '[1mpnpm exec starlight-to-skills approve upgrade-v2-to-v3[0m'. Alternatively, if the existing approved skill is still valid, run '[1mpnpm exec starlight-to-skills approve upgrade-v2-to-v3 --existing[0m'.
+```
+
+  </Feature>
+</Features>
