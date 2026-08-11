@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { Readable } from 'node:stream'
 import { buffer } from 'node:stream/consumers'
 import { gunzipSync } from 'node:zlib'
@@ -82,27 +83,32 @@ test('serves discovery index and valid skills', async () => {
 
   expect(indexResponse.headers.get('Content-Type')).toBe('application/json')
 
-  await expect(indexResponse.json()).resolves.toMatchInlineSnapshot(`
-    {
-      "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
-      "skills": [
-        {
-          "description": "Use bar.",
-          "digest": "sha256:92537080fd10fd847741b4499704b027d81e4842f85144544c06624f8fa50dae",
-          "name": "bar",
-          "type": "archive",
-          "url": "/.well-known/agent-skills/bar.tar.gz",
-        },
-        {
-          "description": "Use foo.",
-          "digest": "sha256:3a6490916391dd1f527dfdbd4f3fe9620e96d5b1427d0d60fb3bd91e4ce190a3",
-          "name": "foo",
-          "type": "archive",
-          "url": "/.well-known/agent-skills/foo.tar.gz",
-        },
-      ],
-    }
-  `)
+  const index = (await indexResponse.json()) as { skills: { digest: string; name: string }[] }
+
+  expect(index).toMatchObject({
+    $schema: 'https://schemas.agentskills.io/discovery/0.2.0/schema.json',
+    skills: [
+      {
+        description: 'Use bar.',
+        name: 'bar',
+        type: 'archive',
+        url: '/.well-known/agent-skills/bar.tar.gz',
+      },
+      {
+        description: 'Use foo.',
+        name: 'foo',
+        type: 'archive',
+        url: '/.well-known/agent-skills/foo.tar.gz',
+      },
+    ],
+  })
+
+  for (const { digest, name } of index.skills) {
+    const response = await getDiscoveryResponse(route, { skill: name })
+    const bytes = Buffer.from(await response.arrayBuffer())
+
+    expect(digest).toBe(`sha256:${createHash('sha256').update(bytes).digest('hex')}`)
+  }
 
   await expect(getDiscoveryResponse(route, { skill: 'missing' })).resolves.toMatchObject({ status: 404 })
 })
