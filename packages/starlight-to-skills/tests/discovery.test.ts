@@ -38,8 +38,8 @@ test('serves discovery index and valid skills', async () => {
   await project.write('skills/qux/SKILL.md', 'Edited skill content.')
 
   const route = await makeRoute(true)
-  const indexPaths = await route.getStaticPaths({ routePattern: DiscoveryIndexRoutePattern })
-  const archivePaths = await route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })
+  const indexPaths = route.getStaticPaths({ routePattern: DiscoveryIndexRoutePattern })
+  const archivePaths = route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })
 
   expect(indexPaths).toMatchInlineSnapshot(`
     [
@@ -112,8 +112,8 @@ test('does not serve discovery index with no skills', async () => {
 
   const route = await makeRoute(false)
 
-  await expect(route.getStaticPaths({ routePattern: DiscoveryIndexRoutePattern })).resolves.toStrictEqual([])
-  await expect(route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })).resolves.toStrictEqual([])
+  expect(route.getStaticPaths({ routePattern: DiscoveryIndexRoutePattern })).toStrictEqual([])
+  expect(route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })).toStrictEqual([])
 })
 
 test('serves identical archive digests for identical skill content', async () => {
@@ -151,7 +151,7 @@ test('rejects a file updated after discovery', async () => {
 
   const route = await makeRoute(false)
 
-  await route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })
+  route.getStaticPaths({ routePattern: DiscoveryArchiveRoutePattern })
 
   await project.write('skills/foo/SKILL.md', 'Updateed skill content.')
 

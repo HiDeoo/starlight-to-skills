@@ -42,7 +42,7 @@ export function makeDiscoveryRoute(discoverableSkills: DiscoverableSkills, isDev
     return archive
   }
 
-  const getStaticPaths = (async ({ routePattern }: Pick<GetStaticPathsOptions, 'routePattern'>) => {
+  const getStaticPaths = (({ routePattern }: Pick<GetStaticPathsOptions, 'routePattern'>) => {
     if (discoverableSkills.skills.length === 0) return []
 
     if (routePattern === DiscoveryIndexRoutePattern) return [{ params: { file: 'index' } }]
