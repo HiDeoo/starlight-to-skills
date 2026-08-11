@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "generatorVersion": 1,
+  "model": "openai/gpt-5.6-luna",
+  "name": "starlight-to-skills-install",
+  "inputHash": "895cabbf0b03e2b61841e670e68a23c7e4a45099c9526de29ec4823180d21bf7",
+  "definitionHash": "60d44bd4ccf5b0c855b34af11e49482022fcb50fa02d789f3135b349260337aa",
+  "docs": [
+    {
+      "path": "./getting-started.mdx",
+      "contentHash": "8d3d4b07ec16431b1b9d61e0ce6ad9106ed69f2a4a48dc6c59c7c50dce6912a6"
+    }
+  ],
+  "files": [
+    {
+      "path": "SKILL.md",
+      "contentHash": "de9d46bf6e3f75364496a339b938a87ba8aa8059fa4a610c09cd40a22cb19dee"
+    }
+  ]
+}

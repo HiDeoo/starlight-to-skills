@@ -184,9 +184,7 @@ async function runGenerateCandidate(name: string, rootDir: URL): Promise<number>
   if (approvedSkill?.fileMismatches.length === 0) {
     files = renderSkillDiff(approvedSkill.files, candidate.files)
 
-    const approvedFileHashes = new Map(
-      approvedSkill.manifest.files.map(({ path, contentHash }) => [path, contentHash]),
-    )
+    const approvedFileHashes = new Map(approvedSkill.manifest.files.map(({ path, contentHash }) => [path, contentHash]))
     const hasFileChanges =
       candidate.fileDigests.length !== approvedFileHashes.size ||
       candidate.fileDigests.some(({ path, contentHash }) => approvedFileHashes.get(path) !== contentHash)

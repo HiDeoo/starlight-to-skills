@@ -9,5 +9,6 @@ build
 coverage
 dist
 dist-ssr
+docs/skills
 out
 pnpm-lock.yaml

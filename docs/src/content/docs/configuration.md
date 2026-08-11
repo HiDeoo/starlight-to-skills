@@ -30,8 +30,8 @@ A list of all supported providers and models can be found in the [Mastra documen
 
 ```ts
 defineConfig({
-  // Use the `gpt-5.6-sol` model from the `openai` provider.
-  model: 'openai/gpt-5.6-sol',
+  // Use the `gpt-5.6-luna` model from the `openai` provider.
+  model: 'openai/gpt-5.6-luna',
 })
 ```
 

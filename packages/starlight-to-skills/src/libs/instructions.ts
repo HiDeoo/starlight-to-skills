@@ -21,8 +21,9 @@ export function getInstructions(maxSkillBodyLines: number): string {
 
 # Blocking outcomes
 
+- Evaluate blocking outcomes using only the current description, guidance, and selected documentation. Never use approved files as evidence for a 'missing-information' or 'conflicting-information' issue.
 - Return a 'missing-information' issue only when absent information is necessary to produce a correct, usable skill; omit unsupported optional detail instead of blocking generation.
-- If the selected documentation disagrees, or the provided guidance contradicts a documented fact, return a 'conflicting-information' issue.
+- Return a 'conflicting-information' issue only when the current selected documentation disagrees with itself or the current guidance contradicts a documented fact.
 - For each issue, provide actionable details and the relevant documentation paths, if any.
 
 # Writing the skill
@@ -42,7 +43,9 @@ export function getInstructions(maxSkillBodyLines: number): string {
 
 ## References
 
-- Move necessary detailed, conditional, or variant-specific material—including schemas and supporting examples—into a focused reference when including it in SKILL.md would make the core workflow harder to follow or push the body toward its line limit.
+- Keep short, self-contained examples and configuration snippets in SKILL.md.
+- Create a reference only for substantial detailed, conditional, or variant-specific material that would make the core workflow harder to follow or push SKILL.md toward its line limit.
+- Do not create references that merely point to the selected documentation, repeat SKILL.md, or contain generic or non-actionable text.
 - Do not duplicate information between SKILL.md and references.
 - Link every reference directly from SKILL.md and explain when to read it.
 - Ensure every relative file link resolves to a generated file and every same-file heading link resolves within that file.
@@ -61,7 +64,7 @@ export const UpdateInstructions = `# Updating an approved skill
 
 - Use the approved files only as a wording and structure baseline.
 - Those files are not selected documentation or factual authority.
-- If they disagree with the current description, guidance, or selected documentation, update them to match the current inputs instead of returning a 'conflicting-information' issue.
+- Ignore differences between approved files and current inputs when evaluating blocking issues; such differences are not conflicting information.
 - Ignore frontmatter in the approved SKILL.md.
 - Treat the changed documentation paths only as hints about where updates may be needed; consider every current input.
 - Preserve unaffected wording, formatting, ordering, reference paths, and reference content exactly; do not opportunistically clean up, reformat, reorganize, or rephrase it.
