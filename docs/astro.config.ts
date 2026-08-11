@@ -9,7 +9,11 @@ const site =
 export default defineConfig({
   integrations: [
     starlight({
-      description: '// TODO(HiDeoo) ',
+      components: {
+        Hero: './src/components/Hero.astro',
+        PageTitle: './src/components/PageTitle.astro',
+      },
+      description: 'Turn Starlight documentation pages into reviewed, discoverable, and up-to-date agent skills.',
       editLink: {
         baseUrl: 'https://github.com/HiDeoo/starlight-to-skills/edit/main/docs/',
       },
@@ -25,7 +29,7 @@ export default defineConfig({
           tag: 'meta',
           attrs: {
             property: 'og:image:alt',
-            content: '// TODO(HiDeoo) ',
+            content: 'Turn Starlight documentation pages into reviewed, discoverable, and up-to-date agent skills.',
           },
         },
       ],
@@ -33,21 +37,27 @@ export default defineConfig({
       sidebar: [
         {
           label: 'Start Here',
-          // TODO(HiDeoo)
-          items: [],
-          // items: ["getting-started", "configuration"],
+          items: ['getting-started', 'configuration', 'skill-definition'],
+        },
+        {
+          label: 'Commands',
+          items: [{ autogenerate: { directory: 'commands' } }],
+        },
+        {
+          label: 'Components',
+          items: [{ autogenerate: { directory: 'components' } }],
         },
         {
           label: 'Guides',
-          // TODO(HiDeoo)
-          items: [],
-          // items: ["guides/custom-highlights"],
+          items: ['guides/i18n'],
         },
         {
           label: 'Resources',
-          // TODO(HiDeoo)
-          items: [],
-          // items: [{ label: "Plugins and Tools", slug: "resources/starlight" }],
+          items: [{ label: 'Plugins and Tools', slug: 'resources/starlight' }],
+        },
+        {
+          label: 'Demo',
+          items: [{ label: 'Skills', link: '/skills/' }],
         },
       ],
       social: [
