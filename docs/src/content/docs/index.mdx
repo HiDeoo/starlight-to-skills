@@ -53,7 +53,7 @@ export default defineSkill({
     description="Use the model of your choice to turn your definition and selected documentation pages into an agent skill."
   >
 
-```ansi wrap
+```ansi wrap frame="none"
 [32m❯[0m [1mpnpm exec starlight-to-skills generate upgrade-v2-to-v3[0m
 [32mGenerated[0m '[36mupgrade-v2-to-v3[0m'.
 
@@ -88,7 +88,7 @@ Review the generated skill.
     requiresApproval
   >
 
-```ansi
+```ansi frame="none"
 [32m❯[0m [1mpnpm exec starlight-to-skills approve upgrade-v2-to-v3[0m
 [32mApproved[0m '[36mupgrade-v2-to-v3[0m'.
 ```
@@ -99,7 +99,7 @@ Review the generated skill.
     description='Make approved skills available to agents through <a href="https://github.com/cloudflare/agent-skills-discovery-rfc">Agent Skills Discovery</a> on your Starlight site. List all skills in a dedicated <a href="/configuration/#catalog">catalog page</a>, and prominently recommend individual skills in relevant documentation with the <a href="/components/skill-callout/"><code>&amp;lt;SkillCallout&amp;gt;</code> component</a>.'
   >
 
-```ansi
+```ansi frame="none"
 [32m❯[0m [1mnpx skills add https://example.com[0m
 
 [90m┌[0m  [30;46m skills [0m
@@ -130,7 +130,7 @@ Review the generated skill.
 
 </Fragment>
 
-```ansi wrap
+```ansi wrap frame="none"
 [32m❯[0m [1mpnpm astro build[0m
 [31m[ERROR] [starlight-to-skills][0m Not all skills are up to date.
 
