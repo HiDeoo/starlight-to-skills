@@ -3,7 +3,7 @@ import { expect } from 'vitest'
 const sha256Regex = /^[a-f\d]{64}$/
 
 expect.extend({
-  toBeSha256(received) {
+  toBeSha256(this, received) {
     const pass = typeof received === 'string' && sha256Regex.test(received)
 
     return {

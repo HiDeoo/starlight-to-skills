@@ -4,6 +4,7 @@ import { z } from 'astro/zod'
 const leadingAndTrailingSlashesRegex = /^\/+|\/+$/g
 
 export const ConfigSchema = z.strictObject({
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   model: z.string().min(1) as z.ZodType<ModelRouterModelId, ModelRouterModelId>,
   definitionsDir: z.string().default('./src/skills'),
   outputDir: z.string().default('./skills'),

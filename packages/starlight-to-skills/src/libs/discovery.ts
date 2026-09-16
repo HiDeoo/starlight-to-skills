@@ -130,7 +130,7 @@ export async function getDiscoverableSkills(rootDir: URL): Promise<DiscoverableS
   if (hasOrphans) isComplete = false
 
   // We sort skills to ensure a stable order of the discovery index.
-  return { isComplete, skills: sortByKey([...skillsByName.values()], 'name') }
+  return { isComplete, skills: sortByKey(skillsByName.values().toArray(), 'name') }
 }
 
 async function makeSkillArchive(skill: DiscoverableSkill): Promise<SkillArchive> {

@@ -83,13 +83,13 @@ describe('usage', () => {
       "
         starlight-to-skills <command> [options]
 
-         Commands\u0020
+         Commands\u{20}
                 approve  Approve a generated skill.
                   check  Check whether approved skills are up to date.
                generate  Generate a skill for review.
                   prune  Remove orphan approved skills.
 
-         Global options\u0020
+         Global options\u{20}
              -h, --help  Show this help message.
           -v, --version  Show the version number."
     `)
@@ -253,20 +253,20 @@ Then change baz to quux.`,
       expect(getLastLogMessage(logSpy)).toMatchInlineSnapshot(`
         "Generated 'test-skill'.
 
-         SKILL.md\u0020
+         SKILL.md\u{20}
 
           ---
           name: "test-skill"
           description: "Migrate a project to v2."
           ---
-        \u0020\u0020
+        \u{20}\u{20}
           Change foo to bar and then change baz to quux.
 
-         references/details.md\u0020
+         references/details.md\u{20}
 
           Additional details.
 
-         Next steps\u0020
+         Next steps\u{20}
 
         Review the generated skill.
 
@@ -460,7 +460,7 @@ New content.`,
       expect(getLastLogMessage(errorSpy)).toMatchInlineSnapshot(`
         "Error: Could not generate 'test-skill'.
 
-         Missing information\u0020
+         Missing information\u{20}
 
         The migration steps are missing.
 
@@ -468,7 +468,7 @@ New content.`,
 
          - ./guide.md
 
-         Conflicting information\u0020
+         Conflicting information\u{20}
 
         The migration guide is for v3.
 

@@ -8,8 +8,8 @@ import { createError, StarlightToSkillsError } from './error'
 
 const lineStartRegex = /^/gm
 
-const startTerminalProgressSequence = '\u001B]9;4;3;0\u001B\\'
-const stopTerminalProgressSequence = '\u001B]9;4;0;0\u001B\\'
+const startTerminalProgressSequence = '\u{1B}]9;4;3;0\u{1B}\\'
+const stopTerminalProgressSequence = '\u{1B}]9;4;0;0\u{1B}\\'
 
 export const style = {
   dim: (text: string) => styleText('dim', text),
@@ -24,9 +24,7 @@ export const style = {
   diffRemoved: (text: string) => styleText('red', text),
   diffChanged: (text: string) => styleText('inverse', text),
   command: (command: string) => `'${styleText('bold', resolveCommandWithPackageManager(command))}'`,
-  skillName(name: string) {
-    return `'${this.primary(name)}'`
-  },
+  skillName: (name: string) => `'${style.primary(name)}'`,
 }
 
 export function logMessage(message: string) {

@@ -56,11 +56,11 @@ describe('getSkillIssues', () => {
     await expect(getSkillIssues(config, definition, digest)).resolves.toMatchInlineSnapshot(`
       Skill 'test-skill' is not up to date.
 
-       Documentation content changed\u0020
+       Documentation content changed\u{20}
 
        - ./guide.md
 
-       Approved skill changed\u0020
+       Approved skill changed\u{20}
 
        - SKILL.md
 
@@ -83,16 +83,16 @@ describe('getSkillIssues', () => {
     await expect(getSkillIssues(config, definition, digest)).resolves.toMatchInlineSnapshot(`
       Skill 'test-skill' is not up to date.
 
-       Skill definition changed\u0020
+       Skill definition changed\u{20}
 
       The description, license, compatibility, metadata, documentation file paths, or guidance changed since the skill was approved.
 
-       Model changed\u0020
+       Model changed\u{20}
 
        - Before: openai/gpt-5.6-terra
        - Now: openai/gpt-5.6-luna
 
-       Generator version changed\u0020
+       Generator version changed\u{20}
 
        - Before: 0
        - Now: 1
@@ -111,7 +111,7 @@ describe('getSkillIssues', () => {
     await expect(getSkillIssues(config, definition, digest)).resolves.toMatchInlineSnapshot(`
       Skill 'test-skill' is not up to date.
 
-       Documentation content changed\u0020
+       Documentation content changed\u{20}
 
        - ./guide.md
 
@@ -135,7 +135,7 @@ describe('getSkillIssues', () => {
     await expect(getSkillIssues(config, changedDefinition, changedDigest)).resolves.toMatchInlineSnapshot(`
       Skill 'test-skill' is not up to date.
 
-       Skill definition changed\u0020
+       Skill definition changed\u{20}
 
       The description, license, compatibility, metadata, documentation file paths, or guidance changed since the skill was approved.
 
@@ -164,7 +164,7 @@ describe('checkSkills', () => {
     await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
-       test-skill\u0020
+       test-skill\u{20}
 
       Skill 'test-skill' has not been approved.
 
@@ -181,11 +181,11 @@ describe('checkSkills', () => {
     await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
-       test-skill\u0020
+       test-skill\u{20}
 
       Skill 'test-skill' is not up to date.
 
-       Documentation content changed\u0020
+       Documentation content changed\u{20}
 
        - ./guide.md
 
@@ -201,7 +201,7 @@ describe('checkSkills', () => {
     await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
-       invalid-skill\u0020
+       invalid-skill\u{20}
 
       Invalid skill definition 'invalid-skill.skill.ts'.
 
@@ -223,7 +223,7 @@ describe('checkSkills', () => {
     await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
-       invalid--skill\u0020
+       invalid--skill\u{20}
 
       Invalid skill name 'invalid--skill'.
 
@@ -242,11 +242,11 @@ describe('checkSkills', () => {
     await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
-       first-orphan\u0020
+       first-orphan\u{20}
 
       Orphan approved skill.
 
-       second-orphan\u0020
+       second-orphan\u{20}
 
       Orphan approved skill.
 
@@ -265,7 +265,7 @@ describe('checkSkills', () => {
     await expect(checkSkills(project.rootDir)).rejects.toMatchInlineSnapshot(`
       Not all skills are up to date.
 
-       ..\u0020
+       ..\u{20}
 
       Invalid skill name '..'.
 

@@ -16,8 +16,10 @@ export function renderSkillDiff(approvedFiles: SkillFile[], candidateFiles: Skil
     filesByPath.set(approved.path, { ...filesByPath.get(approved.path), approved })
   }
 
-  return [...filesByPath.values()]
+  return filesByPath
+    .values()
     .map(({ approved, candidate }) => renderSkillFileDiff(approved, candidate))
+    .toArray()
     .join('\n\n')
 }
 

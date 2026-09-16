@@ -26,6 +26,8 @@ import {
 } from './skill'
 import { logError, logMessage, logUsageError, pluralize, prefixLines, style, withProgress } from './terminal'
 
+const skillNameCommands = new Set(['generate', 'approve', 'check'])
+
 export async function runCli(args: string[], cwd = process.cwd()): Promise<number> {
   let parsedArgs: ReturnType<typeof parseArgs>
 
@@ -59,9 +61,11 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
 
   if (!command) return logUsageError('Missing command.')
 
-  if (parsedArgs.values['existing'] && command !== 'approve') {
+  if (command !== 'approve' && parsedArgs.values['existing']) {
     return logUsageError("Option '--existing' is only valid for command 'approve'.", 'approve')
-  } else if (parsedArgs.values['yes'] && command !== 'prune') {
+  }
+
+  if (command !== 'prune' && parsedArgs.values['yes']) {
     return logUsageError("Option '--yes' is only valid for command 'prune'.", 'prune')
   }
 
@@ -77,7 +81,7 @@ export async function runCli(args: string[], cwd = process.cwd()): Promise<numbe
     }
   }
 
-  if (command === 'generate' || command === 'approve' || command === 'check') {
+  if (skillNameCommands.has(command)) {
     const [name, ...extraNames] = commandArgs
 
     if (extraNames.length > 0) return logUsageError(`Command '${command}' accepts only one skill name.`, command)
@@ -268,7 +272,7 @@ async function runPruneSkills(rootDir: URL, yes: boolean): Promise<number> {
   logMessage(`${style.bold('Orphan approved skills:')}\n\n${orphanNames}\n`)
 
   if (!yes) {
-    if (process.stdin.isTTY !== true) {
+    if (!process.stdin.isTTY) {
       throwError('Pruning requires confirmation but no interactive terminal is available.', {
         hint: `Run ${style.command('starlight-to-skills prune --yes')}.`,
       })
