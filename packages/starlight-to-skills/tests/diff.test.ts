@@ -18,22 +18,22 @@ test('renders modified, unchanged, added, and removed files', () => {
   ]
 
   expect(stripVTControlCharacters(renderSkillDiff(approvedFiles, candidateFiles))).toMatchInlineSnapshot(`
-    " SKILL.md\u0020
+    " SKILL.md\u{20}
 
       Keep this line.
       Do something.
     - Removed line.
     + Added line.
 
-     references/configuration.md\u0020
+     references/configuration.md\u{20}
 
       Same content.
 
-     references/experimental.md\u0020
+     references/experimental.md\u{20}
 
     + Experimental content.
 
-     references/deprecated.md\u0020
+     references/deprecated.md\u{20}
 
     - Deprecated content."
   `)
@@ -46,7 +46,7 @@ test('normalizes line endings', () => {
   const output = stripVTControlCharacters(renderSkillDiff(approvedFiles, candidateFiles))
 
   expect(output).toMatchInlineSnapshot(`
-    " SKILL.md\u0020
+    " SKILL.md\u{20}
 
       First.
       Second."

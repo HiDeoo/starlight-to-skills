@@ -55,7 +55,7 @@ export async function discoverSkillDefinitions(
     throwError('Failed to find skill definitions.', { cause: error })
   }
 
-  return definitionUrls.toSorted()
+  return definitionUrls.toSorted(compareUrls)
 }
 
 export function getSkillDefinitionUrlByName(definitionUrls: URL[], name: string): URL {
@@ -91,7 +91,7 @@ export async function discoverSkillManifests(outputDir: URL): Promise<URL[]> {
     manifestUrls.push(resolveRelativeFilePathUrl(entry.name, manifestDirUrl))
   }
 
-  return manifestUrls.toSorted()
+  return manifestUrls.toSorted(compareUrls)
 }
 
 export async function loadSkillManifest(url: URL, name: string): Promise<SkillManifest> {
@@ -238,6 +238,12 @@ export async function hasMatchingSkillFrontmatter(
 
 function getSkillNameByUrl(url: URL, suffix: string): string {
   return path.basename(fileURLToPath(url), suffix)
+}
+
+function compareUrls(a: URL, b: URL): number {
+  if (a.href < b.href) return -1
+  if (a.href > b.href) return 1
+  return 0
 }
 
 export interface LoadedSkill {

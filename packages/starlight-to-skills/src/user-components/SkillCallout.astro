@@ -18,7 +18,7 @@ if (!site) {
   )
 }
 
-if (!skills.skills.some(({ name }) => name === skill)) {
+if (skills.skills.every(({ name }) => name !== skill)) {
   throw new AstroError(
     `No approved skill found for '${skill}'.`,
     'Check the skill name or approve the skill before using the `<SkillCallout>` component.',
